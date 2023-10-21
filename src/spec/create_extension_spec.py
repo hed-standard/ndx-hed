@@ -10,11 +10,19 @@ from pynwb.spec import NWBNamespaceBuilder, export_spec, NWBGroupSpec, NWBAttrib
 def main():
     # these arguments were auto-generated from your cookiecutter inputs
     ns_builder = NWBNamespaceBuilder(
-        doc="""NWB extension for HED data""",
         name="""ndx-hed""",
         version="""0.1.0""",
-        author=list(map(str.strip, """Ryan Ly, Oliver Ruebel, Kay Robbins""".split(","))),
-        contact=list(map(str.strip, """rly@lbl.gov, oruebel@lbl.gov, kay.robbins@utsa.edu""".split(","))),
+        doc="""NWB extension for HED data""",
+        author=[
+            "Ryan Ly",
+            "Oliver Ruebel",
+            "Kay Robbins",
+        ],
+        contact=[
+            "rly@lbl.gov",
+            "oruebel@lbl.gov",
+            "kay.robbins@utsa.edu"
+        ],
     )
 
     # TODO: specify either the neurodata types that are used by the extension

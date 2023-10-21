@@ -12,17 +12,17 @@ authors = [
 ]
 description = "NWB extension for HED data"
 readme = "README.md"
-# requires-python = ">=3.8"
+requires-python = ">=3.8"
 license = {text = "BSD-3"}
 classifiers = [
     # TODO: add classifiers before release
-    # "Programming Language :: Python",
-    # "Programming Language :: Python :: 3.8",
-    # "Programming Language :: Python :: 3.9",
-    # "Programming Language :: Python :: 3.10",
-    # "Programming Language :: Python :: 3.11",
-    # "Programming Language :: Python :: 3.12",
-    # "Development Status :: 4 - Beta",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
@@ -38,12 +38,12 @@ dependencies = [
 ]
 
 # TODO: add URLs before release
-# [project.urls]
-# "Homepage" = "https://github.com/organization/package"
+[project.urls]
+"Homepage" = "https://github.com/hed-standard/ndx-hed"
 # "Documentation" = "https://package.readthedocs.io/"
-# "Bug Tracker" = "https://github.com/organization/package/issues"
-# "Discussions" = "https://github.com/organization/package/discussions"
-# "Changelog" = "https://package.readthedocs.io/en/latest/changelog.html"
+"Bug Tracker" = "https://github.com/hed-standard/ndx-hed/issues"
+"Discussions" = "https://github.com/hed-standard/ndx-hed/discussions"
+"Changelog" = "https://github.com/hed-standard/ndx-hed/CHANGELOG.md"
 
 [tool.hatch.build]
 include = [
@@ -62,7 +62,7 @@ packages = [
 ]
 
 [tool.hatch.build.targets.wheel.sources]
-"spec" = "ndx_my_namespace/spec"
+"spec" = "ndx_hed/spec"
 
 [tool.hatch.build.targets.sdist]
 include = [
