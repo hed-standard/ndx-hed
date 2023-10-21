@@ -1,2 +1,15 @@
-# ndx-hed
-HED extensions for Neurodata Without Borders (nwb)
+# ndx-hed Extension for NWB
+
+Description of the extension
+
+## Installation
+
+
+## Usage
+
+```python
+
+```
+
+---
+This extension was created using [ndx-template](https://github.com/nwb-extensions/ndx-template).
