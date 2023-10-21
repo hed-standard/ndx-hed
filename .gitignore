@@ -4,9 +4,6 @@
 # generated docs
 docs/source/_format_auto_docs
 
-# copied spec files
-src/pynwb/ndx_hed/spec/*.yaml
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
