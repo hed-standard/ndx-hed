@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import os.path
 
-from pynwb.spec import NWBNamespaceBuilder, export_spec, NWBGroupSpec, NWBAttributeSpec
+from pynwb.spec import NWBNamespaceBuilder, export_spec, NWBDatasetSpec, NWBGroupSpec, NWBAttributeSpec
 
 # TODO: import other spec classes as needed
-# from pynwb.spec import NWBDatasetSpec, NWBLinkSpec, NWBDtypeSpec, NWBRefSpec
+# from pynwb.spec import , NWBLinkSpec, NWBDtypeSpec, NWBRefSpec
 
 
 def main():
@@ -21,7 +21,7 @@ def main():
         contact=[
             "rly@lbl.gov",
             "oruebel@lbl.gov",
-            "kay.robbins@utsa.edu"
+            "kay.robbins@utsa.edu",
         ],
     )
 
@@ -36,15 +36,31 @@ def main():
     # TODO: define your new data types
     # see https://pynwb.readthedocs.io/en/latest/extensions.html#extending-nwb
     # for more information
-    tetrode_series = NWBGroupSpec(
-        neurodata_type_def="TetrodeSeries",
-        neurodata_type_inc="ElectricalSeries",
-        doc="An extension of ElectricalSeries to include the tetrode ID for each time series.",
-        attributes=[NWBAttributeSpec(name="trode_id", doc="The tetrode ID.", dtype="int32")],
+    hed_tags = NWBDatasetSpec(
+        neurodata_type_def="HedTags",
+        neurodata_type_inc="VectorData",
+        doc="An extension of VectorData for Hierarchical Event Descriptor (HED) tags.",
+    )
+
+    hed_nwbfile = NWBGroupSpec(
+        neurodata_type_def="HedNWBFile",
+        neurodata_type_inc="NWBFile",
+        doc="An extension of NWBFile to store the Hierarchical Event Descriptor (HED) schema version.",
+        attributes=[
+            NWBAttributeSpec(
+                name="hed_schema_version",
+                doc=(
+                    "The version of the HED schema used to validate the HED tags, e.g., '8.2.0'. "
+                    "Required if HED tags are used in the NWB file."
+                ),
+                dtype="text",
+                required=False,
+            ),
+        ],
     )
 
     # TODO: add all of your new data types to this list
-    new_data_types = [tetrode_series]
+    new_data_types = [hed_tags, hed_nwbfile]
 
     # export the spec to yaml files in the spec folder
     output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "spec"))

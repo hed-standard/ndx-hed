@@ -1,8 +1,15 @@
+datasets:
+- neurodata_type_def: HedTags
+  neurodata_type_inc: VectorData
+  doc: An extension of VectorData for Hierarchical Event Descriptor (HED) tags.
 groups:
-- neurodata_type_def: TetrodeSeries
-  neurodata_type_inc: ElectricalSeries
-  doc: An extension of ElectricalSeries to include the tetrode ID for each time series.
+- neurodata_type_def: HedNWBFile
+  neurodata_type_inc: NWBFile
+  doc: An extension of NWBFile to store the Hierarchical Event Descriptor (HED) schema
+    version.
   attributes:
-  - name: trode_id
-    dtype: int32
-    doc: The tetrode ID.
+  - name: hed_schema_version
+    dtype: text
+    doc: The version of the HED schema used to validate the HED tags, e.g., '8.2.0'.
+      Required if HED tags are used in the NWB file.
+    required: false

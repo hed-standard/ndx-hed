@@ -22,7 +22,8 @@ load_namespaces(str(__spec_path))
 # Either have PyNWB generate a class from the spec using `get_class` as shown
 # below or write a custom class and register it using the class decorator
 # `@register_class("TetrodeSeries", "ndx-hed")`
-TetrodeSeries = get_class("TetrodeSeries", "ndx-hed")
+HedTags = get_class("HedTags", "ndx-hed")
+HedNWBFile = get_class("HedNWBFile", "ndx-hed")
 
 # Remove these functions from the package
 del load_namespaces, get_class
