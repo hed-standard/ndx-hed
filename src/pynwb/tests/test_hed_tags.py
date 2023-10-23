@@ -79,23 +79,23 @@ class TestHedTagsConstructor(TestCase):
         hed_tags = HedTags(
             name="name",
             description="description",
-            data=["tag1", "tag2"],
+            data=["animal_target", "correct_response"],
         )
         assert hed_tags.name == "name"
         assert hed_tags.description == "description"
-        assert hed_tags.data == ["tag1", "tag2"]
+        assert hed_tags.data == ["animal_target", "correct_response"]
 
     def test_add_to_trials_table(self):
         """Test adding HedTags column and data to a trials table."""
         nwbfile = mock_NWBFile()
         nwbfile.add_trial_column("hed_tags", "HED tags for each trial", col_cls=HedTags, index=True)
-        nwbfile.add_trial(start_time=0.0, stop_time=1.0, hed_tags=["tag1", "tag2"])
-        nwbfile.add_trial(start_time=2.0, stop_time=3.0, hed_tags=["tag1", "tag3"])
+        nwbfile.add_trial(start_time=0.0, stop_time=1.0, hed_tags=["animal_target", "correct_response"])
+        nwbfile.add_trial(start_time=2.0, stop_time=3.0, hed_tags=["animal_target", "incorrect_response"])
 
         assert isinstance(nwbfile.trials["hed_tags"], VectorIndex)
         assert isinstance(nwbfile.trials["hed_tags"].target, HedTags)
-        assert nwbfile.trials["hed_tags"][0] == ["tag1", "tag2"]
-        assert nwbfile.trials["hed_tags"][0] == ["tag1", "tag2"]
+        assert nwbfile.trials["hed_tags"][0] == ["animal_target", "correct_response"]
+        assert nwbfile.trials["hed_tags"][0] == ["animal_target", "correct_response"]
 
 
 class TestHedTagsSimpleRoundtrip(TestCase):
@@ -120,8 +120,8 @@ class TestHedTagsSimpleRoundtrip(TestCase):
         )
 
         hed_nwbfile.add_trial_column("hed_tags", "HED tags for each trial", col_cls=HedTags, index=True)
-        hed_nwbfile.add_trial(start_time=0.0, stop_time=1.0, hed_tags=["tag1", "tag2"])
-        hed_nwbfile.add_trial(start_time=2.0, stop_time=3.0, hed_tags=["tag1", "tag3"])
+        hed_nwbfile.add_trial(start_time=0.0, stop_time=1.0, hed_tags=["animal_target", "correct_response"])
+        hed_nwbfile.add_trial(start_time=2.0, stop_time=3.0, hed_tags=["animal_target", "incorrect_response"])
 
         with NWBHDF5IO(self.path, mode="w") as io:
             io.write(hed_nwbfile)
@@ -132,8 +132,8 @@ class TestHedTagsSimpleRoundtrip(TestCase):
             assert isinstance(read_nwbfile.trials["hed_tags"], VectorIndex)
             assert isinstance(read_nwbfile.trials["hed_tags"].target, HedTags)
             # read_nwbfile.trials["hed_tags"][0] is read as a numpy array
-            assert all(read_nwbfile.trials["hed_tags"][0] == ["tag1", "tag2"])
-            assert all(read_nwbfile.trials["hed_tags"][1] == ["tag1", "tag3"])
+            assert all(read_nwbfile.trials["hed_tags"][0] == ["animal_target", "correct_response"])
+            assert all(read_nwbfile.trials["hed_tags"][1] == ["animal_target", "incorrect_response"])
 
 
 # class TestHedTagsRoundtripPyNWB(NWBH5IOFlexMixin, TestCase):
@@ -151,8 +151,8 @@ class TestHedTagsSimpleRoundtrip(TestCase):
 #         )
 
 #         self.nwbfile.add_trial_column("hed_tags", "HED tags for each trial", col_cls=HedTags, index=True)
-#         self.nwbfile.add_trial(start_time=0.0, stop_time=1.0, hed_tags=["tag1", "tag2"])
-#         self.nwbfile.add_trial(start_time=2.0, stop_time=3.0, hed_tags=["tag1", "tag3"])
+#         self.nwbfile.add_trial(start_time=0.0, stop_time=1.0, hed_tags=["animal_target", "correct_response"])
+#         self.nwbfile.add_trial(start_time=2.0, stop_time=3.0, hed_tags=["animal_target", "incorrect_response"])
 
 #     def getContainer(self, nwbfile: NWBFile):
 #         return nwbfile.trials["hed_tags"].target
