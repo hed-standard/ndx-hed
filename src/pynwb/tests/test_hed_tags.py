@@ -1,17 +1,11 @@
 """Unit and integration tests for ndx-hed."""
-
-import numpy as np
-
-from pynwb import NWBHDF5IO, NWBFile
-from pynwb.testing.mock.device import mock_Device
-from pynwb.testing.mock.ecephys import mock_ElectrodeGroup, mock_ElectrodeTable
-from pynwb.testing.mock.file import mock_NWBFile
-from pynwb.testing import TestCase, remove_test_file, NWBH5IOFlexMixin
-
-from hdmf.common import VectorIndex
-from uuid import uuid4
 from datetime import datetime
 from dateutil.tz import tzlocal
+from hdmf.common import VectorIndex
+from pynwb import NWBHDF5IO, NWBFile
+from pynwb.testing.mock.file import mock_NWBFile
+from pynwb.testing import TestCase, remove_test_file, NWBH5IOFlexMixin
+from uuid import uuid4
 
 from ndx_hed import HedTags, HedNWBFile
 
