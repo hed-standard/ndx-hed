@@ -1,6 +1,7 @@
 datasets:
 - neurodata_type_def: HedTags
   neurodata_type_inc: VectorData
+  dtype: text
   doc: An extension of VectorData for Hierarchical Event Descriptor (HED) tags.
 groups:
 - neurodata_type_def: HedNWBFile

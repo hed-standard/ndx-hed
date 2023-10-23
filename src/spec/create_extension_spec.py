@@ -40,6 +40,7 @@ def main():
         neurodata_type_def="HedTags",
         neurodata_type_inc="VectorData",
         doc="An extension of VectorData for Hierarchical Event Descriptor (HED) tags.",
+        dtype="text",
     )
 
     hed_nwbfile = NWBGroupSpec(
