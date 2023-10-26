@@ -1,0 +1,17 @@
+namespaces:
+- author:
+  - Ryan Ly
+  - Oliver Ruebel
+  - Kay Robbins
+  - Ian Callanan
+  contact:
+  - rly@lbl.gov
+  - oruebel@lbl.gov
+  - kay.robbins@utsa.edu
+  - ianrcallanan@gmail.com
+  doc: NWB extension for HED data
+  name: ndx-hed
+  schema:
+  - namespace: core
+  - source: ndx-hed.extensions.yaml
+  version: 0.1.0

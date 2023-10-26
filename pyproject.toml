@@ -1,0 +1,114 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ndx-hed"
+version = "0.1.0"
+authors = [
+    { name="Ryan Ly", email="rly@lbl.gov" },
+    { name="Oliver Ruebel", email="oruebel@lbl.gov" },
+    { name="Kay Robbins", email="kay.robbins@utsa.edu" },
+    { name="Ian Callanan", email="ianrcallanan@gmail.com"}
+]
+description = "NWB extension for HED data"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "BSD-3"}
+classifiers = [
+    # TODO: add classifiers before release
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+]
+keywords = [
+    'NeurodataWithoutBorders',
+    'NWB',
+    'nwb-extension',
+    'ndx-extension',
+]
+dependencies = [
+    "pynwb>=2.5.0",
+    "hdmf>=3.10.0",
+]
+
+# TODO: add URLs before release
+[project.urls]
+"Homepage" = "https://github.com/hed-standard/ndx-hed"
+# "Documentation" = "https://package.readthedocs.io/"
+"Bug Tracker" = "https://github.com/hed-standard/ndx-hed/issues"
+"Discussions" = "https://github.com/hed-standard/ndx-hed/discussions"
+"Changelog" = "https://github.com/hed-standard/ndx-hed/CHANGELOG.md"
+
+[tool.hatch.build]
+include = [
+    "src/pynwb",
+    "spec/ndx-hed.extensions.yaml",
+    "spec/ndx-hed.namespace.yaml",
+]
+exclude = [
+    "src/pynwb/tests",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/pynwb/ndx_hed",
+    "spec"
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"spec" = "ndx_hed/spec"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/pynwb",
+    "spec/ndx-hed.extensions.yaml",
+    "spec/ndx-hed.namespace.yaml",
+    "docs",
+]
+exclude = []
+
+[tool.pytest.ini_options]
+addopts = "--cov --cov-report html"
+
+[tool.codespell]
+skip = "htmlcov,.git,.mypy_cache,.pytest_cache,.coverage,*.pdf,*.svg,venvs,.tox,hdmf-common-schema,./docs/_build/*,*.ipynb"
+
+[tool.coverage.run]
+branch = true
+source = ["src/pynwb"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "@abstract"
+]
+
+[tool.black]
+line-length = 120
+preview = true
+exclude = ".git|.mypy_cache|.tox|.venv|venv|.ipynb_checkpoints|_build/|dist/|__pypackages__|.ipynb|docs/"
+
+[tool.ruff]
+select = ["E", "F", "T100", "T201", "T203"]
+exclude = [
+  ".git",
+  ".tox",
+  "__pycache__",
+  "build/",
+  "dist/",
+]
+line-length = 120
+
+[tool.ruff.per-file-ignores]
+"src/spec/create_extension_spec.py" = ["T201"]
+
+[tool.ruff.mccabe]
+max-complexity = 17
