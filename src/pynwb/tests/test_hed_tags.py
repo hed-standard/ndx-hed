@@ -7,21 +7,22 @@ from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file  # , NWBH5IOFlexMixin
 from uuid import uuid4
 
-from ndx_hed import HedTags, HedNWBFile
+from ndx_hed import HedAnnotations, HedMetadata
 
 
-class TestHedNWBFileConstructor(TestCase):
-    """Simple unit test for creating a HedNWBFile."""
+class TestHedMetadataConstructor(TestCase):
+    """Simple unit test for creating a HedMetadata."""
 
     def test_constructor(self):
         """Test setting HedNWBFile values using the constructor."""
-        hed_nwbfile = HedNWBFile(
-            session_description="session_description",
-            identifier=str(uuid4()),
-            session_start_time=datetime(1970, 1, 1, tzinfo=tzlocal()),
-            hed_schema_version="8.2.0",
-        )
-        assert hed_nwbfile.hed_schema_version == "8.2.0"
+        hed_metadata = HedMetadata(hed_schema_version="8.2.0")
+        assert hed_metadata.hed_schema_version == "8.2.0"
+
+    def test_add_to_nwbfile(self):
+        nwbfile = mock_NWBFile()
+        hed_metadata = HedMetadata(hed_schema_version="8.2.0")
+        nwbfile.add_lab_meta_data(hed_metadata)
+        assert nwbfile.get_lab_meta_data("HedMetadata") is hed_metadata
 
 
 class TestHedNWBFileSimpleRoundtrip(TestCase):
@@ -35,22 +36,20 @@ class TestHedNWBFileSimpleRoundtrip(TestCase):
 
     def test_roundtrip(self):
         """
-        Create a HedNWBFile, write it to file, read the file, and test that it matches the original HedNWBFile.
+        Create a HedMetadata, write it to file, read the file, and test that it matches the original HedNWBFile.
         """
-        hed_nwbfile = HedNWBFile(
-            session_description="session_description",
-            identifier=str(uuid4()),
-            session_start_time=datetime(1970, 1, 1, tzinfo=tzlocal()),
-            hed_schema_version="8.2.0",
-        )
+        nwbfile = mock_NWBFile()
+        hed_metadata = HedMetadata(hed_schema_version="8.2.0")
+        nwbfile.add_lab_meta_data(hed_metadata)
 
         with NWBHDF5IO(self.path, mode="w") as io:
-            io.write(hed_nwbfile)
+            io.write(nwbfile)
 
         with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
             read_nwbfile = io.read()
-            assert isinstance(read_nwbfile, HedNWBFile)
-            assert read_nwbfile.hed_schema_version == "8.2.0"
+            read_hed_metadata = read_nwbfile.get_lab_meta_data("HedMetadata")
+            assert isinstance(read_hed_metadata, HedMetadata)
+            assert read_hed_metadata.hed_schema_version == "8.2.0"
 
 
 # class TestHedNWBFileRoundtripPyNWB(NWBH5IOFlexMixin, TestCase):
@@ -76,26 +75,28 @@ class TestHedTagsConstructor(TestCase):
 
     def test_constructor(self):
         """Test setting HedTags values using the constructor."""
-        hed_tags = HedTags(
+        hed_annotations = HedAnnotations(
             name="name",
             description="description",
-            data=["animal_target", "correct_response"],
+            data=["animal_target, correct_response", "animal_target, incorrect_response"],
         )
-        assert hed_tags.name == "name"
-        assert hed_tags.description == "description"
-        assert hed_tags.data == ["animal_target", "correct_response"]
+        assert hed_annotations.name == "name"
+        assert hed_annotations.description == "description"
+        assert hed_annotations.data == ["animal_target, correct_response", "animal_target, incorrect_response"]
 
     def test_add_to_trials_table(self):
         """Test adding HedTags column and data to a trials table."""
         nwbfile = mock_NWBFile()
-        nwbfile.add_trial_column("hed_tags", "HED tags for each trial", col_cls=HedTags, index=True)
-        nwbfile.add_trial(start_time=0.0, stop_time=1.0, hed_tags=["animal_target", "correct_response"])
-        nwbfile.add_trial(start_time=2.0, stop_time=3.0, hed_tags=["animal_target", "incorrect_response"])
+        hed_metadata = HedMetadata(hed_schema_version="8.2.0")
+        nwbfile.add_lab_meta_data(hed_metadata)
 
-        assert isinstance(nwbfile.trials["hed_tags"], VectorIndex)
-        assert isinstance(nwbfile.trials["hed_tags"].target, HedTags)
-        assert nwbfile.trials["hed_tags"][0] == ["animal_target", "correct_response"]
-        assert nwbfile.trials["hed_tags"][0] == ["animal_target", "correct_response"]
+        nwbfile.add_trial_column("HED", "HED annotations for each trial", col_cls=HedAnnotations)
+        nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="animal_target, correct_response")
+        nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="animal_target, incorrect_response")
+
+        assert isinstance(nwbfile.trials["HED"], HedAnnotations)
+        assert nwbfile.trials["HED"][0] == "animal_target, correct_response"
+        assert nwbfile.trials["HED"][1] == "animal_target, incorrect_response"
 
 
 class TestHedTagsSimpleRoundtrip(TestCase):
@@ -112,28 +113,24 @@ class TestHedTagsSimpleRoundtrip(TestCase):
         Add a HedTags to an NWBFile, write it to file, read the file, and test that the HedTags from the
         file matches the original HedTags.
         """
-        hed_nwbfile = HedNWBFile(
-            session_description="session_description",
-            identifier=str(uuid4()),
-            session_start_time=datetime(1970, 1, 1, tzinfo=tzlocal()),
-            hed_schema_version="8.2.0",
-        )
+        nwbfile = mock_NWBFile()
+        hed_metadata = HedMetadata(hed_schema_version="8.2.0")
+        nwbfile.add_lab_meta_data(hed_metadata)
 
-        hed_nwbfile.add_trial_column("hed_tags", "HED tags for each trial", col_cls=HedTags, index=True)
-        hed_nwbfile.add_trial(start_time=0.0, stop_time=1.0, hed_tags=["animal_target", "correct_response"])
-        hed_nwbfile.add_trial(start_time=2.0, stop_time=3.0, hed_tags=["animal_target", "incorrect_response"])
+        nwbfile.add_trial_column("HED", "HED annotations for each trial", col_cls=HedAnnotations)
+        nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="animal_target, correct_response")
+        nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="animal_target, incorrect_response")
 
         with NWBHDF5IO(self.path, mode="w") as io:
-            io.write(hed_nwbfile)
+            io.write(nwbfile)
 
         with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
             read_nwbfile = io.read()
-            assert isinstance(read_nwbfile, HedNWBFile)
-            assert isinstance(read_nwbfile.trials["hed_tags"], VectorIndex)
-            assert isinstance(read_nwbfile.trials["hed_tags"].target, HedTags)
+            read_hed_annotations = read_nwbfile.trials["HED"]
+            assert isinstance(read_hed_annotations, HedAnnotations)
             # read_nwbfile.trials["hed_tags"][0] is read as a numpy array
-            assert all(read_nwbfile.trials["hed_tags"][0] == ["animal_target", "correct_response"])
-            assert all(read_nwbfile.trials["hed_tags"][1] == ["animal_target", "incorrect_response"])
+            assert read_hed_annotations[0] == "animal_target, correct_response"
+            assert read_hed_annotations[1] == "animal_target, incorrect_response"
 
 
 # class TestHedTagsRoundtripPyNWB(NWBH5IOFlexMixin, TestCase):
