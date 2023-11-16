@@ -23,7 +23,7 @@ load_namespaces(str(__spec_path))
 # below or write a custom class and register it using the class decorator
 # `@register_class("TetrodeSeries", "ndx-hed")`
 HedAnnotations = get_class("HedAnnotations", "ndx-hed")
-HedMetadata = get_class("HedMetadata", "ndx-hed")
+HedVersion = get_class("HedVersion", "ndx-hed")
 
 # Remove these functions from the package
 del load_namespaces, get_class
