@@ -27,17 +27,8 @@ def main():
         ],
     )
 
-    # TODO: specify either the neurodata types that are used by the extension
-    # or the namespaces that contain the neurodata types used. Including the
-    # namespace will include all neurodata types in that namespace.
-    # This is similar to specifying the Python modules that need to be imported
-    # to use your new data types.
-    # ns_builder.include_type("ElectricalSeries", namespace="core")
     ns_builder.include_namespace("core")
 
-    ns_builder.include_type('VectorData', namespace='core')
-    ns_builder.include_type('LabMetaData', namespace='core')
-    
     # TODO: define your new data types
     # see https://pynwb.readthedocs.io/en/latest/extensions.html#extending-nwb
     # for more information
@@ -60,14 +51,16 @@ def main():
              "optionally in /general."),
         attributes=[
             NWBAttributeSpec(
-                name="hed_schema_version",
+                name="hed_version",
                 doc=(
                     "The version of the HED schema used to validate the HED tags, e.g., '8.2.0'. "
                     "Required if HED tags are used in the NWB file."
                 ),
-                dtype="text",
+                dtype='text',
                 required=True,
-            ),
+                shape=[None,],
+                dims=["n_hed_schema_versions",]
+            )
         ],
     )
 

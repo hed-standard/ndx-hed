@@ -14,7 +14,11 @@ groups:
     schema version. TODO When merged with core, this will no longer inherit from LabMetaData
     but from NWBContainer and be placed optionally in /general.
   attributes:
-  - name: hed_schema_version
+  - name: hed_version
     dtype: text
+    dims:
+    - n_hed_schema_versions
+    shape:
+    - null
     doc: The version of the HED schema used to validate the HED tags, e.g., '8.2.0'.
       Required if HED tags are used in the NWB file.

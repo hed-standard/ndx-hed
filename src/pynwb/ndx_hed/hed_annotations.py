@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 from hdmf.common import VectorData
 from hdmf.utils import docval, getargs, get_docval, popargs
+from hed.schema import HedSchema, HedSchemaGroup, load_schema_version
 from pynwb import register_class
 from pynwb.file import LabMetaData
 
@@ -16,104 +17,67 @@ class HedAnnotations(VectorData):
 
     __nwbfields__ = ('name', 'description', 'hed_strings')
 
-    @docval({'name': 'description', 'type': str,
+    @docval({'name': 'name', 'type': str, 'doc': 'Must be HED'},
+            {'name': 'description', 'type': str,
              'doc': 'Column name indicating that this column is of type HedAnnotations',
              'default': "Column name indicating that this column is of type HedAnnotations"},
             {'name': 'hed_strings', 'type': Iterable, 'shape': (None, ),  # required
              'doc': 'HED strings of type str.'}, *get_docval(VectorData.__init__, 'data'))
     def __init__(self, **kwargs):
         description, hed_strings = popargs('description', 'hed_strings', kwargs)
+        kwargs['name'] = 'HED'
         super().__init__(**kwargs)
-        self.name = 'HED'
         self.description = description
         self.hed_strings = hed_strings
-        # CAUTION: Define any logic specific for init in the self._init_internal function, not here!
-        # TODO: How is the HEDSchema object going to be stored as we do not want to recreate?
         self._init_internal()
 
     def _init_internal(self):
         """
-        #TODO:  check the validity of hed_strings.   Where is the HEDSchema going to come from?
+        This finds the HED schema object of use in this NWBFile.
+
+        TODO: How should errors be handled if this file doesn't have a HedVersion object in the LabMetaData?
+
         """
-        pass
+        root = self
+        parent = root.parent
+        while parent is not None:
+            root = parent
+            parent = root.parent
+        hed_version = parent.get_lab_meta_data("HedVersion")
+        if hed_version:
+            self.hed_schema = hed_version.get_schema()
 
     @docval({'name': 'val', 'type': str,
              'doc': 'the value to add to this column. Should be a valid HED string.'})
     def add_row(self, **kwargs):
         """Append a data value to this column."""
-        val = kwargs['val']
-        val.check_types()
+        val = getargs('val', kwargs)
+        # val.check_types()
         # TODO how to validate
+        #
+        # if val is not None and self.validate(val):
+        #     if self.term_set.validate(term=val):
+        #         self.append(val)
+        #     else:
+        #         msg = ("%s is not in the term set." % val)
+        #         raise ValueError(msg)
+        #
+        # else:
+        #     self.append(val)
         super().append(val)
 
-    @docval({'name': 'arg', 'type': str,
-             'doc': 'the value to append to this column. Should be a valid HED string.'})
-    def append(self, **kwargs):
-        """Append a data value to this column."""
-        # this is the same as add_row?
-        arg = kwargs['arg']
-        arg.check_types()
-        super().append(arg)
-
-    def get(self, key, **kwargs):
+    @docval({'name': 'key', 'type': 'str', 'doc': 'the value to add to this column'})
+    def get(self, key):
         """
         Retrieve elements from this object.
 
         """
-        # The function uses :py:class:`~pynwb.base.TimeSeriesReferenceVectorData.TIME_SERIES_REFERENCE_TUPLE`
-        # to describe individual records in the dataset. This allows the code to avoid exposing internal
-        # details of the schema to the user and simplifies handling of missing values by explicitly
-        # representing missing values via
-        # :py:class:`~pynwb.base.TimeSeriesReferenceVectorData.TIME_SERIES_REFERENCE_NONE_TYPE`
-        # rather than the internal representation used for storage of ``(-1, -1, TimeSeries)``.
-        #
-        # :param key: Selection of the elements
-        # :param kwargs: Ignored
-        #
-        # :returns: :py:class:`~pynwb.base.TimeSeriesReferenceVectorData.TIME_SERIES_REFERENCE_TUPLE` if a single
-        #           element is being selected. Otherwise return a list of
-        #           :py:class:`~pynwb.base.TimeSeriesReferenceVectorData.TIME_SERIES_REFERENCE_TUPLE` objects.
-        #           Missing values are represented by
-        #           :py:class:`~pynwb.base.TimeSeriesReferenceVectorData.TIME_SERIES_REFERENCE_NONE_TYPE`
-        #           in which all values (i.e., idx_start, count, timeseries) are set to None.
-        # """
-        # TODO: We need to add capability of getting a slice as in TimeSeriesReferenceVectorData
+        # TODO: Can key be more than a single value?  Do we need to check validity of anything?
         vals = super().get(key)
         return vals
-        # # we only selected one row.
-        # if isinstance(key, (int, np.integer)):
-        #     # NOTE: If we never wrote the data to disk, then vals will be a single tuple.
-        #     #       If the data is loaded from an h5py.Dataset then vals will be a single
-        #     #       np.void object. I.e., an alternative check would be
-        #     #       if isinstance(vals, tuple) or isinstance(vals, np.void):
-        #     #          ...
-        #     if vals[0] < 0 or vals[1] < 0:
-        #         return self.TIME_SERIES_REFERENCE_NONE_TYPE
-        #     else:
-        #         return self.TIME_SERIES_REFERENCE_TUPLE(*vals)
-        # else:  # key selected multiple rows
-        #     # When loading from HDF5 we get an np.ndarray otherwise we get list-of-list. This
-        #     # makes the values consistent and transforms the data to use our namedtuple type
-        #     re = [self.TIME_SERIES_REFERENCE_NONE_TYPE
-        #           if (v[0] < 0 or v[1] < 0) else self.TIME_SERIES_REFERENCE_TUPLE(*v)
-        #           for v in vals]
-        #     return re
 
-    @docval({'name': 'val', 'type': 'str', 'doc': 'the value to add to this column'})
-    def add_row(self, **kwargs):
-        """Append a HED annotation to this VectorData column"""
-        val = getargs('val', kwargs)
-        if val is not None and self.validate(val):
-            if self.term_set.validate(term=val):
-                self.append(val)
-            else:
-                msg = ("%s is not in the term set." % val)
-                raise ValueError(msg)
-
-        else:
-            self.append(val)
-
-    @docval({'name': 'val', 'type': 'str', 'doc': 'the value to validate'})
+    @docval({'name': 'val', 'type': 'str', 'doc': 'the value to validate'},
+            {'name': 'return', 'type': 'list', 'doc': 'list of issues or none'})
     def validate(self, **kwargs):
         """Validate this HED string"""
         val = getargs('val', kwargs)
@@ -123,30 +87,25 @@ class HedAnnotations(VectorData):
 @register_class("HedVersion", "ndx-hed")
 class HedVersion(LabMetaData):
     """
-    Column storing HED (Hierarchical Event Descriptors) annotations for a row. A HED string is a comma-separated,
-    and possibly parenthesized list of HED tags selected from a valid HED vocabulary as specified by the
-    NWBFile field HEDVersion.
+    The class containing the HED versions and HED schema used in this data file.
 
     """
 
-    __nwbfields__ = ('name', 'description', 'hed_version', 'hed_schemas')
+    __nwbfields__ = ('name', 'description', 'hed_version')
 
-    @docval({'name': 'description', 'type': str,
-             'doc': 'Column name indicating that this column is of type HedAnnotations',
-             'default': "Column name indicating that this column is of type HedAnnotations"},
-            {'name': 'hed_version', 'type': 'array_data',  'doc': 'HED strings of type str', 'shape': (None,)})
-    def __init__(self, **kwargs):
-        description, hed_strings = popargs('description', 'hed_strings', kwargs)
-        kwargs['name'] = 'HED'
+    @docval({'name': 'hed_version', 'type': (str, list),  'doc': 'HED strings of type str', 'shape': (None,)})
+    def __init__(self, hed_version):
+        kwargs = {'name': hed_version, 'description': 'HED version or list of hed versions used in this dataset'}
         super().__init__(**kwargs)
-        self.description = description
-        self.hed_strings = hed_strings
-        # CAUTION: Define any logic specific for init in the self._init_internal function, not here!
-        # TODO: How is the HEDSchema object going to be stored as we do not want to recreate?
+        self.hed_version = hed_version
         self._init_internal()
 
     def _init_internal(self):
         """
-        #TODO:  check the validity of hed_strings.   Where is the HEDSchema going to come from?
+        Create a HedSchema or HedSchemaGroup object from the HED Versions
         """
-        pass
+        self.hed_schema = load_schema_version(self.hed_version)
+
+    @docval({'name': 'return', 'type': (HedSchema, HedSchemaGroup), 'doc': 'Returns the HED schema object'})
+    def get_hed_schema(self):
+        return self.hed_schema

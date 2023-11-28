@@ -1,23 +1,28 @@
 """Unit and integration tests for ndx-hed."""
 from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
+from hed.schema import HedSchema, HedSchemaGroup
 from pynwb import NWBFile, NWBHDF5IO, get_manager  # , NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file  # , NWBH5IOFlexMixin
 from src.pynwb.ndx_hed import HedAnnotations, HedVersion
 
 
-class TestHedMetadataConstructor(TestCase):
+class TestHedVersionConstructor(TestCase):
     """Simple unit test for creating a HedMetadata."""
 
     def test_constructor(self):
         """Test setting HedNWBFile values using the constructor."""
-        hed_version = HedVersion(hed_schema_version="8.2.0")
-        assert hed_version.hed_schema_version == "8.2.0"
+        hed_version1 = HedVersion("8.2.0")
+        self.assertIsInstance(hed_version1.hed_version, str)
+        self.assertIsInstance(hed_version1.hed_schema, HedSchema)
+        hed_version2 = HedVersion(["8.2.0", "sc:score_1.0.0"])
+        self.assertIsInstance(hed_version2.hed_schema, list)
+        self.assertIsInstanceance(hed_version2.hed_schema, HedSchemaGroup)
 
     def test_add_to_nwbfile(self):
         nwbfile = mock_NWBFile()
-        hed_version = HedVersion(hed_schema_version="8.2.0")
+        hed_version = HedVersion("8.2.0")
         nwbfile.add_lab_meta_data(hed_version)
         assert nwbfile.get_lab_meta_data("HedVersion") is hed_version
 
@@ -36,7 +41,7 @@ class TestHedNWBFileSimpleRoundtrip(TestCase):
         Create a HedMetadata, write it to file, read the file, and test that it matches the original HedNWBFile.
         """
         nwbfile = mock_NWBFile()
-        hed_version = HedVersion(hed_schema_version="8.2.0")
+        hed_version = HedVersion(hed_version="8.2.0")
         nwbfile.add_lab_meta_data(hed_version)
 
         with NWBHDF5IO(self.path, mode="w") as io:
@@ -46,7 +51,7 @@ class TestHedNWBFileSimpleRoundtrip(TestCase):
             read_nwbfile = io.read()
             read_hed_version = read_nwbfile.get_lab_meta_data("HedVersion")
             assert isinstance(read_hed_version, HedVersion)
-            assert read_hed_version.hed_schema_version == "8.2.0"
+            assert read_hed_version.hed_version == "8.2.0"
 
 
 # class TestHedNWBFileRoundtripPyNWB(NWBH5IOFlexMixin, TestCase):
@@ -134,6 +139,11 @@ class TestHedTagsSimpleRoundtrip(TestCase):
     def tearDown(self):
         remove_test_file(self.path)
 
+    def test_hed_version(self):
+        hed1 = HedVersion("8.2.0")
+        self.assertIsInstance(hed1, HedVersion)
+        schema = hed1.get_schema()
+        self.assertIsInstance(schema, HedSchema)
     def test_roundtrip(self):
         """
         Add a HedTags to an NWBFile, write it to file, read the file, and test that the HedTags from the
