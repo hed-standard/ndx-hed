@@ -21,10 +21,10 @@ class HedAnnotations(VectorData):
             {'name': 'description', 'type': str,
              'doc': 'Column name indicating that this column is of type HedAnnotations',
              'default': "Column name indicating that this column is of type HedAnnotations"},
-            {'name': 'hed_strings', 'type': Iterable, 'shape': (None, ),  # required
+            {'name': 'data', 'type': Iterable, 'shape': (None, ),  # required
              'doc': 'HED strings of type str.'}, *get_docval(VectorData.__init__, 'data'))
     def __init__(self, **kwargs):
-        description, hed_strings = popargs('description', 'hed_strings', kwargs)
+        description, hed_strings = popargs('description', 'data', kwargs)
         kwargs['name'] = 'HED'
         super().__init__(**kwargs)
         self.description = description
@@ -95,7 +95,7 @@ class HedVersion(LabMetaData):
 
     @docval({'name': 'hed_version', 'type': (str, list),  'doc': 'HED strings of type str'})
     def __init__(self, hed_version):
-        kwargs = {'name': hed_version, 'description': 'HED version or list of hed versions used in this dataset'}
+        kwargs = {'name': 'hed_version'}
         super().__init__(**kwargs)
         self.hed_version = hed_version
         self._init_internal()
@@ -104,8 +104,8 @@ class HedVersion(LabMetaData):
         """
         Create a HedSchema or HedSchemaGroup object from the HED Versions
         """
-        self.hed_schema = load_schema_version(self.hed_version)
+        self._hed_schema = load_schema_version(self.hed_version)
 
-    @docval({'name': 'return', 'type': (HedSchema, HedSchemaGroup), 'doc': 'Returns the HED schema object'})
+    @docval(returns='The HED schema or schema group object for this version', rtype=(HedSchema, HedSchemaGroup))
     def get_hed_schema(self):
-        return self.hed_schema
+        return self._hed_schema

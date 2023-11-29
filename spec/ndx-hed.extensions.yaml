@@ -3,6 +3,10 @@ datasets:
   neurodata_type_inc: VectorData
   name: HED
   dtype: text
+  dims:
+  - num_hed_strings
+  shape:
+  - null
   doc: An extension of VectorData for Hierarchical Event Descriptor (HED) tags. If
     HED tags are used, the HED schema version must be specified in the NWB file using
     the HedVersion type.
@@ -15,7 +19,7 @@ groups:
     but from NWBContainer and be placed optionally in /general.
   attributes:
   - name: hed_version
-    dtype: text
+    dtype: object
     dims:
     - n_hed_schema_versions
     shape:

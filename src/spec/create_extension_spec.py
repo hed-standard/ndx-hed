@@ -39,6 +39,8 @@ def main():
         doc=("An extension of VectorData for Hierarchical Event Descriptor (HED) tags. If HED tags are used, "
              "the HED schema version must be specified in the NWB file using the HedVersion type."),
         dtype="text",
+        shape=[None],
+        dims=['num_hed_strings']
     )
 
     hed_version = NWBGroupSpec(
@@ -56,7 +58,7 @@ def main():
                     "The version of the HED schema used to validate the HED tags, e.g., '8.2.0'. "
                     "Required if HED tags are used in the NWB file."
                 ),
-                dtype='text',
+                dtype='object',
                 required=True,
                 shape=[None,],
                 dims=["n_hed_schema_versions",]
