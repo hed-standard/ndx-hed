@@ -13,7 +13,7 @@ class TestHedVersionConstructor(TestCase):
 
     def test_constructor(self):
         """Test setting HedNWBFile values using the constructor."""
-        hed_version1 = HedVersion("8.2.0")
+        hed_version1 = HedVersion(["8.2.0"])
         self.assertIsInstance(hed_version1.hed_version, str)
         self.assertIsInstance(hed_version1.hed_schema, HedSchema)
         hed_version2 = HedVersion(["8.2.0", "sc:score_1.0.0"])
@@ -22,7 +22,7 @@ class TestHedVersionConstructor(TestCase):
 
     def test_add_to_nwbfile(self):
         nwbfile = mock_NWBFile()
-        hed_version = HedVersion("8.2.0")
+        hed_version = HedVersion(["8.2.0"])
         nwbfile.add_lab_meta_data(hed_version)
         assert nwbfile.get_lab_meta_data("HedVersion") is hed_version
 
@@ -41,7 +41,7 @@ class TestHedNWBFileSimpleRoundtrip(TestCase):
         Create a HedMetadata, write it to file, read the file, and test that it matches the original HedNWBFile.
         """
         nwbfile = mock_NWBFile()
-        hed_version = HedVersion(hed_version="8.2.0")
+        hed_version = HedVersion(["8.2.0"])
         nwbfile.add_lab_meta_data(hed_version)
 
         with NWBHDF5IO(self.path, mode="w") as io:
@@ -88,7 +88,7 @@ class TestHedTagsConstructor(TestCase):
     def test_add_to_trials_table(self):
         """Test adding HED column and data to a trials table."""
         nwbfile = mock_NWBFile()
-        hed_version = HedVersion(hed_schema_version="8.2.0")
+        hed_version = HedVersion(["8.2.0"])
         nwbfile.add_lab_meta_data(hed_version)
         nwbfile.add_trial_column("HED", "HED annotations for each trial")
         # nwbfile.add_trial_column(name="HED", description="HED annotations for each trial", 
@@ -140,7 +140,7 @@ class TestHedTagsSimpleRoundtrip(TestCase):
         remove_test_file(self.path)
 
     def test_hed_version(self):
-        hed1 = HedVersion("8.2.0")
+        hed1 = HedVersion(["8.2.0"])
         self.assertIsInstance(hed1, HedVersion)
         schema = hed1.get_schema()
         self.assertIsInstance(schema, HedSchema)
@@ -149,7 +149,7 @@ class TestHedTagsSimpleRoundtrip(TestCase):
         Add a HedTags to an NWBFile, write it to file, read the file, and test that the HedTags from the
         file matches the original HedTags.
         """
-        hed_version = HedVersion(hed_schema_version="8.2.0")
+        hed_version = HedVersion(["8.2.0"])
         self.nwbfile.add_lab_meta_data(hed_version)
 
         self.nwbfile.add_trial_column("HED", "HED annotations for each trial")

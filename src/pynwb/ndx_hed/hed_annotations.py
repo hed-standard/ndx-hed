@@ -93,7 +93,7 @@ class HedVersion(LabMetaData):
 
     __nwbfields__ = ('name', 'description', 'hed_version')
 
-    @docval({'name': 'hed_version', 'type': (str, list),  'doc': 'HED strings of type str', 'shape': (None,)})
+    @docval({'name': 'hed_version', 'type': (str, list),  'doc': 'HED strings of type str'})
     def __init__(self, hed_version):
         kwargs = {'name': hed_version, 'description': 'HED version or list of hed versions used in this dataset'}
         super().__init__(**kwargs)
