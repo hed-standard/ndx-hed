@@ -15,20 +15,12 @@ class HedAnnotations(VectorData):
 
     """
 
-    __nwbfields__ = ('name', 'description', 'hed_strings')
+    __nwbfields__ = ('sub_name')
 
-    @docval({'name': 'name', 'type': str, 'doc': 'Must be HED'},
-            {'name': 'description', 'type': str,
-             'doc': 'Column name indicating that this column is of type HedAnnotations',
-             'default': "Column name indicating that this column is of type HedAnnotations"},
-            {'name': 'data', 'type': Iterable, 'shape': (None, ),  # required
-             'doc': 'HED strings of type str.'}, *get_docval(VectorData.__init__, 'data'))
+    @docval(*get_docval(VectorData.__init__))
     def __init__(self, **kwargs):
-        description, hed_strings = popargs('description', 'data', kwargs)
-        kwargs['name'] = 'HED'
+        # kwargs['name'] = 'HED'
         super().__init__(**kwargs)
-        self.description = description
-        self.hed_strings = hed_strings
         self._init_internal()
 
     def _init_internal(self):
@@ -38,14 +30,15 @@ class HedAnnotations(VectorData):
         TODO: How should errors be handled if this file doesn't have a HedVersion object in the LabMetaData?
 
         """
+        self.sub_name = "HED"
         root = self
-        parent = root.parent
-        while parent is not None:
-            root = parent
-            parent = root.parent
-        hed_version = parent.get_lab_meta_data("HedVersion")
-        if hed_version:
-            self.hed_schema = hed_version.get_schema()
+        # parent = root.parent
+        # while parent is not None:
+        #     root = parent
+        #     parent = root.parent
+        # hed_version = parent.get_lab_meta_data("HedVersion")
+        # if hed_version:
+        #     self.hed_schema = hed_version.get_schema()
 
     @docval({'name': 'val', 'type': str,
              'doc': 'the value to add to this column. Should be a valid HED string.'})
@@ -91,20 +84,20 @@ class HedVersion(LabMetaData):
 
     """
 
-    __nwbfields__ = ('name', 'description', 'hed_version')
+    __nwbfields__ = ('name', 'description', 'version')
 
-    @docval({'name': 'hed_version', 'type': (str, list),  'doc': 'HED strings of type str'})
-    def __init__(self, hed_version):
+    @docval({'name': 'version', 'type': (str, list),  'doc': 'HED strings of type str'})
+    def __init__(self, version):
         kwargs = {'name': 'hed_version'}
         super().__init__(**kwargs)
-        self.hed_version = hed_version
+        self.version = version
         self._init_internal()
 
     def _init_internal(self):
         """
         Create a HedSchema or HedSchemaGroup object from the HED Versions
         """
-        self._hed_schema = load_schema_version(self.hed_version)
+        self._hed_schema = load_schema_version(self.version)
 
     @docval(returns='The HED schema or schema group object for this version', rtype=(HedSchema, HedSchemaGroup))
     def get_hed_schema(self):

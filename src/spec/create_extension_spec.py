@@ -33,35 +33,40 @@ def main():
     # see https://pynwb.readthedocs.io/en/latest/extensions.html#extending-nwb
     # for more information
     hed_annotations = NWBDatasetSpec(
-        name="HED",
         neurodata_type_def="HedAnnotations",
         neurodata_type_inc="VectorData",
         doc=("An extension of VectorData for Hierarchical Event Descriptor (HED) tags. If HED tags are used, "
              "the HED schema version must be specified in the NWB file using the HedVersion type."),
         dtype="text",
-        shape=[None],
-        dims=['num_hed_strings']
+        attributes=[
+            NWBAttributeSpec(
+                name='sub_name',
+                dtype='text',
+                doc=('The smallest possible difference between two event times. Usually 1 divided by the event time '
+                     'sampling rate on the data acquisition system.'),
+                required=False,
+            ),
+        ],
     )
 
     hed_version = NWBGroupSpec(
         neurodata_type_def="HedVersion",
         neurodata_type_inc="LabMetaData",
-        name="HedVersion",  # fixed name
+        name="hed_version",  # fixed name
         doc=("An extension of LabMetaData to store the Hierarchical Event Descriptor (HED) schema version. "
              "TODO When merged with core, "
              "this will no longer inherit from LabMetaData but from NWBContainer and be placed "
              "optionally in /general."),
         attributes=[
             NWBAttributeSpec(
-                name="hed_version",
+                name="version",
                 doc=(
                     "The version of the HED schema used to validate the HED tags, e.g., '8.2.0'. "
                     "Required if HED tags are used in the NWB file."
                 ),
-                dtype='object',
+                dtype='text',
                 required=True,
-                shape=[None,],
-                dims=["n_hed_schema_versions",]
+                shape=[None,]
             )
         ],
     )
