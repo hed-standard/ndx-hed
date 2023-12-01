@@ -4,16 +4,24 @@ datasets:
   dtype: text
   doc: An extension of VectorData for Hierarchical Event Descriptor (HED) tags. If
     HED tags are used, the HED schema version must be specified in the NWB file using
-    the HedMetadata type.
+    the HedVersion type.
+  attributes:
+  - name: sub_name
+    dtype: text
+    doc: The smallest possible difference between two event times. Usually 1 divided
+      by the event time sampling rate on the data acquisition system.
+    required: false
 groups:
-- neurodata_type_def: HedMetadata
+- neurodata_type_def: HedVersion
   neurodata_type_inc: LabMetaData
-  name: HedMetadata
+  name: hed_version
   doc: An extension of LabMetaData to store the Hierarchical Event Descriptor (HED)
     schema version. TODO When merged with core, this will no longer inherit from LabMetaData
     but from NWBContainer and be placed optionally in /general.
   attributes:
-  - name: hed_schema_version
+  - name: version
     dtype: text
+    shape:
+    - null
     doc: The version of the HED schema used to validate the HED tags, e.g., '8.2.0'.
       Required if HED tags are used in the NWB file.
