@@ -15,7 +15,7 @@ class HedVersion(LabMetaData):
 
     # @docval({'name': 'version', 'type': str, 'doc': 'HED version of type str'},
     #         *get_docval(LabMetaData.__init__))
-    @docval({'name': 'version', 'type': (str, list),  'doc': 'HED strings of type str'})
+    @docval({'name': 'version', 'type': str,  'doc': 'HED strings of type str'})
     def __init__(self, **kwargs):
         version = popargs('version', kwargs)
         kwargs['name'] = 'hed_version'

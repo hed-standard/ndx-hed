@@ -18,7 +18,7 @@ class TestHedVersion1(TestCase):
         hed_version1 = HedVersion1("8.2.0")
         self.assertIsInstance(hed_version1, HedVersion1)
         self.assertIsInstance(hed_version1, LabMetaData)
-        self.assertEqual(hed_version1.name, "hed_version1")
+        self.assertEqual(hed_version1.name, "hed_version1_ext")
         self.assertIsInstance(hed_version1.version, str)
         self.assertEqual(hed_version1.version, "8.2.0")
         self.assertIsInstance(hed_version1.schema_string, str)
@@ -41,7 +41,7 @@ class TestHedVersion1(TestCase):
         nwbfile = mock_NWBFile()
         hed_version1 = HedVersion1("8.2.0")
         nwbfile.add_lab_meta_data(hed_version1)
-        hed_version2 = nwbfile.get_lab_meta_data("hed_version")
+        hed_version2 = nwbfile.get_lab_meta_data("hed_version1_ext")
         self.assertIsInstance(hed_version2, HedVersion1)
         # hed_version2 = HedVersion(["8.2.0"])
 
@@ -61,14 +61,15 @@ class TestHedVersion1SimpleRoundtrip(TestCase):
         """
         nwbfile = mock_NWBFile()
         # hed_version = HedVersion(["8.2.0"])
-        hed_version = HedVersion(version="8.2.0")
-        self.assertIsInstance(hed_version, HedVersion)
+        hed_version = HedVersion1(version="8.2.0")
+        print(f"name={hed_version.name}")
+        self.assertIsInstance(hed_version, HedVersion1)
         self.assertIsInstance(hed_version, LabMetaData)
         nwbfile.add_lab_meta_data(lab_meta_data=hed_version)
-        meta = nwbfile.get_lab_meta_data("hed_version")
-        self.assertEqual(meta.name, "hed_version")
+        meta = nwbfile.get_lab_meta_data("hed_version1_ext")
+        self.assertEqual(meta.name, "hed_version1_ext")
         self.assertEqual(meta.version, "8.2.0")
-        self.assertIsInstance(meta, HedVersion)
+        self.assertIsInstance(meta, HedVersion1)
         self.assertIsInstance(meta, LabMetaData)
         schema = meta.get_schema()
         self.assertIsInstance(schema, HedSchema)
@@ -79,62 +80,62 @@ class TestHedVersion1SimpleRoundtrip(TestCase):
         with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
             read_nwbfile = io.read()
             read_hed_version = read_nwbfile.get_lab_meta_data(hed_version.name)
-            self.assertIsInstance(read_hed_version, HedVersion)
+            self.assertIsInstance(read_hed_version, HedVersion1)
             self.assertEqual(read_hed_version.version, "8.2.0")
 
 
-# class TestHedVersionNWBFileSimpleRoundtrip(TestCase):
-#     """Simple roundtrip test for HedTags."""
-# 
-#     def setUp(self):
-#         self.path = "test.nwb"
-#         self.start_time = datetime(1970, 1, 1, 12, tzinfo=tzutc())
-#         self.ref_time = datetime(1979, 1, 1, 0, tzinfo=tzutc())
-#         self.create_date = datetime(2017, 4, 15, 12, tzinfo=tzlocal())
-#         self.manager = get_manager()
-#         self.filename = 'test_nwbfileio.h5'
-#         self.nwbfile = NWBFile(session_description='a test NWB File',
-#                                identifier='TEST123',
-#                                session_start_time=self.start_time,
-#                                timestamps_reference_time=self.ref_time,
-#                                file_create_date=self.create_date,
-#                                experimenter='test experimenter',
-#                                stimulus_notes='test stimulus notes',
-#                                data_collection='test data collection notes',
-#                                experiment_description='test experiment description',
-#                                institution='nomad',
-#                                lab='nolab',
-#                                notes='nonotes',
-#                                pharmacology='nopharmacology',
-#                                protocol='noprotocol',
-#                                related_publications='nopubs',
-#                                session_id='007',
-#                                slices='noslices',
-#                                source_script='nosources',
-#                                surgery='nosurgery',
-#                                virus='novirus',
-#                                source_script_file_name='nofilename')
-#         hed_version = HedVersion(version="8.2.0")
-#         self.nwbfile.add_lab_meta_data(hed_version)
-#         print(f"Name:{hed_version.name}")
-# 
-#     def tearDown(self):
-#         remove_test_file(self.path)
-# 
-#     def test_version(self):
-#         hed_version = self.nwbfile.get_lab_meta_data("hed_version")
-#         self.assertIsInstance(hed_version, HedVersion)
-#         schema = hed_version.get_schema()
-#         self.assertIsInstance(schema, HedSchema)
-# 
-#     def test_roundtrip(self):
-#         print(self.nwbfile)
-#         with NWBHDF5IO(self.path, mode="w") as io:
-#             io.write(self.nwbfile)
-# 
-#         with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
-#             read_nwbfile = io.read()
-#             print(read_nwbfile)
-#             read_hed_version = read_nwbfile.get_lab_meta_data("hed_version")
-#             #self.assertIsInstance(read_hed_version, HedVersion)
-#             self.assertEqual(read_hed_version.version, "8.2.0")
+class TestHedVersionNWBFileSimpleRoundtrip(TestCase):
+    """Simple roundtrip test for HedTags."""
+
+    def setUp(self):
+        self.path = "test.nwb"
+        self.start_time = datetime(1970, 1, 1, 12, tzinfo=tzutc())
+        self.ref_time = datetime(1979, 1, 1, 0, tzinfo=tzutc())
+        self.create_date = datetime(2017, 4, 15, 12, tzinfo=tzlocal())
+        self.manager = get_manager()
+        self.filename = 'test_nwbfileio.h5'
+        self.nwbfile = NWBFile(session_description='a test NWB File',
+                               identifier='TEST123',
+                               session_start_time=self.start_time,
+                               timestamps_reference_time=self.ref_time,
+                               file_create_date=self.create_date,
+                               experimenter='test experimenter',
+                               stimulus_notes='test stimulus notes',
+                               data_collection='test data collection notes',
+                               experiment_description='test experiment description',
+                               institution='nomad',
+                               lab='nolab',
+                               notes='nonotes',
+                               pharmacology='nopharmacology',
+                               protocol='noprotocol',
+                               related_publications='nopubs',
+                               session_id='007',
+                               slices='noslices',
+                               source_script='nosources',
+                               surgery='nosurgery',
+                               virus='novirus',
+                               source_script_file_name='nofilename')
+        hed_version = HedVersion1(version="8.2.0")
+        self.nwbfile.add_lab_meta_data(hed_version)
+        print(f"Name:{hed_version.name}")
+
+    def tearDown(self):
+        remove_test_file(self.path)
+
+    def test_version(self):
+        hed_version = self.nwbfile.get_lab_meta_data("hed_version1_ext")
+        self.assertIsInstance(hed_version, HedVersion1)
+        schema = hed_version.get_schema()
+        self.assertIsInstance(schema, HedSchema)
+
+    def test_roundtrip(self):
+        print(self.nwbfile)
+        with NWBHDF5IO(self.path, mode="w") as io:
+            io.write(self.nwbfile)
+
+        with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
+            read_nwbfile = io.read()
+            print(read_nwbfile)
+            read_hed_version = read_nwbfile.get_lab_meta_data("hed_version1_ext")
+            #self.assertIsInstance(read_hed_version, HedVersion)
+            self.assertEqual(read_hed_version.version, "8.2.0")

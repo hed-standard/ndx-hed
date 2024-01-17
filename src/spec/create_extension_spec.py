@@ -61,7 +61,6 @@ def main():
         ]
     )
     
-
     hed_version1_ext = NWBGroupSpec(
         name="hed_version1",  # fixed name
         neurodata_type_def="HedVersion1",
@@ -74,7 +73,7 @@ def main():
 
     hed_version1_ext.add_dataset(
             name="version",
-            doc="HED scheam version to use for this dataset",
+            doc="HED schema version to use for this dataset",
             dtype='text',
             quantity='?'
     )

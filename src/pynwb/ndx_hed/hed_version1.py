@@ -15,21 +15,21 @@ class HedVersion1(LabMetaData):
 
     # @docval({'name': 'version', 'type': str, 'doc': 'HED version of type str'},
     #         *get_docval(LabMetaData.__init__))
-    # @docval({'name': 'version', 'type': (str, list),  'doc': 'HED strings of type str'})
-    # def __init__(self, **kwargs):
-    #     version = popargs('version', kwargs)
-    #     kwargs['name'] = 'hed_version'
-    #     super().__init__(**kwargs)
-    #     self.version = version
-    #     self._init_internal()
-
-    @docval({'name': 'version', 'type': str, 'doc': 'HED version of type str'})
-    def __init__(self, version):
-        kwargs = {'name': 'hed_version1'}
+    @docval({'name': 'version', 'type': str,  'doc': 'HED strings of type str'})
+    def __init__(self, **kwargs):
+        version = popargs('version', kwargs)
+        kwargs['name'] = 'hed_version1_ext'
         super().__init__(**kwargs)
-        self.name = 'hed_version1'
         self.version = version
         self._init_internal()
+
+    # @docval({'name': 'version', 'type': str, 'doc': 'HED version of type str'})
+    # def __init__(self, version):
+    #     kwargs = {'name': 'hed_version1'}
+    #     super().__init__(**kwargs)
+    #     self.name = 'hed_version1'
+    #     self.version = version
+    #     self._init_internal()
 
     def _init_internal(self):
         """
