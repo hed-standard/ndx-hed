@@ -1,10 +1,12 @@
 from collections.abc import Iterable
 from hdmf.common import VectorData
 from hdmf.utils import docval, getargs, get_docval, popargs
+from hed.errors import HedFileError, get_printable_issue_string
 from hed.schema import HedSchema, HedSchemaGroup, load_schema_version, from_string
+from hed.models import HedString
 from pynwb import register_class
 from pynwb.file import LabMetaData, NWBFile
-from ndx_hed import HedVersion
+from ndx_hed import HedVersionAttr
 
 
 @register_class('HedTags', 'ndx-hed')
@@ -12,17 +14,19 @@ class HedTags(VectorData):
     """
     Column storing HED (Hierarchical Event Descriptors) annotations for a row. A HED string is a comma-separated,
     and possibly parenthesized list of HED tags selected from a valid HED vocabulary as specified by the
-    NWBFile field HEDVersion.
+    NWBFile field HedVersion.
 
     """
 
-    __nwbfields__ = ('sub_name', '_hed_version')
+    __nwbfields__ = ('_hed_schema')
 
-    @docval(*get_docval(VectorData.__init__))
+    @docval({'name': 'name', 'type': 'str', 'doc': 'Must be HED', 'default': 'HED'},
+            {'name': 'description', 'type': 'str', 'doc': 'Description of the HED annotations',
+             'default': 'Hierarchical Event Descriptors (HED) annotations'},
+             *get_docval(VectorData.__init__, 'data'))
     def __init__(self, **kwargs):
-        # kwargs['name'] = 'HED'
+        kwargs['name'] = 'HED'
         super().__init__(**kwargs)
-        self._hed_version = None
         self._init_internal()
 
     def _init_internal(self):
@@ -32,54 +36,42 @@ class HedTags(VectorData):
         TODO: How should errors be handled if this file doesn't have a HedVersion object in the LabMetaData?
 
         """
-        self.sub_name = "HED"
+        self._hed_schema = None
 
     @docval({'name': 'val', 'type': str,
-             'doc': 'the value to add to this column. Should be a valid HED string.'})
+             'doc': 'the value to add to this column. Should be a valid HED string -- just forces string.'})
     def add_row(self, **kwargs):
         """Append a data value to this column."""
         val = getargs('val', kwargs)
-        # val.check_types()
-        # TODO how to validate
-        #
-        # if val is not None and self.validate(val):
-        #     if self.term_set.validate(term=val):
-        #         self.append(val)
-        #     else:
-        #         msg = ("%s is not in the term set." % val)
-        #         raise ValueError(msg)
-        #
-        # else:
-        #     self.append(val)
         super().append(val)
 
-    @docval({'name': 'key', 'type': 'str', 'doc': 'the value to add to this column'})
-    def get(self, key):
-        """
-        Retrieve elements from this object.
+    # @docval({'name': 'schema', 'type': (HedSchema, None), 'doc': 'HedSchema to use to validate.', 'default': None},
+    #         {'name': 'return', 'type': 'list', 'doc': 'list of issues or none'})
+    def validate(self, schema):
+        """Validate this VectorData. This is assuming a list --- where is the general iterator."""
+        if not schema:
+            raise HedFileError('HedSchemaMissing', "Must provide a valid HedSchema", "")
+        issues = []
+        for index in range(len(self.data)):
+            hed_obj = HedString(self.get(index), schema)
+            these_issues = hed_obj.validate()
+            if these_issues:
+                issues.append(f"line {str(index)}: {get_printable_issue_string(these_issues)}")
+        return "\n".join(issues)
 
-        """
-        # TODO: Can key be more than a single value?  Do we need to check validity of anything?
-        vals = super().get(key)
-        return vals
-
-    @docval({'name': 'return', 'type': 'list', 'doc': 'list of issues or none'})
-    def validate(self):
-        """Validate this VectorData. """
-        hed_schema = self.get_hed_version()
-        return True
-
-    def get_hed_version(self): 
-        if not self._hed_version:
+    def get_hed_schema(self):
+        if not self._hed_schema:
             root = self._get_root()
             if isinstance(root, NWBFile):
-                self._hed_version = root.get_lab_meta_data("HedVersion")
-        return self._hed_version
+                self._hed_schema = root.get_lab_meta_data("hed_version").get_schema()
+        return self._hed_schema
 
     def _get_root(self):
         root = self
         while hasattr(root, 'parent') and root.parent:
             root = root.parent
+        if root == self:
+            return None
         return root
  
  

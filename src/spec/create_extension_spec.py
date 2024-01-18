@@ -39,9 +39,9 @@ def main():
         dtype="text",
     )
 
-    hed_version_ext = NWBGroupSpec(
+    hed_version_attr = NWBGroupSpec(
         name="hed_version",  # fixed name
-        neurodata_type_def="HedVersion",
+        neurodata_type_def="HedVersionAttr",
         neurodata_type_inc="LabMetaData",
         doc=("An extension of LabMetaData to store the Hierarchical Event Descriptor (HED) schema version. "
              "TODO When merged with core, "
@@ -61,9 +61,9 @@ def main():
         ]
     )
     
-    hed_version1_ext = NWBGroupSpec(
-        name="hed_version1",  # fixed name
-        neurodata_type_def="HedVersion1",
+    hed_version = NWBGroupSpec(
+        name="hed_version",  # fixed name
+        neurodata_type_def="HedVersion",
         neurodata_type_inc="LabMetaData",
         doc=("An extension of LabMetaData to store the Hierarchical Event Descriptor (HED) schema version. "
              "TODO When merged with core, "
@@ -71,7 +71,7 @@ def main():
              "optionally in /general."),
     )
 
-    hed_version1_ext.add_dataset(
+    hed_version.add_dataset(
             name="version",
             doc="HED schema version to use for this dataset",
             dtype='text',
@@ -79,7 +79,7 @@ def main():
     )
     
     # TODO: add all of your new data types to this list
-    new_data_types = [hed_version_ext, hed_tags, hed_version1_ext]
+    new_data_types = [hed_version_attr, hed_tags, hed_version]
 
     # export the spec to yaml files in the spec folder
     output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "spec"))

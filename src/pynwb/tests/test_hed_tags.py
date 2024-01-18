@@ -1,69 +1,147 @@
 """Unit and integration tests for ndx-hed."""
+from pandas import DataFrame
 from datetime import datetime, timezone
 from dateutil.tz import tzlocal, tzutc
 from uuid import uuid4, UUID
-from hed.schema import HedSchema, HedSchemaGroup
+from hed.schema import HedSchema, HedSchemaGroup, load_schema_version
+from hdmf.common import VectorData
+from hdmf.utils import docval, getargs, get_docval, popargs
 from pynwb import NWBHDF5IO, get_manager, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file, NWBH5IOFlexMixin
 from src.pynwb.ndx_hed import HedVersion, HedTags
 
 
-class TestHedAnnotationsConstructor(TestCase):
+class TestHedTagsConstructor(TestCase):
     """Simple unit test for creating a HedTags."""
+
+    def setUp(self):
+        self.tags = HedTags(data=["Correct-action", "Incorrect-action"])
+
+    def tearDown(self):
+        pass
 
     def test_constructor(self):
         """Test setting HED values using the constructor."""
-        hed_annotations = HedTags(
-            name='HED',
-            description="description",
-            data=["Correct-action", "Incorrect-action"],
-        )
-        self.assertEqual(hed_annotations.sub_name, "HED")
-        self.assertEqual(hed_annotations.description, "description")
-        self.assertEqual(hed_annotations.data, ["Correct-action", "Incorrect-action"])
+        self.assertEqual(self.tags.name, "HED")
+        self.assertTrue(self.tags.description)
+        self.assertEqual(self.tags.data, ["Correct-action", "Incorrect-action"])
+
+    def test_add_row(self):
+        """Testing adding a row to the HedTags. """
+        self.assertEqual(len(self.tags.data), 2)
+        self.tags.add_row("Correct-action")
+        self.assertEqual(len(self.tags.data), 3)
+
+    def test_get(self):
+        """Testing getting slices. """
+        self.assertEqual(self.tags.get(0), "Correct-action")
+        self.assertEqual(self.tags.get([0, 1]), ['Correct-action', 'Incorrect-action'])
 
     def test_add_to_trials_table(self):
         """Test adding HED column and data to a trials table."""
         nwbfile = mock_NWBFile()
-        hed_version = HedVersion("8.2.0")
-        nwbfile.add_lab_meta_data(hed_version)
-        nwbfile.add_trial_column(name="HED", description="HED annotations for each trial",
-                                 col_cls=HedTags, data=[])
+        nwbfile.add_trial_column(name="HED", description="temp", col_cls=HedTags, data=[])
         nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
         self.assertIsInstance(nwbfile.trials["HED"], HedTags)
         hed_col = nwbfile.trials["HED"]
+        self.assertEqual(hed_col.name, "HED")
+        self.assertEqual(hed_col.description, "temp")
         self.assertEqual(nwbfile.trials["HED"].data[0], "Correct-action")
         self.assertEqual(nwbfile.trials["HED"].data[1], "Incorrect-action")
 
+    def test_add_to_trials_table_force_HED(self):
+        """Trial table does not allow the forcing of the column name to be HED."""
+        nwbfile = mock_NWBFile()
+        nwbfile.add_trial_column(name="Blech", description="temp", col_cls=HedTags, data=[])
+        nwbfile.add_trial(start_time=0.0, stop_time=1.0, Blech="Correct-action")
+        nwbfile.add_trial(start_time=2.0, stop_time=3.0, Blech="Incorrect-action")
+        self.assertIsInstance(nwbfile.trials["Blech"], HedTags)
+        hed_col = nwbfile.trials["Blech"]
+        self.assertEqual(hed_col.name, "HED")
+        self.assertEqual(nwbfile.trials["Blech"].data[0], "Correct-action")
+        self.assertEqual(nwbfile.trials["Blech"].data[1], "Incorrect-action")
 
-# class TestHedTagsSimpleRoundtrip(TestCase):
-#     """Simple roundtrip test for HedNWBFile."""
-# 
-#     def setUp(self):
-#         self.path = "test.nwb"
-# 
-#     def tearDown(self):
-#         remove_test_file(self.path)
-# 
-#     def test_roundtrip(self):
-#         """
-#         Create a HedMetadata, write it to file, read the file, and test that it matches the original HedNWBFile.
-#         """
-#         nwbfile = mock_NWBFile()
-#         # hed_version = HedVersion(["8.2.0"])
-#         hed_version = HedVersion("8.2.0")
-#         nwbfile.add_lab_meta_data(hed_version)
-# 
-#         with NWBHDF5IO(self.path, mode="w") as io:
-#             io.write(nwbfile)
-# 
-#         with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
-#             read_nwbfile = io.read()
-#             read_hed_version = read_nwbfile.get_lab_meta_data("hed_version")
-#             self.assertIsInstance(read_hed_version, HedVersion)
-#             self.assertEqual(read_hed_version.version, "8.2.0")
+    def test_validate_hed_tags(self):
+        """Test the validate_hed_tags"""
+        schema = load_schema_version("8.2.0")
+        issues = self.tags.validate(schema)
+        self.assertFalse(issues)
+        self.tags.add_row("Blech")
+        self.tags.add_row("Sensory-event")
+        self.tags.add_row("")
+        self.tags.add_row("Agent-action")
+        self.tags.add_row("Red, (Blue, Green")
+        issues = self.tags.validate(schema)
+        self.assertEqual(7, len(self.tags.data))
+        self.assertTrue(issues)
+
+    def test_get_root(self):
+        root = self.tags._get_root()
+        self.assertFalse(root)
+
+    def test_get_hed_version(self):
+        schema = self.tags.get_hed_schema()
+        self.assertFalse(schema)
+
+
+class TestHedTagsSimpleRoundtrip(TestCase):
+    """Simple roundtrip test for HedNWBFile."""
+
+    def setUp(self):
+        self.path = "test.nwb"
+        nwb_mock = mock_NWBFile()
+        nwb_mock.add_lab_meta_data(HedVersion("8.2.0"))
+        nwb_mock.add_trial_column(name="HED", description="HED annotations for each trial",
+                                  col_cls=HedTags, data=[])
+        nwb_mock.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
+        nwb_mock.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
+        self.nwb_mock = nwb_mock
+
+    def tearDown(self):
+        remove_test_file(self.path)
+
+    def test_get_root(self):
+        tags = self.nwb_mock.trials["HED"]
+        self.assertIsInstance(tags, HedTags)
+        root = tags._get_root()
+        self.assertIsInstance(root, NWBFile)
+
+    def test_get_hed_schema(self):
+        tags = self.nwb_mock.trials["HED"]
+        schema = tags.get_hed_schema()
+        self.assertIsInstance(schema, HedSchema)
+
+    def test_validate_hed_tags(self):
+        """Test the validate_hed_tags"""
+        schema = load_schema_version("8.2.0")
+        tags = self.nwb_mock.trials["HED"]
+        issues = tags.validate(schema)
+        self.assertFalse(issues)
+        tags.add_row("Blech")
+        tags.add_row("Sensory-event")
+        tags.add_row("")
+        tags.add_row("Agent-action")
+        tags.add_row("Red, (Blue, Green")
+        self.assertEqual(7, len(self.nwb_mock.trials["HED"]))
+        issues = tags.validate(schema)
+        self.assertEqual(7, len(tags.data))
+        self.assertTrue(issues)
+
+    def test_roundtrip(self):
+        """  Create a HedMetadata, write it to mock file, read file, and test that it matches the original HedNWBFile."""
+
+        with NWBHDF5IO(self.path, mode="w") as io:
+            io.write(self.nwb_mock)
+
+        with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
+            read_nwbfile = io.read()
+            read_hed_version = read_nwbfile.get_lab_meta_data("hed_version")
+            self.assertIsInstance(read_hed_version, HedVersion)
+            self.assertEqual(read_hed_version.version, "8.2.0")
+            self.assertEqual(read_nwbfile.trials["HED"].data[0], "Correct-action")
+            self.assertEqual(read_nwbfile.trials["HED"].data[1], "Incorrect-action")
 
 
 class TestHedTagsNWBFileRoundtrip(TestCase):
@@ -107,6 +185,32 @@ class TestHedTagsNWBFileRoundtrip(TestCase):
     def tearDown(self):
         remove_test_file(self.path)
 
+    def test_get_root(self):
+        tags = self.nwbfile.trials["HED"]
+        self.assertIsInstance(tags, HedTags)
+        root = tags._get_root()
+        self.assertIsInstance(root, NWBFile)
+
+    def test_get_hed_schema(self):
+        tags = self.nwbfile.trials["HED"]
+        schema = tags.get_hed_schema()
+        self.assertIsInstance(schema, HedSchema)
+
+    def test_validate_hed_tags(self):
+        """Test the validate_hed_tags"""
+        schema = load_schema_version("8.2.0")
+        tags = self.nwbfile.trials["HED"]
+        issues = tags.validate(schema)
+        self.assertFalse(issues)
+        tags.add_row("Blech")
+        tags.add_row("Sensory-event")
+        tags.add_row("")
+        tags.add_row("Agent-action")
+        tags.add_row("Red, (Blue, Green")
+        self.assertEqual(7, len(self.nwbfile.trials["HED"]))
+        issues = tags.validate(schema)
+        self.assertEqual(7, len(tags.data))
+        self.assertTrue(issues)
     def test_roundtrip(self):
         """
         Add a HedTags to an NWBFile, write it to file, read the file, and test that the HedTags from the
@@ -118,73 +222,8 @@ class TestHedTagsNWBFileRoundtrip(TestCase):
 
         with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
             read_nwbfile = io.read()
-            lab_metadata = read_nwbfile.get_lab_meta_data()
-            print(f"lab: {str(lab_metadata)}")
             read_hed_version = read_nwbfile.get_lab_meta_data("hed_version")
-            print(f"hed: {read_hed_version}")
-            # self.assertIsInstance(read_hed_version, HedVersion)
-            # self.assertEqual(read_hed_version.version, "8.2.0")
-            # self.assertEqual(read_nwbfile.trials["HED"].data[0], "Correct-action")
-            # self.assertEqual(read_nwbfile.trials["HED"].data[1], "Incorrect-action")
-
-# 
-# # class TestHedTagsRoundtripPyNWB(NWBH5IOFlexMixin, TestCase):
-# #     """Complex, more complete roundtrip test for HedTags using pynwb.testing infrastructure."""
-# 
-# #     def getContainerType(self):
-# #         return "HedTags"
-# 
-# #     def addContainer(self):
-# #         self.nwbfile = HedNWBFile(
-# #             session_description="session_description",
-# #             identifier=str(uuid4()),
-# #             session_start_time=datetime(1970, 1, 1, tzinfo=tzlocal()),
-# #             hed_schema_version="8.2.0",
-# #         )
-# 
-# #         self.nwbfile.add_trial_column("hed_tags", "HED tags for each trial", col_cls=HedTags, index=True)
-# #         self.nwbfile.add_trial(start_time=0.0, stop_time=1.0, hed_tags=["animal_target", "correct_response"])
-# #         self.nwbfile.add_trial(start_time=2.0, stop_time=3.0, hed_tags=["animal_target", "incorrect_response"])
-# 
-# #     def getContainer(self, nwbfile: NWBFile):
-# #         return nwbfile.trials["hed_tags"].target
-
-
-
-# class TestHedNWBFileRoundtripPyNWB(NWBH5IOFlexMixin, TestCase):
-#     """Complex, more complete roundtrip test for HedNWBFile using pynwb.testing infrastructure."""
-# 
-#     def setUp(self):
-#         self.nwbfile = NWBFile(
-#             session_description='session_description',
-#             identifier='identifier',
-#             session_start_time=datetime.now(timezone.utc)
-#         )
-#         self.filename = "test.nwb"
-#         self.export_filename = "test_export.nwb"
-# 
-#     def tearDown(self):
-#         remove_test_file(self.filename)
-#         remove_test_file(self.export_filename)
-# 
-#     def addContainer(self):
-#         """ Add the test ElectricalSeries and related objects to the given NWBFile """
-#         pass
-# 
-#     def getContainer(self, nwbfile: NWBFile):
-#         # return nwbfile.acquisition['test_eS']
-#         return None
-# 
-#     def test_roundtrip(self):
-#         hed_version = HedVersion("8.2.0")
-#         self.nwbfile.add_lab_meta_data(hed_version)
-# 
-#         with NWBHDF5IO(self.filename, mode='w') as io:
-#             io.write(self.nwbfile)
-# 
-#         with NWBHDF5IO(self.filename, mode='r', load_namespaces=True) as io:
-#             read_nwbfile = io.read()
-#             read_hed_version = read_nwbfile.get_lab_meta_data("hed_version")
-#             self.assertIsInstance(read_hed_version, HedVersion)
-#             self.assertEqual(read_hed_version.version, "8.2.0")
-
+            self.assertIsInstance(read_hed_version, HedVersion)
+            self.assertEqual(read_hed_version.version, "8.2.0")
+            self.assertEqual(read_nwbfile.trials["HED"].data[0], "Correct-action")
+            self.assertEqual(read_nwbfile.trials["HED"].data[1], "Incorrect-action")

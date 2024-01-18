@@ -6,7 +6,7 @@ datasets:
     HED tags are used, the HED schema version must be specified in the NWB file using
     the HedMetadata type.
 groups:
-- neurodata_type_def: HedVersion
+- neurodata_type_def: HedVersionAttr
   neurodata_type_inc: LabMetaData
   name: hed_version
   doc: An extension of LabMetaData to store the Hierarchical Event Descriptor (HED)
@@ -17,14 +17,14 @@ groups:
     dtype: text
     doc: The version of the HED schema used to validate the HED tags, e.g., '8.2.0'.
       Required if HED tags are used in the NWB file.
-- neurodata_type_def: HedVersion1
+- neurodata_type_def: HedVersion
   neurodata_type_inc: LabMetaData
-  name: hed_version1
+  name: hed_version
   doc: An extension of LabMetaData to store the Hierarchical Event Descriptor (HED)
     schema version. TODO When merged with core, this will no longer inherit from LabMetaData
     but from NWBContainer and be placed optionally in /general.
   datasets:
   - name: version
     dtype: text
-    doc: HED scheam version to use for this dataset
+    doc: HED schema version to use for this dataset
     quantity: '?'

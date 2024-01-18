@@ -53,6 +53,6 @@ load_namespaces(ndx_hed_specpath)
 # # Remove these functions from the package
 del load_namespaces, get_class
 
-from .hed_version import HedVersion
+from .hed_version_attr import HedVersionAttr
 from .hed_tags import HedTags
-from .hed_version1 import HedVersion1
+from .hed_version import HedVersion
