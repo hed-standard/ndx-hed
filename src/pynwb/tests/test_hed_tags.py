@@ -9,7 +9,7 @@ from hdmf.utils import docval, getargs, get_docval, popargs
 from pynwb import NWBHDF5IO, get_manager, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file, NWBH5IOFlexMixin
-from src.pynwb.ndx_hed import HedVersion, HedTags
+from ndx_hed import HedVersion, HedTags
 
 
 class TestHedTagsConstructor(TestCase):

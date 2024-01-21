@@ -5,7 +5,7 @@ from pynwb.file import LabMetaData
 from pynwb import NWBHDF5IO, get_manager, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file, NWBH5IOFlexMixin
-from src.pynwb.ndx_hed import HedVersion
+from ndx_hed import HedVersion
 from hed.schema import HedSchema, HedSchemaGroup, load_schema_version
 from hed.errors import HedFileError
 
