@@ -34,6 +34,7 @@ def main():
     hed_tags = NWBDatasetSpec(
         neurodata_type_def="HedTags",
         neurodata_type_inc="VectorData",
+        name='HED',
         doc=("An extension of VectorData for Hierarchical Event Descriptor (HED) tags. If HED tags are used, "
              "the HED schema version must be specified in the NWB file using the HedMetadata type."),
         dtype="text",
