@@ -10,7 +10,7 @@ Specification for the ndx-hed extension
 
 .. toctree::
     :numbered:
-    :maxdepth: 3
+    :maxdepth: 5
     :caption: Extension Specification
 
     format
