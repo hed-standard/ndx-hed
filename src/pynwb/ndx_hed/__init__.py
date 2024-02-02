@@ -5,7 +5,7 @@ from pynwb import load_namespaces, get_class
 ndx_hed_specpath = os.path.join(
     os.path.dirname(__file__),
     'spec',
-    'ndx-events.namespace.yaml'
+    'ndx-hed.namespace.yaml'
 )
 
 # If the extension has not been installed yet but we are running directly from
