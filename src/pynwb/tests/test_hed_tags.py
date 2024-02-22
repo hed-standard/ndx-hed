@@ -1,15 +1,8 @@
 """Unit and integration tests for ndx-hed."""
-from pandas import DataFrame
-from datetime import datetime, timezone
-from dateutil.tz import tzlocal, tzutc
-from uuid import uuid4, UUID
+
 from hed.errors import HedFileError
-from hed.schema import HedSchema, HedSchemaGroup, load_schema_version
-from hdmf.common import VectorData
-from hdmf.utils import docval, getargs, get_docval, popargs
-from pynwb import NWBHDF5IO, get_manager, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
-from pynwb.testing import TestCase, remove_test_file, NWBH5IOFlexMixin
+from pynwb.testing import TestCase
 from ndx_hed import HedTags
 
 
@@ -43,11 +36,9 @@ class TestHedTagsConstructor(TestCase):
 
     def test_constructor_bad_data(self):
         """Test setting HED values using the constructor."""
-
-        tags = HedTags(hed_version='8.2.0', data=["Blech, Red"])
-        self.assertEqual(tags.name, "HED")
-        self.assertTrue(tags.description)
-        self.assertFalse(tags.data)
+        with self.assertRaises(HedFileError) as ex:
+            HedTags(hed_version='8.2.0', data=["Blech, Red"])
+            self.assertEqual("InvalidHEDData", ex.args(0))
 
     def test_add_row(self):
         """Testing adding a row to the HedTags. """
@@ -73,8 +64,8 @@ class TestHedTagsConstructor(TestCase):
         """Test adding HED column and data to a trials table."""
         nwbfile = mock_NWBFile()
         tags = HedTags(hed_version='8.2.0', data=[])
-        #nwbfile.add_trial_column(name="HED", description="temp", col_cls=HedTags, data=tags)
-        nwbfile.add_trial_column(name="HED", hed_version="8.2.0", description="temp", col_cls=HedTags, data=[])
+        # nwbfile.add_trial_column(name="HED", description="temp", col_cls=HedTags, data=tags)
+        # nwbfile.add_trial_column(name="HED", hed_version="8.2.0", description="temp", col_cls=HedTags, data=[])
         # nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         # nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
         # self.assertIsInstance(nwbfile.trials["HED"], HedTags)
@@ -145,7 +136,7 @@ class TestHedTagsConstructor(TestCase):
 #         self.assertTrue(issues)
 #
 #     def test_roundtrip(self):
-#         """  Create a HedMetadata, write it to mock file, read file, and test that it matches the original HedNWBFile."""
+#         """  Create a HedMetadata, write it to mock file, read file, and test matches the original HedNWBFile."""
 #
 #         with NWBHDF5IO(self.path, mode="w") as io:
 #             io.write(self.nwb_mock)
