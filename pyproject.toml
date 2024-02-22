@@ -37,6 +37,7 @@ keywords = [
 dependencies = [
     "pynwb>=2.5.0",
     "hdmf>=3.10.0",
+    "hedtools>=0.4.0"
 ]
 
 # TODO: add URLs before release
