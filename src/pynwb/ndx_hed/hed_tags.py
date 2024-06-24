@@ -19,10 +19,7 @@ class HedTags(VectorData):
 
     __nwbfields__ = ('_hed_schema', 'hed_version')
 
-    @docval({'name': 'name', 'type': 'str', 'doc': 'Must be HED', 'default': 'HED'},
-            {'name': 'description', 'type': 'str', 'doc': 'Description of the HED annotations',
-             'default': 'Hierarchical Event Descriptors (HED) annotations'},
-            {'name': 'hed_version', 'type': 'str', 'doc': 'The version of HED used by this data.'},
+    @docval({'name': 'hed_version', 'type': 'str', 'doc': 'The version of HED used by this data.'},
             *get_docval(VectorData.__init__, 'data'))
     def __init__(self, **kwargs):
         hed_version = popargs('hed_version', kwargs)
@@ -62,52 +59,4 @@ class HedTags(VectorData):
 
     def get_hed_schema(self):
         return self._hed_schema
-    # # @docval({'name': 'schema', 'type': (HedSchema, None), 'doc': 'HedSchema to use to validate.', 'default': None},
-    # #         {'name': 'return', 'type': 'list', 'doc': 'list of issues or none'})
-    # def validate(self, schema, data):
-    #     """Validate this VectorData. This is assuming a list --- where is the general iterator."""
-    #     if not self._hed_schema:
-    #         raise HedFileError('HedSchemaMissing', "Must provide a valid HedSchema", "")
-    #     issues = []
-    #     for index in range(len(data)):
-    #         hed_obj = HedString(self.get(index), schema)
-    #         these_issues = hed_obj.validate()
-    #         if these_issues:
-    #             issues.append(f"line {str(index)}: {get_printable_issue_string(these_issues)}")
-    #     return "\n".join(issues)
-
-    # def get_hed_schema(self):
-    #     if not self._hed_schema:
-    #         root = self._get_root()
-    #         if isinstance(root, NWBFile):
-    #             self._hed_schema = root.get_lab_meta_data("hed_version").get_schema()
-    #     return self._hed_schema
-
-    # def _get_root(self):
-    #     root = self
-    #     while hasattr(root, 'parent') and root.parent:
-    #         root = root.parent
-    #     if root == self:
-    #         return None
-    #    return root
-
-        #     root = parent
-        #     parent = root.parent
-        # if parent:
-        #     hed_version = parent.get_lab_meta_data("HedVersion")
-        # else:
-        #     hed_version = None
-        # if hed_version:
-        #     self.hed_schema = hed_version.get_schema()
-
-    # root = self
-    # parent = root.parent
-    # while parent is not None:
-    #     root = parent
-    #     parent = root.parent
-    # if parent:
-    #     hed_version = parent.get_lab_meta_data("HedVersion")
-    # else:
-    #     hed_version = None
-    # if hed_version:
-    #     self.hed_schema = hed_version.get_schema()
+    

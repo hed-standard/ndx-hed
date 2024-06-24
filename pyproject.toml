@@ -35,9 +35,9 @@ keywords = [
     'ndx-extension',
 ]
 dependencies = [
-    "pynwb>=2.5.0",
-    "hdmf>=3.10.0",
-    "hedtools>=0.4.0"
+    "pynwb>=2.8.0",
+    "hdmf>=3.14.1",
+    "hedtools>=0.5.0"
 ]
 
 # TODO: add URLs before release
@@ -77,7 +77,7 @@ include = [
 exclude = []
 
 [tool.pytest.ini_options]
-addopts = "--cov --cov-report html"
+# addopts = "--cov --cov-report html"
 
 [tool.codespell]
 skip = "htmlcov,.git,.mypy_cache,.pytest_cache,.coverage,*.pdf,*.svg,venvs,.tox,hdmf-common-schema,./docs/_build/*,*.ipynb"
