@@ -40,9 +40,9 @@ class TestHedTagsConstructor(TestCase):
 
     def test_constructor_bad_data(self):
         """Test setting HED values using the constructor."""
-        with self.assertRaises(HedFileError) as ex:
+        with self.assertRaises(ValueError) as ex:
             HedTags(hed_version='8.2.0', data=["Blech, Red"])
-            self.assertEqual("InvalidHEDData", ex.args(0))
+            self.assertStartsWith("InvalidHEDData", ex)
 
     def test_add_row(self):
         """Testing adding a row to the HedTags. """
@@ -53,9 +53,9 @@ class TestHedTagsConstructor(TestCase):
 
     def test_add_bad_row(self):
         tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
-        with self.assertRaises(HedFileError) as ex:
+        with self.assertRaises(ValueError) as ex:
             tags.add_row("Blech, (Red, Blue)")
-            self.assertIsInstance(ex, HedFileError)
+            self.assertIsInstance(ex, ValueError)
             self.assertEqual(ex.args(0), "InvalidHEDData")
 
     def test_get(self):
