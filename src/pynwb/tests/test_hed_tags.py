@@ -3,6 +3,7 @@ from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
 from hed.errors import HedFileError
 from hed import HedSchema
+from hdmf.common import DynamicTable
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file
@@ -63,10 +64,23 @@ class TestHedTagsConstructor(TestCase):
         self.assertEqual(tags.get(0), "Correct-action")
         self.assertEqual(tags.get([0, 1]), ['Correct-action', 'Incorrect-action'])
 
+    def test_dynamic_table(self):
+        """Add a HED column to a DynamicTable."""
+        my_table = DynamicTable(
+            name='bands',
+            description='band info for LFPSpectralAnalysis',
+            columns=[HedTags(hed_version='8.2.0', data=[])])
+        my_table.add_row(data={"HED": "Red,Green"})
+        self.assertEqual(my_table["HED"].data[0], "Red,Green")
+        self.assertIsInstance(my_table["HED"], HedTags)
+        my_table.add_column(hed_version="8.2.0", name="Blech", description="Another HedTags column",
+                            col_cls=HedTags, data=["White,Black"])
+        self.assertEqual(my_table["Blech"].data[0], "White,Black")
+
     def test_add_to_trials_table(self):
-        """Test adding HED column and data to a trials table."""
+        """ Test adding HED column and data to a trials table."""
         nwbfile = mock_NWBFile()
-        nwbfile.add_trial_column(name="HED", hed_version="8.2.0", description="temp", col_cls=HedTags, data=[])
+        nwbfile.add_trial_column(name="HED", hed_version="8.2.0", col_cls=HedTags, data=[], description="temp")
         nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
         self.assertIsInstance(nwbfile.trials["HED"], HedTags)
@@ -76,17 +90,17 @@ class TestHedTagsConstructor(TestCase):
         self.assertEqual(nwbfile.trials["HED"].data[0], "Correct-action")
         self.assertEqual(nwbfile.trials["HED"].data[1], "Incorrect-action")
 
-    def test_add_to_trials_table_force_HED(self):
-        """Trial table does not allow the forcing of the column name to be HED."""
-        nwbfile = mock_NWBFile()
-        nwbfile.add_trial_column(name="Blech", hed_version="8.2.0", description="temp", col_cls=HedTags, data=[])
-        nwbfile.add_trial(start_time=0.0, stop_time=1.0, Blech="Correct-action")
-        nwbfile.add_trial(start_time=2.0, stop_time=3.0, Blech="Incorrect-action")
+        nwbfile.add_trial_column(name="Blech", description="HED column", hed_version="8.2.0", col_cls=HedTags,
+                                 data=["Red", "Blue"])
+        nwbfile.add_trial(start_time=5.0, stop_time=6.0, HED="Black", Blech="Sensory-event")
+        nwbfile.add_trial(start_time=7.0, stop_time=8.0, HED="Red", Blech="Agent-action")
         self.assertIsInstance(nwbfile.trials["Blech"], HedTags)
         hed_col = nwbfile.trials["Blech"]
-        self.assertEqual(hed_col.name, "HED")
-        self.assertEqual(nwbfile.trials["Blech"].data[0], "Correct-action")
-        self.assertEqual(nwbfile.trials["Blech"].data[1], "Incorrect-action")
+        self.assertEqual(hed_col.name, "Blech")
+        self.assertIsInstance(nwbfile.trials["Blech"], HedTags)
+        self.assertEqual(hed_col.description, "HED column")
+        self.assertEqual(nwbfile.trials["Blech"].data[0], "Red")
+        self.assertEqual(nwbfile.trials["Blech"].data[1], "Blue")
 
     def test_get_hed_version(self):
         tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])

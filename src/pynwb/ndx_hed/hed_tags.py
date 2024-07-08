@@ -20,10 +20,12 @@ class HedTags(VectorData):
     __nwbfields__ = ('_hed_schema', 'hed_version')
 
     @docval({'name': 'hed_version', 'type': 'str', 'doc': 'The version of HED used by this data.'},
+            {'name': 'name', 'type': str, 'doc': 'The name of this VectorData', 'default': 'HED'},
+            {'name': 'description', 'type': str, 'doc': 'a description for this column',
+             'default': "Column that stores HED tags as text annotating their respective row."},
             *get_docval(VectorData.__init__, 'data'))
     def __init__(self, **kwargs):
         hed_version = popargs('hed_version', kwargs)
-        kwargs['name'] = 'HED'
         super().__init__(**kwargs)
         self.hed_version = hed_version
         self._init_internal()
@@ -59,4 +61,3 @@ class HedTags(VectorData):
 
     def get_hed_schema(self):
         return self._hed_schema
-    
