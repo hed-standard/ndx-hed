@@ -1,11 +1,10 @@
-from collections.abc import Iterable
+
 from hdmf.common import VectorData
 from hdmf.utils import docval, getargs, get_docval, popargs
-from hed.errors import HedFileError, get_printable_issue_string
-from hed.schema import HedSchema, HedSchemaGroup, load_schema_version, from_string
+from hed.errors import get_printable_issue_string
+from hed.schema import load_schema_version
 from hed.models import HedString
 from pynwb import register_class
-from pynwb.file import LabMetaData, NWBFile
 
 
 @register_class('HedTags', 'ndx-hed')
@@ -42,7 +41,8 @@ class HedTags(VectorData):
             if these_issues:
                 issues.append(f"line {str(index)}: {get_printable_issue_string(these_issues)}")
         if issues:
-            raise HedFileError("InvalidHEDData", "\n".join(issues), "")
+            issue_str = "\n".join(issues)
+            raise ValueError(f"InvalidHEDData {issue_str}")
 
     @docval({'name': 'val', 'type': str,
              'doc': 'the value to add to this column. Should be a valid HED string -- just forces string.'})
@@ -52,8 +52,7 @@ class HedTags(VectorData):
         hed_obj = HedString(val, self._hed_schema)
         these_issues = hed_obj.validate()
         if these_issues:
-            raise HedFileError("InvalidHEDValue",
-                               f"{str(val)} issues: {get_printable_issue_string(these_issues)}", "")
+            raise ValueError(f"InvalidHEDValue [{str(val)}] issues: {get_printable_issue_string(these_issues)}")
         super().append(val)
 
     def get_hed_version(self):
