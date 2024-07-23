@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
 name = "ndx-hed"
-version = "0.1.0"
+dynamic = ["version"]
 authors = [
     { name="Ryan Ly", email="rly@lbl.gov" },
     { name="Oliver Ruebel", email="oruebel@lbl.gov" },
@@ -39,6 +39,12 @@ dependencies = [
     "hdmf>=3.14.1",
     "hedtools>=0.5.0"
 ]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "_version.py"
 
 # TODO: add URLs before release
 [project.urls]
@@ -113,3 +119,11 @@ line-length = 120
 
 [tool.ruff.mccabe]
 max-complexity = 17
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "src/pynwb/ndx_hed/_version.py"
+versionfile_build = "pynwb/ndx_hed/_version.py"
+tag_prefix = ""
+parentdir_prefix = "ndxhed-"
