@@ -1,9 +1,10 @@
 """Unit and integration tests for ndx-hed."""
 from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
+import pandas as pd
 from hed.errors import HedFileError
 from hed import HedSchema
-from hdmf.common import DynamicTable
+from hdmf.common import DynamicTable, VectorData
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file
@@ -64,6 +65,10 @@ class TestHedTagsConstructor(TestCase):
         self.assertEqual(tags.get(0), "Correct-action")
         self.assertEqual(tags.get([0, 1]), ['Correct-action', 'Incorrect-action'])
 
+    def test_temp(self):
+        tags = HedTags(hed_version='8.3.0', data=["Correct-action", "Incorrect-action"])
+        tags.add_row("Sensory-event, Visual-presentation")
+        print(tags)
     def test_dynamic_table(self):
         """Add a HED column to a DynamicTable."""
         my_table = DynamicTable(
@@ -76,6 +81,16 @@ class TestHedTagsConstructor(TestCase):
         my_table.add_column(hed_version="8.2.0", name="Blech", description="Another HedTags column",
                             col_cls=HedTags, data=["White,Black"])
         self.assertEqual(my_table["Blech"].data[0], "White,Black")
+
+        color_nums = VectorData(name="color_code", description="Integers representing colors", data=[1,2,3])
+        color_tags = HedTags(name="HED", hed_version="8.2.0", data=["Red", "Green", "Blue"])
+        color_table = DynamicTable(
+            name="colors",
+            description="Colors for the experiment",
+            columns=[color_nums, color_tags])
+        self.assertEqual(color_table[0, "HED"], "Red")
+        my_list = color_table[0]
+        self.assertIsInstance(my_list, pd.DataFrame)
 
     def test_add_to_trials_table(self):
         """ Test adding HED column and data to a trials table."""
