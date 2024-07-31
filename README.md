@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13142816.svg)](https://doi.org/10.5281/zenodo.13142816)
+[![PyPI version](https://badge.fury.io/py/ndx-hed.svg)](https://badge.fury.io/py/ndx-hed)
 # ndx-hed Extension for NWB
 
 [**Neurodata Without Borders (NWB)**](https://www.nwb.org/) is a data standard for organizing neurophysiology data.
