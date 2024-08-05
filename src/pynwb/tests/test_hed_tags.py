@@ -68,7 +68,7 @@ class TestHedTagsConstructor(TestCase):
     def test_temp(self):
         tags = HedTags(hed_version='8.3.0', data=["Correct-action", "Incorrect-action"])
         tags.add_row("Sensory-event, Visual-presentation")
-        print(tags)
+
     def test_dynamic_table(self):
         """Add a HED column to a DynamicTable."""
         my_table = DynamicTable(

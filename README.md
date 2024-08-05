@@ -20,4 +20,4 @@ user guide explains in more detail how to use this extension for HED.
 pip install -U ndx-hed
 ```
 
-**Matlab:**  The Matlab extension is under development
+**Matlab:**  The Matlab extension is under development.
