@@ -8,7 +8,7 @@ from hdmf.common import DynamicTable, VectorData
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file
-from ndx_hed import HedTags
+from ndx_hed.hed_tags import HedTags
 
 
 class TestHedTagsConstructor(TestCase):
