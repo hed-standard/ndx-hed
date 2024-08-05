@@ -1,6 +1,6 @@
 import os
 from pynwb import load_namespaces, get_class
-from hed_tags import HedTags
+from ndx_hed.hed_tags import HedTags
 
 # Set path of the namespace.yaml file to the expected install location
 ndx_hed_specpath = os.path.join(os.path.dirname(__file__), 'spec', 'ndx-hed.namespace.yaml')
