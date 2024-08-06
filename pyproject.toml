@@ -49,7 +49,7 @@ version-file = "_version.py"
 # TODO: add URLs before release
 [project.urls]
 "Homepage" = "https://github.com/hed-standard/ndx-hed"
-"Documentation" = "https://https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html"
+"Documentation" = "https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html"
 "Bug Tracker" = "https://github.com/hed-standard/ndx-hed/issues"
 "Discussions" = "https://github.com/hed-standard/ndx-hed/discussions"
 "Changelog" = "https://github.com/hed-standard/ndx-hed/CHANGELOG.md"
