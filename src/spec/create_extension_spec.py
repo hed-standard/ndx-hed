@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import os.path
 
-from pynwb.spec import NWBNamespaceBuilder, export_spec, NWBDatasetSpec, NWBAttributeSpec
+from pynwb.spec import NWBNamespaceBuilder, export_spec, NWBDatasetSpec, NWBAttributeSpec, NWBGroupSpec
 
 
 def main():
     # these arguments were auto-generated from your cookiecutter inputs
     ns_builder = NWBNamespaceBuilder(
         name="""ndx-hed""",
-        version="""0.1.0""",
+        version="""0.2.0""",
         doc="""NWB extension for HED data""",
         author=[
             "Ryan Ly",
@@ -26,6 +26,7 @@ def main():
 
     ns_builder.include_namespace("core")
     ns_builder.include_type('VectorData', namespace='core')
+    ns_builder.include_type('LabMetaData', namespace='core')
 
     hed_tags = NWBDatasetSpec(
         neurodata_type_def="HedTags",
@@ -37,7 +38,7 @@ def main():
             NWBAttributeSpec(
                 name="hed_version",
                 doc=(
-                    "The version of the HED schema used to validate the HED tags, e.g., '8.2.0'. (Required). "
+                    "The version of the HED schema used to validate the HED tags, e.g., '8.4.0'. (Required). "
                 ),
                 dtype='text',
                 required=True
@@ -45,14 +46,29 @@ def main():
         ]
     )
 
-    # TODO: add all of your new data types to this list
-    #new_data_types = [hed_version_attr, hed_tags, hed_version]
-    new_data_types = [hed_tags]
+    # Define our LabMetaData type
+    hed_lab_metadata_ext = NWBGroupSpec(
+        name='hed_lab_metadata',
+        doc='Extension type for storing a HED (Hierarchical Event Descriptor) schema in lab metadata',
+        neurodata_type_def='HedLabMetaData',
+        neurodata_type_inc='LabMetaData',
+    )
+
+    # Add custom metadata to our LabMetaData schema
+    hed_lab_metadata_ext.add_dataset(
+        name="hed_version",
+        doc="The HED schema version used in this NWB file, e.g., '8.4.0'.",
+        dtype='text',
+        quantity='?'
+    )
+
+    # Add all of new data types to this list
+    new_data_types = [hed_lab_metadata_ext, hed_tags]
 
     # export the spec to yaml files in the spec folder
-    output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "spec"))
+    output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'spec'))
     export_spec(ns_builder, new_data_types, output_dir)
-    print("Spec files generated. Please make sure to run `pip install .` to load the changes.")
+    print('Spec files generated. Please make sure to rerun `pip install .` to load the changes.')
 
 
 if __name__ == "__main__":
