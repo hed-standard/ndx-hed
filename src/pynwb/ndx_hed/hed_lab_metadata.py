@@ -4,7 +4,8 @@ from hdmf.utils import docval, getargs, get_docval, popargs
 from hed.errors import get_printable_issue_string
 from hed.schema import load_schema_version
 from hed.models import HedString
-from pynwb import register_class, LabMetaData
+from pynwb import register_class
+from pynwb.file import LabMetaData
 
 
 @register_class('HedLabMetaData', 'ndx-hed')
@@ -14,14 +15,14 @@ class HedLabMetaData(LabMetaData):
 
     """
 
-    __nwbfields__ = ('_hed_schema', 'hed_version')
+    __nwbfields__ = ('_hed_schema', 'hed_schema_version')
 
-    @docval(*get_docval(LabMetatData.__init__),
-            {'name': 'hed_version', 'type': 'str', 'doc': 'The version of HED used by this NWBFile.', 'default': '8.4.0'},)
+    @docval(*get_docval(LabMetaData.__init__),
+            {'name': 'hed_schema_version', 'type': 'str', 'doc': 'The version of HED used by this data.'})
     def __init__(self, **kwargs):
-        hed_version = popargs('hed_version', kwargs)
+        hed_schema_version = popargs('hed_schema_version', kwargs)
         super().__init__(**kwargs)
-        self.hed_version = hed_version
+        self.hed_schema_version = hed_schema_version
         self._init_internal()
 
     def _init_internal(self):
@@ -29,12 +30,12 @@ class HedLabMetaData(LabMetaData):
         This loads (a private pointer to) the HED schema.
         """
         try:
-            self._hed_schema = load_schema_version(self.hed_version)
+            self._hed_schema = load_schema_version(self.hed_schema_version)
         except Exception as e:
-            raise ValueError(f"Failed to load HED schema version {self.hed_version}: {e}")
+            raise ValueError(f"Failed to load HED schema version {self.hed_schema_version}: {e}")
 
-    def get_hed_version(self):
-        return self.hed_version
+    def get_hed_schema_version(self):
+        return self.hed_schema_version
 
     def get_hed_schema(self):
         return self._hed_schema

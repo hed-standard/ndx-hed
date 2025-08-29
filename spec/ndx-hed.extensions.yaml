@@ -13,11 +13,9 @@ datasets:
 groups:
 - neurodata_type_def: HedLabMetaData
   neurodata_type_inc: LabMetaData
-  name: hed_lab_metadata
   doc: Extension type for storing a HED (Hierarchical Event Descriptor) schema 
     in lab metadata
-  datasets:
-  - name: hed_version
+  attributes:
+  - name: hed_schema_version
     dtype: text
     doc: The HED schema version used in this NWB file, e.g., '8.4.0'.
-    quantity: '?'

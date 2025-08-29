@@ -47,23 +47,22 @@ def main():
     )
 
     # Define our LabMetaData type
-    hed_lab_metadata_ext = NWBGroupSpec(
-        name='hed_lab_metadata',
-        doc='Extension type for storing a HED (Hierarchical Event Descriptor) schema in lab metadata',
+    hed_lab_metadata = NWBGroupSpec(
         neurodata_type_def='HedLabMetaData',
         neurodata_type_inc='LabMetaData',
-    )
-
-    # Add custom metadata to our LabMetaData schema
-    hed_lab_metadata_ext.add_dataset(
-        name="hed_version",
-        doc="The HED schema version used in this NWB file, e.g., '8.4.0'.",
-        dtype='text',
-        quantity='?'
+        doc='Extension type for storing a HED (Hierarchical Event Descriptor) schema in lab metadata',
+        attributes=[
+            NWBAttributeSpec(
+                name='hed_schema_version',
+                doc="The HED schema version used in this NWB file, e.g., '8.4.0'.",
+                dtype='text',
+                required=True
+            )
+        ]
     )
 
     # Add all of new data types to this list
-    new_data_types = [hed_lab_metadata_ext, hed_tags]
+    new_data_types = [hed_lab_metadata, hed_tags]
 
     # export the spec to yaml files in the spec folder
     output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'spec'))

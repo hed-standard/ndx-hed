@@ -1,4 +1,5 @@
 """Unit and integration tests for ndx-hed."""
+import os
 from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
 import pandas as pd
@@ -9,6 +10,7 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file
 from ndx_hed.hed_lab_metadata import HedLabMetaData
+import pytest
 
 
 class TestHedLabMetaDataConstructor(TestCase):
@@ -22,106 +24,76 @@ class TestHedLabMetaDataConstructor(TestCase):
 
     def test_constructor(self):
         """Test setting HED values using the constructor."""
-        labdata = HedLabMetaData(hed_version='8.4.0')
+        labdata = HedLabMetaData(name='hed_schema', hed_schema_version='8.4.0')
         self.assertIsInstance(labdata, HedLabMetaData)
+  
 
-#     def test_constructor_empty_data(self):
-#         """Test setting HED values using the constructor."""
-#         tags = HedTags(hed_version='8.2.0', data=[])
-#         self.assertEqual(tags.name, "HED")
-#         self.assertTrue(tags.description)
-#         self.assertFalse(tags.data)
+    def test_constructor_empty_data(self):
+        """Test create HedLabMetaData with empty schema version."""
+        with self.assertRaises(TypeError) as cm:
+            HedLabMetaData(name='hed_schema')
+        self.assertIn("missing argument", str(cm.exception))
 
-#     def test_bad_schema_version(self):
-#         with self.assertRaises(HedFileError) as ex:
-#             HedTags(hed_version='blech', data=["Correct-action", "Incorrect-action"])
-#             self.assertEqual(ex.args(0), 'fileNotFound')
+    def test_bad_schema_version(self):
+        with self.assertRaises(ValueError) as cm:
+            HedLabMetaData(name='blech', hed_schema_version='xxxx')
+        self.assertIn("Failed to load HED schema version", str(cm.exception))
 
-#     def test_constructor_bad_data(self):
-#         """Test setting HED values using the constructor."""
-#         with self.assertRaises(ValueError) as ex:
-#             HedTags(hed_version='8.2.0', data=["Blech, Red"])
-#             self.assertStartsWith("InvalidHEDData", ex)
+    def test_get_hed_version(self):
+        labdata = HedLabMetaData(name='hed_schema', hed_schema_version='8.4.0')
+        version = labdata.get_hed_schema_version()
+        self.assertEqual('8.4.0', version)
 
-#     def test_add_row(self):
-#         """Testing adding a row to the HedTags. """
-#         tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
-#         self.assertEqual(len(tags.data), 2)
-#         tags.add_row("Correct-action")
-#         self.assertEqual(len(tags.data), 3)
+    def test_get_hed_schema_name(self):
+        labdata = HedLabMetaData(name='hed_schema', hed_schema_version='8.4.0')
+        schema = labdata.get_hed_schema()
+        self.assertIsInstance(schema, HedSchema)
 
-#     def test_add_bad_row(self):
-#         tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
-#         with self.assertRaises(ValueError) as ex:
-#             tags.add_row("Blech, (Red, Blue)")
-#             self.assertIsInstance(ex, ValueError)
-#             self.assertEqual(ex.args(0), "InvalidHEDData")
+class TestHedLabMetaDataRoundTrip(TestCase):
+   
+    def get_temp_nwb_file_path(self):
+        import tempfile
+        fd, path = tempfile.mkstemp(suffix='.nwb')
+        os.close(fd)
+        return path
 
-#     def test_get(self):
-#         """Testing getting slices. """
-#         tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
-#         self.assertEqual(tags.get(0), "Correct-action")
-#         self.assertEqual(tags.get([0, 1]), ['Correct-action', 'Incorrect-action'])
+    def test_roundtrip_lab_metadata(self):
+        # Create an NWB file and an instance of HedLabMetaData
+        session_start = datetime.now(tzlocal())
+        nwbfile = NWBFile(
+            session_description="Testing HedLabMetaData",
+            identifier="Testing metadata",
+            session_start_time=session_start,
+        )
+        
+        # Instantiate the class and add the lab_infor
+        hed_info = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        nwbfile.add_lab_meta_data(hed_info)
 
-#     def test_temp(self):
-#         tags = HedTags(hed_version='8.3.0', data=["Correct-action", "Incorrect-action"])
-#         tags.add_row("Sensory-event, Visual-presentation")
+        # Write the NWB file
+        test_nwb_file_path = self.get_temp_nwb_file_path()
+        try:
+            with NWBHDF5IO(test_nwb_file_path, 'w') as io:
+                io.write(nwbfile)
 
-#     def test_dynamic_table(self):
-#         """Add a HED column to a DynamicTable."""
-#         my_table = DynamicTable(
-#             name='bands',
-#             description='band info for LFPSpectralAnalysis',
-#             columns=[HedTags(hed_version='8.2.0', data=[])])
-#         my_table.add_row(data={"HED": "Red,Green"})
-#         self.assertEqual(my_table["HED"].data[0], "Red,Green")
-#         self.assertIsInstance(my_table["HED"], HedTags)
-#         my_table.add_column(hed_version="8.2.0", name="Blech", description="Another HedTags column",
-#                             col_cls=HedTags, data=["White,Black"])
-#         self.assertEqual(my_table["Blech"].data[0], "White,Black")
-
-#         color_nums = VectorData(name="color_code", description="Integers representing colors", data=[1,2,3])
-#         color_tags = HedTags(name="HED", hed_version="8.2.0", data=["Red", "Green", "Blue"])
-#         color_table = DynamicTable(
-#             name="colors",
-#             description="Colors for the experiment",
-#             columns=[color_nums, color_tags])
-#         self.assertEqual(color_table[0, "HED"], "Red")
-#         my_list = color_table[0]
-#         self.assertIsInstance(my_list, pd.DataFrame)
-
-#     def test_add_to_trials_table(self):
-#         """ Test adding HED column and data to a trials table."""
-#         nwbfile = mock_NWBFile()
-#         nwbfile.add_trial_column(name="HED", hed_version="8.2.0", col_cls=HedTags, data=[], description="temp")
-#         nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
-#         nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
-#         self.assertIsInstance(nwbfile.trials["HED"], HedTags)
-#         hed_col = nwbfile.trials["HED"]
-#         self.assertEqual(hed_col.name, "HED")
-#         self.assertEqual(hed_col.description, "temp")
-#         self.assertEqual(nwbfile.trials["HED"].data[0], "Correct-action")
-#         self.assertEqual(nwbfile.trials["HED"].data[1], "Incorrect-action")
-
-#         nwbfile.add_trial_column(name="Blech", description="HED column", hed_version="8.2.0", col_cls=HedTags,
-#                                  data=["Red", "Blue"])
-#         nwbfile.add_trial(start_time=5.0, stop_time=6.0, HED="Black", Blech="Sensory-event")
-#         nwbfile.add_trial(start_time=7.0, stop_time=8.0, HED="Red", Blech="Agent-action")
-#         self.assertIsInstance(nwbfile.trials["Blech"], HedTags)
-#         hed_col = nwbfile.trials["Blech"]
-#         self.assertEqual(hed_col.name, "Blech")
-#         self.assertIsInstance(nwbfile.trials["Blech"], HedTags)
-#         self.assertEqual(hed_col.description, "HED column")
-#         self.assertEqual(nwbfile.trials["Blech"].data[0], "Red")
-#         self.assertEqual(nwbfile.trials["Blech"].data[1], "Blue")
-
-#     def test_get_hed_version(self):
-#         tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
-#         version = tags.get_hed_version()
-#         self.assertEqual('8.2.0', version)
+            # Read the file back
+            with NWBHDF5IO(test_nwb_file_path, 'r') as io:
+                read_nwbfile = io.read()
+                
+                # Access the custom LabMetaData object by its name
+                read_hed_info = read_nwbfile.lab_meta_data['hed_schema']
+                self.assertIsInstance(read_hed_info, HedLabMetaData)
+                self.assertEqual("hed_schema", read_hed_info.name)
+                self.assertEqual(read_hed_info.get_hed_schema_version(), "8.4.0")
+                schema = read_hed_info.get_hed_schema()
+                self.assertIsInstance(schema, HedSchema)
+                
+        finally:
+            if os.path.exists(test_nwb_file_path):
+                os.remove(test_nwb_file_path)
 
 
-# class TestHedTagsSimpleRoundtrip(TestCase):
+# class TestHedLabMetadataSimpleRoundtrip(TestCase):
 #     """Simple roundtrip test for HedNWBFile."""
 
 #     def setUp(self):
@@ -137,7 +109,7 @@ class TestHedLabMetaDataConstructor(TestCase):
 #         remove_test_file(self.path)
 
 #     def test_roundtrip(self):
-#         """  Create a HedMetadata, write it to mock file, read file, and test matches the original HedNWBFile."""
+#         """  Create a HedLabMetaData, write it to mock file, read file, and test matches the original HedNWBFile."""
 
 #         with NWBHDF5IO(self.path, mode="w") as io:
 #             io.write(self.nwb_mock)

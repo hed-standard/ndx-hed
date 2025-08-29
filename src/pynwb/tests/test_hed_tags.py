@@ -35,29 +35,29 @@ class TestHedTagsConstructor(TestCase):
         self.assertFalse(tags.data)
 
     def test_bad_schema_version(self):
-        with self.assertRaises(HedFileError) as ex:
+        """Test setting with bad schema and valid values."""
+        with self.assertRaises(HedFileError) as cm:
             HedTags(hed_version='blech', data=["Correct-action", "Incorrect-action"])
-            self.assertEqual(ex.args(0), 'fileNotFound')
+        self.assertEqual(f'SCHEMA_VERSION_INVALID', cm.exception.args[0])
 
     def test_constructor_bad_data(self):
         """Test setting HED values using the constructor."""
-        with self.assertRaises(ValueError) as ex:
+        with self.assertRaises(ValueError) as cm:
             HedTags(hed_version='8.2.0', data=["Blech, Red"])
-            self.assertStartsWith("InvalidHEDData", ex)
+        self.assertIn("InvalidHEDData", str(cm.exception))
 
     def test_add_row(self):
         """Testing adding a row to the HedTags. """
         tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
         self.assertEqual(len(tags.data), 2)
-        tags.add_row("Correct-action")
+        tags.add_row(val="Correct-action")
         self.assertEqual(len(tags.data), 3)
 
     def test_add_bad_row(self):
         tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
-        with self.assertRaises(ValueError) as ex:
-            tags.add_row("Blech, (Red, Blue)")
-            self.assertIsInstance(ex, ValueError)
-            self.assertEqual(ex.args(0), "InvalidHEDData")
+        with self.assertRaises(ValueError) as cm:
+            tags.add_row(val="Blech, (Red, Blue)")
+        self.assertIn("InvalidHEDValue", str(cm.exception))
 
     def test_get(self):
         """Testing getting slices. """
