@@ -1,0 +1,22 @@
+{
+    // Preferred new setting for selecting interpreter in newer VS Code
+    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+    // Legacy setting kept for compatibility with older extensions
+    "python.pythonPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+    // Make the language server see the `src` package layout (src/pynwb/...)
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}\\src"
+    ],
+    // Improve analysis behavior
+    "python.analysis.useLibraryCodeForTypes": true,
+    "python.analysis.packageIndexDepth": 2,
+    
+    // Test discovery settings - pytest only
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "src"
+    ],
+    "python.testing.cwd": "${workspaceFolder}",
+    "python.testing.autoTestDiscoverOnSaveEnabled": true
+}

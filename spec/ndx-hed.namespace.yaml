@@ -15,5 +15,6 @@ namespaces:
   - namespace: core
     neurodata_types:
     - VectorData
+    - LabMetaData
   - source: ndx-hed.extensions.yaml
-  version: 0.1.0
+  version: 0.2.0
