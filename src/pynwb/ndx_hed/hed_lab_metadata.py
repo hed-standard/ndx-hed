@@ -17,10 +17,14 @@ class HedLabMetaData(LabMetaData):
 
     __nwbfields__ = ('_hed_schema', 'hed_schema_version')
 
-    @docval(*get_docval(LabMetaData.__init__),
-            {'name': 'hed_schema_version', 'type': 'str', 'doc': 'The version of HED used by this data.'})
+    @docval(
+            {'name': 'hed_schema_version', 'type': 'str', 'doc': 'The version of HED used by this data.'},
+            {'name': 'name', 'type': 'str', 'doc': 'The name of the hed lab metadata (must be hed_schema).', 'default': 'hed_schema'},
+    )
     def __init__(self, **kwargs):
         hed_schema_version = popargs('hed_schema_version', kwargs)
+        if 'name' in kwargs and kwargs['name'] != 'hed_schema':
+            raise ValueError(f"The 'name' for HedLabMetaData must be 'hed_schema', but '{kwargs['name']}' was given.")
         super().__init__(**kwargs)
         self.hed_schema_version = hed_schema_version
         self._init_internal()
