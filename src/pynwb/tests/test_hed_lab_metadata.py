@@ -122,4 +122,4 @@ class TestHedLabMetaDataRoundTrip(TestCase):
         hed_info2 = HedLabMetaData(hed_schema_version="8.3.0")
         with self.assertRaises(ValueError) as cm:
             nwbfile.add_lab_meta_data(hed_info2)
-        self.assertIn("'hed_schema' already exists in NWBFile 'root'", str(cm.exception))
+        self.assertIn("Cannot add <class 'ndx_hed.hed_lab_metadata.HedLabMetaData'> 'hed_schema' ", str(cm.exception))

@@ -51,6 +51,7 @@ def main():
         neurodata_type_def='HedLabMetaData',
         neurodata_type_inc='LabMetaData',
         doc='Extension type for storing a HED (Hierarchical Event Descriptor) schema in lab metadata',
+        quantity='?',
         attributes=[
             NWBAttributeSpec(
                 name='hed_schema_version',
