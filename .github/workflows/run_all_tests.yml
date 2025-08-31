@@ -16,22 +16,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.8-minimum      , requirements: minimum    , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-python3.8              , requirements: pinned     , python-ver: "3.8" , os: ubuntu-latest }
           - { name: linux-python3.9              , requirements: pinned     , python-ver: "3.9" , os: ubuntu-latest }
           - { name: linux-python3.10             , requirements: pinned     , python-ver: "3.10", os: ubuntu-latest }
           - { name: linux-python3.11             , requirements: pinned     , python-ver: "3.11", os: ubuntu-latest }
           - { name: linux-python3.12             , requirements: pinned     , python-ver: "3.12", os: ubuntu-latest }
           - { name: linux-python3.12-upgraded    , requirements: upgraded   , python-ver: "3.12", os: ubuntu-latest }
-          - { name: windows-python3.8-minimum    , requirements: minimum    , python-ver: "3.8" , os: windows-latest }
-          - { name: windows-python3.8            , requirements: pinned     , python-ver: "3.8" , os: windows-latest }
           - { name: windows-python3.9            , requirements: pinned     , python-ver: "3.9" , os: windows-latest }
           - { name: windows-python3.10           , requirements: pinned     , python-ver: "3.10", os: windows-latest }
           - { name: windows-python3.11           , requirements: pinned     , python-ver: "3.11", os: windows-latest }
           - { name: windows-python3.12           , requirements: pinned     , python-ver: "3.12", os: windows-latest }
           - { name: windows-python3.12-upgraded  , requirements: upgraded   , python-ver: "3.12", os: windows-latest }
-          - { name: macos-python3.8-minimum      , requirements: minimum    , python-ver: "3.8" , os: macos-latest }
-          - { name: macos-python3.8              , requirements: pinned     , python-ver: "3.8" , os: macos-latest }
           - { name: macos-python3.9              , requirements: pinned     , python-ver: "3.9" , os: macos-latest }
           - { name: macos-python3.10             , requirements: pinned     , python-ver: "3.10", os: macos-latest }
           - { name: macos-python3.11             , requirements: pinned     , python-ver: "3.11", os: macos-latest }
@@ -39,18 +33,18 @@ jobs:
           - { name: macos-python3.12-upgraded    , requirements: upgraded   , python-ver: "3.12", os: macos-latest }
     steps:
       - name: Cancel non-latest runs
-        uses: styfle/cancel-workflow-action@0.11.0
+        uses: styfle/cancel-workflow-action@0.12.1
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # fetch tags
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -114,8 +108,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: conda-linux-python3.8-minimum    , requirements: minimum    , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: conda-linux-python3.8            , requirements: pinned     , python-ver: "3.8" , os: ubuntu-latest }
           - { name: conda-linux-python3.9            , requirements: pinned     , python-ver: "3.9" , os: ubuntu-latest }
           - { name: conda-linux-python3.10           , requirements: pinned     , python-ver: "3.10", os: ubuntu-latest }
           - { name: conda-linux-python3.11           , requirements: pinned     , python-ver: "3.11", os: ubuntu-latest }
@@ -123,17 +115,17 @@ jobs:
           - { name: conda-linux-python3.12-upgraded  , requirements: upgraded   , python-ver: "3.12", os: ubuntu-latest }
     steps:
       - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.11.0
+        uses: styfle/cancel-workflow-action@0.12.1
         with:
           access_token: ${{ github.token }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # fetch tags
 
       - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
           auto-activate-base: true
