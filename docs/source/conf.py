@@ -10,7 +10,7 @@ project = 'ndx-hed'
 copyright = '2023, Ryan Ly, Oliver Ruebel, Kay Robbins'
 author = 'Ryan Ly, Oliver Ruebel, Kay Robbins'
 
-version = '0.1.0'
+version = '0.2.0'
 release = 'alpha'
 
 # -- General configuration ---------------------------------------------------

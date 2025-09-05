@@ -22,42 +22,42 @@ class TestHedTagsConstructor(TestCase):
 
     def test_constructor(self):
         """Test setting HED values using the constructor."""
-        tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
+        tags = HedTags(data=["Correct-action", "Incorrect-action"])
         self.assertEqual(tags.name, "HED")
         self.assertTrue(tags.description)
         self.assertEqual(tags.data, ["Correct-action", "Incorrect-action"])
 
     def test_constructor_empty_data(self):
         """Test setting HED values using the constructor."""
-        tags = HedTags(hed_version='8.2.0', data=[])
+        tags = HedTags(data=[])
         self.assertEqual(tags.name, "HED")
         self.assertTrue(tags.description)
         self.assertFalse(tags.data)
 
-    def test_bad_schema_version(self):
-        """Test setting with bad schema and valid values."""
-        with self.assertRaises(HedFileError) as cm:
-            HedTags(hed_version='blech', data=["Correct-action", "Incorrect-action"])
-        self.assertEqual(f'SCHEMA_VERSION_INVALID', cm.exception.args[0])
+    # def test_bad_schema_version(self):
+    #     """Test setting with bad schema and valid values."""
+    #     with self.assertRaises(HedFileError) as cm:
+    #         HedTags(hed_version='blech', data=["Correct-action", "Incorrect-action"])
+    #     self.assertEqual(f'SCHEMA_VERSION_INVALID', cm.exception.args[0])
 
     def test_constructor_bad_data(self):
         """Test setting HED values using the constructor."""
-        with self.assertRaises(ValueError) as cm:
-            HedTags(hed_version='8.2.0', data=["Blech, Red"])
-        self.assertIn("InvalidHEDData", str(cm.exception))
+        with self.assertRaises(TypeError) as cm:
+            HedTags( data=43)
+        self.assertIn("incorrect type", str(cm.exception))
 
     def test_add_row(self):
         """Testing adding a row to the HedTags. """
-        tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
+        tags = HedTags(data=["Correct-action", "Incorrect-action"])
         self.assertEqual(len(tags.data), 2)
         tags.add_row(val="Correct-action")
         self.assertEqual(len(tags.data), 3)
 
     def test_add_bad_row(self):
-        tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
-        with self.assertRaises(ValueError) as cm:
-            tags.add_row(val="Blech, (Red, Blue)")
-        self.assertIn("InvalidHEDValue", str(cm.exception))
+        tags = HedTags(data=[46])
+        with self.assertRaises(TypeError) as cm:
+            tags.add_row(val=[[43]])
+        self.assertIn("incorrect type", str(cm.exception))
 
     def test_get(self):
         """Testing getting slices. """
