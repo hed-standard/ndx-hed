@@ -2,8 +2,6 @@
 from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
 import pandas as pd
-from hed.errors import HedFileError
-from hed import HedSchema
 from hdmf.common import DynamicTable, VectorData
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
@@ -43,7 +41,7 @@ class TestHedTagsConstructor(TestCase):
     def test_constructor_bad_data(self):
         """Test setting HED values using the constructor."""
         with self.assertRaises(TypeError) as cm:
-            HedTags( data=43)
+            HedTags(data=43)
         self.assertIn("incorrect type", str(cm.exception))
 
     def test_add_row(self):
@@ -56,36 +54,38 @@ class TestHedTagsConstructor(TestCase):
     def test_add_bad_row(self):
         tags = HedTags(data=[46])
         with self.assertRaises(TypeError) as cm:
-            tags.add_row(val=[[43]])
+            tags.add_row(val=[[43], 45])
         self.assertIn("incorrect type", str(cm.exception))
 
     def test_get(self):
         """Testing getting slices. """
-        tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
+        tags = HedTags(data=["Correct-action", "Incorrect-action"])
         self.assertEqual(tags.get(0), "Correct-action")
         self.assertEqual(tags.get([0, 1]), ['Correct-action', 'Incorrect-action'])
 
     def test_temp(self):
-        tags = HedTags(hed_version='8.3.0', data=["Correct-action", "Incorrect-action"])
+        tags = HedTags( data=["Correct-action", "Incorrect-action"])
         tags.add_row("Sensory-event, Visual-presentation")
 
     def test_dynamic_table(self):
         """Add a HED column to a DynamicTable."""
-        my_table = DynamicTable(
-            name='bands',
-            description='band info for LFPSpectralAnalysis',
-            columns=[HedTags(hed_version='8.2.0', data=[])])
+        my_table = DynamicTable(name='bands', description='band info0', columns=[HedTags(data=[])])
         my_table.add_row(data={"HED": "Red,Green"})
         self.assertEqual(my_table["HED"].data[0], "Red,Green")
         self.assertIsInstance(my_table["HED"], HedTags)
-        my_table.add_column(hed_version="8.2.0", name="Blech", description="Another HedTags column",
+
+    def test_dynamic_table_bad_hedName(self):
+        my_table = DynamicTable(name='bands', description='band info1')
+        my_table.add_column(name="Blech", description="Another HedTags column",
                             col_cls=HedTags, data=["White,Black"])
         self.assertEqual(my_table["Blech"].data[0], "White,Black")
+        self.assertIsInstance(my_table["Blech"], HedTags)
+        self.assertEqual(my_table["Blech"].name, "Blech")
 
+    def test_dynamic_table_bad_hedName(self):
         color_nums = VectorData(name="color_code", description="Integers representing colors", data=[1,2,3])
-        color_tags = HedTags(name="HED", hed_version="8.2.0", data=["Red", "Green", "Blue"])
-        color_table = DynamicTable(
-            name="colors",
+        color_tags = HedTags(data=["Red", "Green", "Blue"])
+        color_table = DynamicTable(name="colors",
             description="Colors for the experiment",
             columns=[color_nums, color_tags])
         self.assertEqual(color_table[0, "HED"], "Red")
@@ -95,7 +95,7 @@ class TestHedTagsConstructor(TestCase):
     def test_add_to_trials_table(self):
         """ Test adding HED column and data to a trials table."""
         nwbfile = mock_NWBFile()
-        nwbfile.add_trial_column(name="HED", hed_version="8.2.0", col_cls=HedTags, data=[], description="temp")
+        nwbfile.add_trial_column(name="HED",col_cls=HedTags, data=[], description="temp")
         nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
         self.assertIsInstance(nwbfile.trials["HED"], HedTags)
@@ -105,22 +105,10 @@ class TestHedTagsConstructor(TestCase):
         self.assertEqual(nwbfile.trials["HED"].data[0], "Correct-action")
         self.assertEqual(nwbfile.trials["HED"].data[1], "Incorrect-action")
 
-        nwbfile.add_trial_column(name="Blech", description="HED column", hed_version="8.2.0", col_cls=HedTags,
-                                 data=["Red", "Blue"])
-        nwbfile.add_trial(start_time=5.0, stop_time=6.0, HED="Black", Blech="Sensory-event")
-        nwbfile.add_trial(start_time=7.0, stop_time=8.0, HED="Red", Blech="Agent-action")
-        self.assertIsInstance(nwbfile.trials["Blech"], HedTags)
-        hed_col = nwbfile.trials["Blech"]
-        self.assertEqual(hed_col.name, "Blech")
-        self.assertIsInstance(nwbfile.trials["Blech"], HedTags)
-        self.assertEqual(hed_col.description, "HED column")
-        self.assertEqual(nwbfile.trials["Blech"].data[0], "Red")
-        self.assertEqual(nwbfile.trials["Blech"].data[1], "Blue")
+        with self.assertRaises(ValueError) as cm:
+            nwbfile.add_trial_column(name="Blech", description="HED annotations", col_cls=HedTags, data=["Red", "Blue"])
+        self.assertIn("The 'name' for HedTags must be 'HED'", str(cm.exception))
 
-    def test_get_hed_version(self):
-        tags = HedTags(hed_version='8.2.0', data=["Correct-action", "Incorrect-action"])
-        version = tags.get_hed_version()
-        self.assertEqual('8.2.0', version)
 
 
 class TestHedTagsSimpleRoundtrip(TestCase):
@@ -129,7 +117,7 @@ class TestHedTagsSimpleRoundtrip(TestCase):
     def setUp(self):
         self.path = "test.nwb"
         nwb_mock = mock_NWBFile()
-        nwb_mock.add_trial_column(name="HED", hed_version="8.2.0", description="HED annotations for each trial",
+        nwb_mock.add_trial_column(name="HED",  description="HED annotations for each trial",
                                   col_cls=HedTags, data=[])
         nwb_mock.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         nwb_mock.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
@@ -148,7 +136,6 @@ class TestHedTagsSimpleRoundtrip(TestCase):
             read_nwbfile = io.read()
             hed_col = read_nwbfile.trials["HED"]
             self.assertIsInstance(hed_col, HedTags)
-            self.assertEqual(hed_col.get_hed_version(), "8.2.0")
             self.assertEqual(read_nwbfile.trials["HED"].data[0], "Correct-action")
             self.assertEqual(read_nwbfile.trials["HED"].data[1], "Incorrect-action")
 
@@ -183,8 +170,8 @@ class TestHedTagsNWBFileRoundtrip(TestCase):
                                virus='novirus',
                                source_script_file_name='nofilename')
 
-        self.nwbfile.add_trial_column(name="HED", description="HED annotations for each trial",
-                                      hed_version="8.2.0", col_cls=HedTags, data=[])
+        self.nwbfile.add_trial_column(name="HED", description="HED annotations for each trial", col_cls=HedTags, 
+                                      data=[])
         self.nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         self.nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
 
@@ -203,7 +190,5 @@ class TestHedTagsNWBFileRoundtrip(TestCase):
         with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
             read_nwbfile = io.read()
             tags = read_nwbfile.trials["HED"]
-            schema = tags.get_hed_schema()
-            self.assertIsInstance(schema, HedSchema)
             self.assertEqual(read_nwbfile.trials["HED"].data[0], "Correct-action")
             self.assertEqual(read_nwbfile.trials["HED"].data[1], "Incorrect-action")

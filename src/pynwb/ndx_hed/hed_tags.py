@@ -38,16 +38,14 @@ class HedTags(VectorData):
     #         issue_str = "\n".join(issues)
     #         raise ValueError(f"InvalidHEDData {issue_str}")
 
-    # @docval({'name': 'val', 'type': str,
-    #          'doc': 'the value to add to this column. Should be a valid HED string -- just forces string.'})
-    # def add_row(self, **kwargs):
-    #     """Append a data value to this column."""
-    #     val = getargs('val', kwargs)
-    #     hed_obj = HedString(val, self._hed_schema)
-    #     these_issues = hed_obj.validate()
-    #     if these_issues:
-    #         raise ValueError(f"InvalidHEDValue [{str(val)}] issues: {get_printable_issue_string(these_issues)}")
-    #     super().append(val)
+    @docval({'name': 'val', 'type': str,
+             'doc': 'the value to add to this column. Should be a valid HED string -- just forces string.'})
+    def add_row(self, **kwargs):
+        """Append a data value to this column."""
+        val = getargs('val', kwargs)
+        if not isinstance(val, str):
+            raise TypeError(f"Value {val} is of incorrect type {type(val)}. Must be a string.")
+        super().append(val)
 
     # def get_hed_version(self):
     #     return self.hed_version
