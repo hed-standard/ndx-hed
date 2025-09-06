@@ -1,7 +1,7 @@
 """Unit and integration tests for ndx-hed."""
 import os
 from datetime import datetime
-from dateutil.tz import tzlocal
+from dateutil.tz import tzlocal, tzutc
 from hed import HedSchema
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing import TestCase, remove_test_file
