@@ -32,12 +32,6 @@ class TestHedTagsConstructor(TestCase):
         self.assertTrue(tags.description)
         self.assertFalse(tags.data)
 
-    # def test_bad_schema_version(self):
-    #     """Test setting with bad schema and valid values."""
-    #     with self.assertRaises(HedFileError) as cm:
-    #         HedTags(hed_version='blech', data=["Correct-action", "Incorrect-action"])
-    #     self.assertEqual(f'SCHEMA_VERSION_INVALID', cm.exception.args[0])
-
     def test_constructor_bad_data(self):
         """Test setting HED values using the constructor."""
         with self.assertRaises(TypeError) as cm:
@@ -76,13 +70,11 @@ class TestHedTagsConstructor(TestCase):
 
     def test_dynamic_table_bad_hedName(self):
         my_table = DynamicTable(name='bands', description='band info1')
-        my_table.add_column(name="Blech", description="Another HedTags column",
-                            col_cls=HedTags, data=["White,Black"])
-        self.assertEqual(my_table["Blech"].data[0], "White,Black")
-        self.assertIsInstance(my_table["Blech"], HedTags)
-        self.assertEqual(my_table["Blech"].name, "Blech")
+        with self.assertRaises(ValueError) as cm:
+            my_table.add_column(name="Blech", description="Another HedTags column", col_cls=HedTags, data=["White,Black"])
+        self.assertIn("The 'name' for HedTags must be 'HED'", str(cm.exception))
 
-    def test_dynamic_table_bad_hedName(self):
+    def test_dynamic_table_multiple_columns(self):
         color_nums = VectorData(name="color_code", description="Integers representing colors", data=[1,2,3])
         color_tags = HedTags(data=["Red", "Green", "Blue"])
         color_table = DynamicTable(name="colors",
@@ -190,5 +182,6 @@ class TestHedTagsNWBFileRoundtrip(TestCase):
         with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
             read_nwbfile = io.read()
             tags = read_nwbfile.trials["HED"]
+            self.assertIsInstance(tags, HedTags)
             self.assertEqual(read_nwbfile.trials["HED"].data[0], "Correct-action")
             self.assertEqual(read_nwbfile.trials["HED"].data[1], "Incorrect-action")

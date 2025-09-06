@@ -1,16 +1,11 @@
 """Unit and integration tests for ndx-hed."""
 import os
 from datetime import datetime
-from dateutil.tz import tzlocal, tzutc
-import pandas as pd
-from hed.errors import HedFileError
+from dateutil.tz import tzlocal
 from hed import HedSchema
-from hdmf.common import DynamicTable, VectorData
 from pynwb import NWBHDF5IO, NWBFile
-from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file
 from ndx_hed.hed_lab_metadata import HedLabMetaData
-import pytest
 
 
 class TestHedLabMetaDataConstructor(TestCase):

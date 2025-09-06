@@ -43,43 +43,43 @@ def df_to_dynamic_table(df: pd.DataFrame, name: str, description: str, index_nam
 
 
 if __name__ == '__main__':
-    # 1. Create a sample Pandas DataFrame
-    data = {
-        'event_type': ['stim_on', 'stim_off', 'response', 'stim_on', 'stim_off', 'response'],
-        'latency': [1.2, 1.5, 2.1, 3.4, 3.6, 4.0],
-        'correct': [True, True, False, True, True, True],
-        'value': np.arange(6)
-    }
-    df = pd.DataFrame(data)
-    print("Original Pandas DataFrame:")
-    print(df)
-    print("\n")
+    # # 1. Create a sample Pandas DataFrame
+    # data = {
+    #     'event_type': ['stim_on', 'stim_off', 'response', 'stim_on', 'stim_off', 'response'],
+    #     'latency': [1.2, 1.5, 2.1, 3.4, 3.6, 4.0],
+    #     'correct': [True, True, False, True, True, True],
+    #     'value': np.arange(6)
+    # }
+    # df = pd.DataFrame(data)
+    # print("Original Pandas DataFrame:")
+    # print(df)
+    # print("\n")
 
-    # 2. Convert the DataFrame to a DynamicTable
-    my_dynamic_table = df_to_dynamic_table(
-        df=df,
-        name="my_events",
-        description="A sample table of experimental events."
-    )
-    print("Converted pynwb.core.DynamicTable:")
-    print(my_dynamic_table)
-    print("\n")
+    # # 2. Convert the DataFrame to a DynamicTable
+    # my_dynamic_table = df_to_dynamic_table(
+    #     df=df,
+    #     name="my_events",
+    #     description="A sample table of experimental events."
+    # )
+    # print("Converted pynwb.core.DynamicTable:")
+    # print(my_dynamic_table)
+    # print("\n")
 
-    # 3. (Optional) Save it to an NWB file to verify
-    nwbfile = NWBFile(
-        session_description='A sample session',
-        identifier='sample_123',
-        session_start_time=datetime.now().astimezone()
-    )
-    nwbfile.add_acquisition(my_dynamic_table)
+    # # 3. (Optional) Save it to an NWB file to verify
+    # nwbfile = NWBFile(
+    #     session_description='A sample session',
+    #     identifier='sample_123',
+    #     session_start_time=datetime.now().astimezone()
+    # )
+    # nwbfile.add_acquisition(my_dynamic_table)
 
-    output_file = 'sample_with_dt.nwb'
-    with NWBHDF5IO(output_file, 'w') as io:
-        io.write(nwbfile)
-    print(f"DynamicTable saved to '{output_file}'")
+    # output_file = 'sample_with_dt.nwb'
+    # with NWBHDF5IO(output_file, 'w') as io:
+    #     io.write(nwbfile)
+    # print(f"DynamicTable saved to '{output_file}'")
 
-    # 4. (Optional) Read the file back and verify content
-    with NWBHDF5IO(output_file, 'r') as io:
-        read_nwbfile = io.read()
-        print("\nReading table back from NWB file:")
-        print(read_nwbfile.acquisition['my_events'].to_dataframe())
+    # # 4. (Optional) Read the file back and verify content
+    # with NWBHDF5IO(output_file, 'r') as io:
+    #     read_nwbfile = io.read()
+    #     print("\nReading table back from NWB file:")
+    #     print(read_nwbfile.acquisition['my_events'].to_dataframe())

@@ -1,9 +1,6 @@
 
 from hdmf.common import VectorData
-from hdmf.utils import docval, getargs, get_docval, popargs
-from hed.errors import get_printable_issue_string
-from hed.schema import load_schema_version
-from hed.models import HedString
+from hdmf.utils import docval, getargs, get_docval
 from pynwb import register_class
 
 
