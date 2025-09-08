@@ -2,11 +2,11 @@
 import pandas as pd 
 from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
-from hdmf.common import DynamicTable, VectorData
+from pynwb.core import DynamicTable, VectorData
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing import TestCase, remove_test_file
-from ndx_hed.hed_tags import HedTags
+from ndx_hed.hed_tags import HedTags, HedValueVector
 
 
 class TestHedTagsConstructor(TestCase):
@@ -185,3 +185,179 @@ class TestHedTagsNWBFileRoundtrip(TestCase):
             self.assertIsInstance(tags, HedTags)
             self.assertEqual(read_nwbfile.trials["HED"].data[0], "Correct-action")
             self.assertEqual(read_nwbfile.trials["HED"].data[1], "Incorrect-action")
+
+
+class TestHedValueVectorConstructor(TestCase):
+    """Unit tests for creating a HedValueVector."""
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_constructor(self):
+        """Test setting HED value vector using the constructor."""
+        values = HedValueVector(
+            name="test_values",
+            description="Test value vector",
+            data=[1, 2, 3, 4],
+            hed="Sensory-event, Visual-presentation"
+        )
+        self.assertEqual(values.name, "test_values")
+        self.assertEqual(values.description, "Test value vector")
+        self.assertEqual(values.data, [1, 2, 3, 4])
+        self.assertEqual(values.hed, "Sensory-event, Visual-presentation")
+
+    def test_constructor_empty_data(self):
+        """Test setting HED value vector with empty data."""
+        values = HedValueVector(
+            name="empty_values",
+            description="Empty value vector",
+            data=[],
+            hed="Agent-action"
+        )
+        self.assertEqual(values.name, "empty_values")
+        self.assertEqual(values.description, "Empty value vector")
+        self.assertFalse(values.data)
+        self.assertEqual(values.hed, "Agent-action")
+
+    def test_constructor_no_hed(self):
+        """Test creating HedValueVector without HED annotation."""
+        with self.assertRaises(TypeError) as cm:
+            values = HedValueVector( name="no_hed_values",
+                description="Values without HED",
+                data=[1, 2, 3]
+            )
+        self.assertIn("missing argument", str(cm.exception))
+          
+    def test_constructor_string_data(self):
+        """Test HedValueVector with string data."""
+        values = HedValueVector(
+            name="string_values",
+            description="String value vector",
+            data=["red", "green", "blue"],
+            hed="Sensory-event, Visual-presentation, Color"
+        )
+        self.assertEqual(values.data, ["red", "green", "blue"])
+        self.assertEqual(values.hed, "Sensory-event, Visual-presentation, Color")
+
+    def test_constructor_numeric_data(self):
+        """Test HedValueVector with numeric data."""
+        values = HedValueVector(
+            name="numeric_values",
+            description="Numeric value vector",
+            data=[1.5, 2.7, 3.9],
+            hed="Measurement, Parameter-value/#"
+        )
+        self.assertEqual(values.data, [1.5, 2.7, 3.9])
+        self.assertEqual(values.hed, "Measurement, Parameter-value/#")
+
+    def test_add_to_dynamic_table(self):
+        """Test adding HedValueVector to a DynamicTable."""
+        values = HedValueVector(
+            name="intensity",
+            description="Stimulus intensity values",
+            data=[10, 20, 30],
+            hed="Sensory-event, Parameter-value/#"
+        )
+        
+        table = DynamicTable(
+            name="stimulus_table",
+            description="Table with stimulus data",
+            columns=[values]
+        )
+        
+        self.assertEqual(len(table.columns), 1)
+        self.assertIsInstance(table["intensity"], HedValueVector)
+        self.assertEqual(table["intensity"].hed, "Sensory-event, Parameter-value/#")
+
+    def test_different_data_types(self):
+        """Test HedValueVector with different data types."""
+        # Test boolean data
+        bool_values = HedValueVector(
+            name="bool_data",
+            description="Boolean values",
+            data=[True, False, True],
+            hed="Logical-value"
+        )
+        self.assertEqual(bool_values.data, [True, False, True])
+        
+        # Test mixed numeric data (should work with VectorData)
+        mixed_values = HedValueVector(
+            name="mixed_data",
+            description="Mixed numeric values", 
+            data=[1, 2.5, 3, 4.7],
+            hed="Measurement-value/#"
+        )
+        self.assertEqual(mixed_values.data, [1, 2.5, 3, 4.7])
+
+    def test_hed_attribute_access(self):
+        """Test accessing and modifying the hed attribute."""
+        values = HedValueVector(
+            name="test_access",
+            description="Test attribute access",
+            data=[1, 2, 3],
+            hed="Initial-tag"
+        )
+        
+        # Test initial value
+        self.assertEqual(values.hed, "Initial-tag")
+        
+        # Test modification (if allowed)
+        values.hed = "Modified-tag, New-annotation"
+        self.assertEqual(values.hed, "Modified-tag, New-annotation")
+
+
+class TestHedValueVectorRoundtrip(TestCase):
+    """Test roundtrip functionality for HedValueVector with NWBFile."""
+
+    def setUp(self):
+        """Set up test NWBFile."""
+       
+        self.path = "test.nwb"
+        self.nwbfile = NWBFile(
+            session_description="Test session for HedValueVector",
+            identifier="test_hedvaluevector",
+            session_start_time=datetime.now(tzlocal())
+        )
+        
+    def tearDown(self):
+        """Clean up test file."""
+        remove_test_file(self.path)
+
+    def test_roundtrip_write_read(self):
+        """Test writing and reading HedValueVector to/from NWB file."""
+        # Create test data
+        values = HedValueVector(
+            name="test_data",
+            description="Test value vector for roundtrip",
+            data=["red", "green", "blue"],
+            hed="Experimental-stimulus, Parameter-value/#"
+        )
+        
+        # Create table with HedValueVector
+        table = DynamicTable(
+            name="value_table",
+            description="Table containing HedValueVector",
+            columns=[values]
+        )
+        
+        # Add to NWB file
+        self.nwbfile.add_analysis(table)
+        
+        # Write to file
+        with NWBHDF5IO(self.path, mode="w") as io:
+            io.write(self.nwbfile)
+        
+        # Read from file
+        with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
+            read_nwbfile = io.read()
+            read_table = read_nwbfile.analysis["value_table"]
+            read_values = read_table["test_data"]
+            
+            # Verify data integrity
+            self.assertIsInstance(read_values, HedValueVector)
+            self.assertEqual(read_values.name, "test_data")
+            self.assertEqual(list(read_values.data), ["red", "green", "blue"])
+            self.assertEqual(read_values.hed, "Experimental-stimulus, Parameter-value/#")

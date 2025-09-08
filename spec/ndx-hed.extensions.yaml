@@ -4,6 +4,14 @@ datasets:
   dtype: text
   doc: An extension of VectorData for Hierarchical Event Descriptor (HED) tags. 
     Always has the name HED
+- neurodata_type_def: HedValueVector
+  neurodata_type_inc: VectorData
+  doc: An extension of VectorData for Hierarchical Event Descriptor (HED) tags. 
+    Always has the name HED
+  attributes:
+  - name: hed
+    dtype: text
+    doc: 'The HED annotation applicable to the column (expects #).'
 groups:
 - neurodata_type_def: HedLabMetaData
   neurodata_type_inc: LabMetaData

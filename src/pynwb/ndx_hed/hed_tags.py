@@ -49,3 +49,24 @@ class HedTags(VectorData):
 
     # def get_hed_schema(self):
     #     return self._hed_schema
+
+@register_class('HedValueVector', 'ndx-hed')
+class HedValueVector(VectorData):
+    """
+    Column storing values and a single HED annotation that applies to all values in the column. A HED string is a comma-separated,
+    and possibly parenthesized list of HED tags selected from a valid HED vocabulary as specified by the
+    NWBFile field HedVersion.
+
+    """
+
+    __nwbfields__ = ('hed',)
+
+    @docval(
+        *get_docval(VectorData.__init__, 'name', 'description', 'data'),
+        {"name": "hed", "type": str, "doc": "HED tags for all values in the column"},
+    )
+    def __init__(self, **kwargs):
+        hed_annotation = kwargs.pop("hed", None)
+        super().__init__(**kwargs)
+        self.hed = hed_annotation
+
