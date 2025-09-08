@@ -334,7 +334,6 @@ class TestGetEventsTable(unittest.TestCase):
 
     def test_get_events_table_basic(self):
         """Test get_events_table with basic data."""
-        print("to here")
         result = get_events_table(
             name="test_events",
             description="Test events table",
