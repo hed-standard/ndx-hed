@@ -2,13 +2,9 @@ import os
 import json
 import pandas as pd
 import numpy as np
-from pynwb import NWBHDF5IO, NWBFile
-from pynwb.core import DynamicTable, VectorData
+from pynwb.core import VectorData
 from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
 from ndx_hed import HedTags, HedValueVector
-from datetime import datetime
-from hed.models.sidecar import Sidecar
-from hed.models.column_metadata import ColumnMetadata, ColumnType
 
 
 def extract_meanings(sidecar_data: dict) -> dict:
@@ -203,17 +199,17 @@ if __name__ == '__main__':
     events_table = EventsTable(name="my_events", description="Event data")
 
     # If meanings is a dictionary attribute
-    if hasattr(events_table, 'meanings_tables'):
-        # Add a new MeaningsTable entry
-        print(events_table.meanings_tables)
-    else:
-        print("nope")
+    # if hasattr(events_table, 'meanings_tables'):
+    #     # Add a new MeaningsTable entry
+    #     print(events_table.meanings_tables)
+    # else:
+    #     print("nope")
     df = pd.read_csv(tsv_path, sep='\t')
     events = get_events_table(name="events", description="Event data", df=df, meanings=meanings)
-    print(events)
+    # print(events)
 
     # Convert back to BIDS format
     df_out, json_out = get_bids_events(events)
-    print(df_out)
-    print(json_out)
+    # print(df_out)
+    # print(json_out)
     

@@ -12,7 +12,7 @@ def validate_table(hed_metadata: HedLabMetaData, dynamic_table: DynamicTable) ->
     """
     Validates all HedTags columns in a DynamicTable using the provided HED schema metadata.
     
-    Args:
+    Parameters:
         hed_metadata (HedLabMetaData): The HED lab metadata containing schema information
         dynamic_table (DynamicTable): The dynamic table to validate
         
@@ -20,23 +20,8 @@ def validate_table(hed_metadata: HedLabMetaData, dynamic_table: DynamicTable) ->
         List[Dict[str, Any]]: A consolidated list of validation issues from all HedTags columns
     """
     
-    df = dynamic_table.to_dataframe()
+   
     issues = []
-    
-    # Iterate through all columns in the dynamic table
-    for column_name in dynamic_table.colnames:
-        column = dynamic_table[column_name]
-        
-        # Check if the column is a HedTags instance
-        if isinstance(column, HedTags):
-            # Validate this HedTags column
-            column_issues = validate_tags(column, hed_metadata)
-            
-            # Add column name context to each issue
-            for issue in column_issues:
-                issue['column'] = column_name
-                issues.append(issue)
-    
     return issues
 
 

@@ -71,7 +71,8 @@ class TestHedTagsConstructor(TestCase):
     def test_dynamic_table_bad_hedName(self):
         my_table = DynamicTable(name='bands', description='band info1')
         with self.assertRaises(ValueError) as cm:
-            my_table.add_column(name="Blech", description="Another HedTags column", col_cls=HedTags, data=["White,Black"])
+            my_table.add_column(name="Blech", description="Another HedTags column", 
+                                col_cls=HedTags, data=["White,Black"])
         self.assertIn("The 'name' for HedTags must be 'HED'", str(cm.exception))
 
     def test_dynamic_table_multiple_columns(self):
@@ -98,7 +99,8 @@ class TestHedTagsConstructor(TestCase):
         self.assertEqual(nwbfile.trials["HED"].data[1], "Incorrect-action")
 
         with self.assertRaises(ValueError) as cm:
-            nwbfile.add_trial_column(name="Blech", description="HED annotations", col_cls=HedTags, data=["Red", "Blue"])
+            nwbfile.add_trial_column(name="Blech", description="HED annotations", 
+                                     col_cls=HedTags, data=["Red", "Blue"])
         self.assertIn("The 'name' for HedTags must be 'HED'", str(cm.exception))
 
 
@@ -225,12 +227,9 @@ class TestHedValueVectorConstructor(TestCase):
     def test_constructor_no_hed(self):
         """Test creating HedValueVector without HED annotation."""
         with self.assertRaises(TypeError) as cm:
-            values = HedValueVector( name="no_hed_values",
-                description="Values without HED",
-                data=[1, 2, 3]
-            )
+            HedValueVector(name="no_hed_values", description="Values without HED", data=[1, 2, 3])
         self.assertIn("missing argument", str(cm.exception))
-          
+
     def test_constructor_string_data(self):
         """Test HedValueVector with string data."""
         values = HedValueVector(

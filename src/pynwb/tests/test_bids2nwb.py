@@ -5,11 +5,10 @@ import unittest
 import os
 import json
 import pandas as pd
-import numpy as np
 from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
 from ndx_hed import HedTags, HedValueVector
 from pynwb.core import VectorData
-from src.pynwb.utils.bids2nwb import extract_meanings, get_categorical_meanings, get_events_table, get_bids_events
+from pynwb.utils.bids2nwb import extract_meanings, get_categorical_meanings, get_events_table, get_bids_events
 
 
 class TestExtractMeanings(unittest.TestCase):

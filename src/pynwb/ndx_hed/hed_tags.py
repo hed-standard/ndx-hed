@@ -53,9 +53,9 @@ class HedTags(VectorData):
 @register_class('HedValueVector', 'ndx-hed')
 class HedValueVector(VectorData):
     """
-    Column storing values and a single HED annotation that applies to all values in the column. A HED string is a comma-separated,
-    and possibly parenthesized list of HED tags selected from a valid HED vocabulary as specified by the
-    NWBFile field HedVersion.
+    Column storing values and a single HED annotation that applies to all values in the column. 
+    A HED string is a comma-separated, and possibly parenthesized list of HED tags selected
+    from a valid HED vocabulary as specified by the NWBFile field HedVersion.
 
     """
 
