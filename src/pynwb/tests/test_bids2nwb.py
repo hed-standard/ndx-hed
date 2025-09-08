@@ -8,7 +8,7 @@ import pandas as pd
 from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
 from ndx_hed import HedTags, HedValueVector
 from pynwb.core import VectorData
-from pynwb.utils.bids2nwb import extract_meanings, get_categorical_meanings, get_events_table, get_bids_events
+from ndx_hed.utils.bids2nwb import extract_meanings, get_categorical_meanings, get_events_table, get_bids_events
 
 
 class TestExtractMeanings(unittest.TestCase):

@@ -4,8 +4,8 @@ Table validation functions for HED tags in NWB DynamicTable objects.
 
 from typing import List, Dict, Any
 from pynwb.core import DynamicTable
-from ndx_hed.hed_lab_metadata import HedLabMetaData
-from ndx_hed.hed_tags import HedTags
+from ..hed_lab_metadata import HedLabMetaData
+from ..hed_tags import HedTags
 
 
 def validate_table(hed_metadata: HedLabMetaData, dynamic_table: DynamicTable) -> List[Dict[str, Any]]:

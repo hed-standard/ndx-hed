@@ -190,7 +190,7 @@ if __name__ == '__main__':
     
     # Construct paths to the data files
     current_dir = os.path.dirname(__file__)
-    data_dir = os.path.join(current_dir, "..", "tests", "data")
+    data_dir = os.path.join(current_dir, "..", "..", "tests", "data")
     tsv_path = os.path.realpath(os.path.join(data_dir, tsv_file))
     json_path = os.path.realpath(os.path.join(data_dir, json_file))
     json_data = json.load(open(json_path, 'r'))
