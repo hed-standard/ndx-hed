@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from pynwb.core import VectorData
 from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
-from ndx_hed import HedTags, HedValueVector
+from ndx_hed import HedTags, HedValueVector, HedLabMetaData
 
 
 def extract_meanings(sidecar_data: dict) -> dict:
@@ -139,6 +139,7 @@ def get_bids_events(events_table: 'EventsTable') -> tuple:
             
         elif isinstance(column, DurationVectorData):
             # Duration column - no special HED metadata typically
+            # TODO: Might need to extend this to include a HED field if needed.
             pass
             
         elif isinstance(column, CategoricalVectorData):
@@ -165,14 +166,11 @@ def get_bids_events(events_table: 'EventsTable') -> tuple:
                 if hed_dict:
                     column_info['HED'] = hed_dict
                     
-        elif isinstance(column, HedValueVector):
-            # Extract HED annotation from HedValueVector
-            if hasattr(column, 'hed') and column.hed:
+        elif isinstance(column, HedValueVector) and column.hed != '' and column.hed != 'n/a':
                 column_info['HED'] = column.hed
                 
         elif isinstance(column, HedTags):
-            # HED column - no additional metadata needed in JSON
-            # The HED tags are stored as data in the column itself
+            # The HED tags are stored as data in the column itself - no additional metadata
             pass
             
         # Add column info to JSON if it has any metadata
@@ -206,10 +204,14 @@ if __name__ == '__main__':
     #     print("nope")
     df = pd.read_csv(tsv_path, sep='\t')
     events = get_events_table(name="events", description="Event data", df=df, meanings=meanings)
-    # print(events)
+    
 
     # Convert back to BIDS format
     df_out, json_out = get_bids_events(events)
     # print(df_out)
     # print(json_out)
-    
+
+    lab_metadata = HedLabMetaData(
+        name="hed_schema",
+        hed_schema_version="8.3.0"
+    )
