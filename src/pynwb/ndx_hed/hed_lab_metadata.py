@@ -1,9 +1,6 @@
 """ The HED Lab Metadata class for storing HED (Hierarchical Event Descriptors) information."""
-from hdmf.common import VectorData
-from hdmf.utils import docval, getargs, get_docval, popargs
-from hed.errors import get_printable_issue_string
+from hdmf.utils import docval, popargs
 from hed.schema import load_schema_version
-from hed.models import HedString
 from pynwb import register_class
 from pynwb.file import LabMetaData
 
@@ -19,7 +16,8 @@ class HedLabMetaData(LabMetaData):
 
     @docval(
             {'name': 'hed_schema_version', 'type': 'str', 'doc': 'The version of HED used by this data.'},
-            {'name': 'name', 'type': 'str', 'doc': 'The name of the hed lab metadata (must be hed_schema).', 'default': 'hed_schema'},
+            {'name': 'name', 'type': 'str', 'doc': 'The name of the hed lab metadata (must be hed_schema).',
+              'default': 'hed_schema'},
     )
     def __init__(self, **kwargs):
         hed_schema_version = popargs('hed_schema_version', kwargs)

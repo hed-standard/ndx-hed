@@ -19,4 +19,5 @@ load_namespaces(ndx_hed_specpath)
 del load_namespaces, get_class
 
 from .hed_tags import HedTags as HedTags
-from .hed_lab_metadata import HedLabMetaData 
+from .hed_tags import HedValueVector as HedValueVector
+from .hed_lab_metadata import HedLabMetaData as HedLabMetaData

@@ -28,19 +28,23 @@ def main():
     ns_builder.include_type('VectorData', namespace='core')
     ns_builder.include_type('LabMetaData', namespace='core')
 
+
     hed_tags = NWBDatasetSpec(
         neurodata_type_def="HedTags",
         neurodata_type_inc="VectorData",
-        doc=("An extension of VectorData for Hierarchical Event Descriptor (HED) tags. If HED tags are used, "
-             "the HED schema version must be specified in the NWB file using the HedMetadata type."),
-        dtype="text",
+        doc='An extension of VectorData for Hierarchical Event Descriptor (HED) tags. Always has the name HED',
+        dtype="text"
+    )
+
+    hed_value_vector = NWBDatasetSpec(
+        neurodata_type_def="HedValueVector",
+        neurodata_type_inc="VectorData",
+        doc='An extension of VectorData for Hierarchical Event Descriptor (HED) tags. Always has the name HED',
         attributes=[
             NWBAttributeSpec(
-                name="hed_version",
-                doc=(
-                    "The version of the HED schema used to validate the HED tags, e.g., '8.4.0'. (Required). "
-                ),
-                dtype='text',
+                name="hed",
+                dtype="text",
+                doc="The HED annotation applicable to the column (expects #).",
                 required=True
             )
         ]
@@ -63,7 +67,7 @@ def main():
     )
 
     # Add all of new data types to this list
-    new_data_types = [hed_lab_metadata, hed_tags]
+    new_data_types = [hed_lab_metadata, hed_tags, hed_value_vector]
 
     # export the spec to yaml files in the spec folder
     output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'spec'))
