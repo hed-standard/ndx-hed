@@ -1,5 +1,6 @@
 """Unit and integration tests for ndx-hed."""
-import pandas as pd 
+
+import pandas as pd
 from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
 from pynwb.core import DynamicTable, VectorData
@@ -39,7 +40,7 @@ class TestHedTagsConstructor(TestCase):
         self.assertIn("incorrect type", str(cm.exception))
 
     def test_add_row(self):
-        """Testing adding a row to the HedTags. """
+        """Testing adding a row to the HedTags."""
         tags = HedTags(data=["Correct-action", "Incorrect-action"])
         self.assertEqual(len(tags.data), 2)
         tags.add_row(val="Correct-action")
@@ -52,43 +53,44 @@ class TestHedTagsConstructor(TestCase):
         self.assertIn("incorrect type", str(cm.exception))
 
     def test_get(self):
-        """Testing getting slices. """
+        """Testing getting slices."""
         tags = HedTags(data=["Correct-action", "Incorrect-action"])
         self.assertEqual(tags.get(0), "Correct-action")
-        self.assertEqual(tags.get([0, 1]), ['Correct-action', 'Incorrect-action'])
+        self.assertEqual(tags.get([0, 1]), ["Correct-action", "Incorrect-action"])
 
     def test_temp(self):
-        tags = HedTags( data=["Correct-action", "Incorrect-action"])
+        tags = HedTags(data=["Correct-action", "Incorrect-action"])
         tags.add_row("Sensory-event, Visual-presentation")
 
     def test_dynamic_table(self):
         """Add a HED column to a DynamicTable."""
-        my_table = DynamicTable(name='bands', description='band info0', columns=[HedTags(data=[])])
+        my_table = DynamicTable(name="bands", description="band info0", columns=[HedTags(data=[])])
         my_table.add_row(data={"HED": "Red,Green"})
         self.assertEqual(my_table["HED"].data[0], "Red,Green")
         self.assertIsInstance(my_table["HED"], HedTags)
 
     def test_dynamic_table_bad_hedName(self):
-        my_table = DynamicTable(name='bands', description='band info1')
+        my_table = DynamicTable(name="bands", description="band info1")
         with self.assertRaises(ValueError) as cm:
-            my_table.add_column(name="Blech", description="Another HedTags column", 
-                                col_cls=HedTags, data=["White,Black"])
+            my_table.add_column(
+                name="Blech", description="Another HedTags column", col_cls=HedTags, data=["White,Black"]
+            )
         self.assertIn("The 'name' for HedTags must be 'HED'", str(cm.exception))
 
     def test_dynamic_table_multiple_columns(self):
-        color_nums = VectorData(name="color_code", description="Integers representing colors", data=[1,2,3])
+        color_nums = VectorData(name="color_code", description="Integers representing colors", data=[1, 2, 3])
         color_tags = HedTags(data=["Red", "Green", "Blue"])
-        color_table = DynamicTable(name="colors",
-            description="Colors for the experiment",
-            columns=[color_nums, color_tags])
+        color_table = DynamicTable(
+            name="colors", description="Colors for the experiment", columns=[color_nums, color_tags]
+        )
         self.assertEqual(color_table[0, "HED"], "Red")
         my_list = color_table[0]
         self.assertIsInstance(my_list, pd.DataFrame)
 
     def test_add_to_trials_table(self):
-        """ Test adding HED column and data to a trials table."""
+        """Test adding HED column and data to a trials table."""
         nwbfile = mock_NWBFile()
-        nwbfile.add_trial_column(name="HED",col_cls=HedTags, data=[], description="temp")
+        nwbfile.add_trial_column(name="HED", col_cls=HedTags, data=[], description="temp")
         nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
         self.assertIsInstance(nwbfile.trials["HED"], HedTags)
@@ -99,10 +101,8 @@ class TestHedTagsConstructor(TestCase):
         self.assertEqual(nwbfile.trials["HED"].data[1], "Incorrect-action")
 
         with self.assertRaises(ValueError) as cm:
-            nwbfile.add_trial_column(name="Blech", description="HED annotations", 
-                                     col_cls=HedTags, data=["Red", "Blue"])
+            nwbfile.add_trial_column(name="Blech", description="HED annotations", col_cls=HedTags, data=["Red", "Blue"])
         self.assertIn("The 'name' for HedTags must be 'HED'", str(cm.exception))
-
 
 
 class TestHedTagsSimpleRoundtrip(TestCase):
@@ -111,8 +111,7 @@ class TestHedTagsSimpleRoundtrip(TestCase):
     def setUp(self):
         self.path = "test.nwb"
         nwb_mock = mock_NWBFile()
-        nwb_mock.add_trial_column(name="HED",  description="HED annotations for each trial",
-                                  col_cls=HedTags, data=[])
+        nwb_mock.add_trial_column(name="HED", description="HED annotations for each trial", col_cls=HedTags, data=[])
         nwb_mock.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         nwb_mock.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
         self.nwb_mock = nwb_mock
@@ -121,7 +120,7 @@ class TestHedTagsSimpleRoundtrip(TestCase):
         remove_test_file(self.path)
 
     def test_roundtrip(self):
-        """  Create a HedMetadata, write it to mock file, read file, and test matches the original HedNWBFile."""
+        """Create a HedMetadata, write it to mock file, read file, and test matches the original HedNWBFile."""
 
         with NWBHDF5IO(self.path, mode="w") as io:
             io.write(self.nwb_mock)
@@ -141,31 +140,34 @@ class TestHedTagsNWBFileRoundtrip(TestCase):
         self.path = "test.nwb"
         self.start_time = datetime(1970, 1, 1, 12, tzinfo=tzutc())
         self.ref_time = datetime(1979, 1, 1, 0, tzinfo=tzutc())
-        self.filename = 'test_nwbfileio.h5'
-        self.nwbfile = NWBFile(session_description='a test NWB File',
-                               identifier='TEST123',
-                               session_start_time=self.start_time,
-                               timestamps_reference_time=self.ref_time,
-                               file_create_date=datetime.now(tzlocal()),
-                               experimenter='test experimenter',
-                               stimulus_notes='test stimulus notes',
-                               data_collection='test data collection notes',
-                               experiment_description='test experiment description',
-                               institution='nomad',
-                               lab='nolab',
-                               notes='nonotes',
-                               pharmacology='nopharmacology',
-                               protocol='noprotocol',
-                               related_publications='nopubs',
-                               session_id='007',
-                               slices='noslices',
-                               source_script='nosources',
-                               surgery='nosurgery',
-                               virus='novirus',
-                               source_script_file_name='nofilename')
+        self.filename = "test_nwbfileio.h5"
+        self.nwbfile = NWBFile(
+            session_description="a test NWB File",
+            identifier="TEST123",
+            session_start_time=self.start_time,
+            timestamps_reference_time=self.ref_time,
+            file_create_date=datetime.now(tzlocal()),
+            experimenter="test experimenter",
+            stimulus_notes="test stimulus notes",
+            data_collection="test data collection notes",
+            experiment_description="test experiment description",
+            institution="nomad",
+            lab="nolab",
+            notes="nonotes",
+            pharmacology="nopharmacology",
+            protocol="noprotocol",
+            related_publications="nopubs",
+            session_id="007",
+            slices="noslices",
+            source_script="nosources",
+            surgery="nosurgery",
+            virus="novirus",
+            source_script_file_name="nofilename",
+        )
 
-        self.nwbfile.add_trial_column(name="HED", description="HED annotations for each trial", col_cls=HedTags, 
-                                      data=[])
+        self.nwbfile.add_trial_column(
+            name="HED", description="HED annotations for each trial", col_cls=HedTags, data=[]
+        )
         self.nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         self.nwbfile.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
 
@@ -204,7 +206,7 @@ class TestHedValueVectorConstructor(TestCase):
             name="test_values",
             description="Test value vector",
             data=[1, 2, 3, 4],
-            hed="Sensory-event, Visual-presentation"
+            hed="Sensory-event, Visual-presentation",
         )
         self.assertEqual(values.name, "test_values")
         self.assertEqual(values.description, "Test value vector")
@@ -213,12 +215,7 @@ class TestHedValueVectorConstructor(TestCase):
 
     def test_constructor_empty_data(self):
         """Test setting HED value vector with empty data."""
-        values = HedValueVector(
-            name="empty_values",
-            description="Empty value vector",
-            data=[],
-            hed="Agent-action"
-        )
+        values = HedValueVector(name="empty_values", description="Empty value vector", data=[], hed="Agent-action")
         self.assertEqual(values.name, "empty_values")
         self.assertEqual(values.description, "Empty value vector")
         self.assertFalse(values.data)
@@ -236,7 +233,7 @@ class TestHedValueVectorConstructor(TestCase):
             name="string_values",
             description="String value vector",
             data=["red", "green", "blue"],
-            hed="Sensory-event, Visual-presentation, Color"
+            hed="Sensory-event, Visual-presentation, Color",
         )
         self.assertEqual(values.data, ["red", "green", "blue"])
         self.assertEqual(values.hed, "Sensory-event, Visual-presentation, Color")
@@ -247,7 +244,7 @@ class TestHedValueVectorConstructor(TestCase):
             name="numeric_values",
             description="Numeric value vector",
             data=[1.5, 2.7, 3.9],
-            hed="Measurement, Parameter-value/#"
+            hed="Measurement, Parameter-value/#",
         )
         self.assertEqual(values.data, [1.5, 2.7, 3.9])
         self.assertEqual(values.hed, "Measurement, Parameter-value/#")
@@ -258,15 +255,11 @@ class TestHedValueVectorConstructor(TestCase):
             name="intensity",
             description="Stimulus intensity values",
             data=[10, 20, 30],
-            hed="Sensory-event, Parameter-value/#"
+            hed="Sensory-event, Parameter-value/#",
         )
-        
-        table = DynamicTable(
-            name="stimulus_table",
-            description="Table with stimulus data",
-            columns=[values]
-        )
-        
+
+        table = DynamicTable(name="stimulus_table", description="Table with stimulus data", columns=[values])
+
         self.assertEqual(len(table.columns), 1)
         self.assertIsInstance(table["intensity"], HedValueVector)
         self.assertEqual(table["intensity"].hed, "Sensory-event, Parameter-value/#")
@@ -275,34 +268,25 @@ class TestHedValueVectorConstructor(TestCase):
         """Test HedValueVector with different data types."""
         # Test boolean data
         bool_values = HedValueVector(
-            name="bool_data",
-            description="Boolean values",
-            data=[True, False, True],
-            hed="Logical-value"
+            name="bool_data", description="Boolean values", data=[True, False, True], hed="Logical-value"
         )
         self.assertEqual(bool_values.data, [True, False, True])
-        
+
         # Test mixed numeric data (should work with VectorData)
         mixed_values = HedValueVector(
-            name="mixed_data",
-            description="Mixed numeric values", 
-            data=[1, 2.5, 3, 4.7],
-            hed="Measurement-value/#"
+            name="mixed_data", description="Mixed numeric values", data=[1, 2.5, 3, 4.7], hed="Measurement-value/#"
         )
         self.assertEqual(mixed_values.data, [1, 2.5, 3, 4.7])
 
     def test_hed_attribute_access(self):
         """Test accessing and modifying the hed attribute."""
         values = HedValueVector(
-            name="test_access",
-            description="Test attribute access",
-            data=[1, 2, 3],
-            hed="Initial-tag"
+            name="test_access", description="Test attribute access", data=[1, 2, 3], hed="Initial-tag"
         )
-        
+
         # Test initial value
         self.assertEqual(values.hed, "Initial-tag")
-        
+
         # Test modification (if allowed)
         values.hed = "Modified-tag, New-annotation"
         self.assertEqual(values.hed, "Modified-tag, New-annotation")
@@ -313,14 +297,14 @@ class TestHedValueVectorRoundtrip(TestCase):
 
     def setUp(self):
         """Set up test NWBFile."""
-       
+
         self.path = "test.nwb"
         self.nwbfile = NWBFile(
             session_description="Test session for HedValueVector",
             identifier="test_hedvaluevector",
-            session_start_time=datetime.now(tzlocal())
+            session_start_time=datetime.now(tzlocal()),
         )
-        
+
     def tearDown(self):
         """Clean up test file."""
         remove_test_file(self.path)
@@ -332,29 +316,25 @@ class TestHedValueVectorRoundtrip(TestCase):
             name="test_data",
             description="Test value vector for roundtrip",
             data=["red", "green", "blue"],
-            hed="Experimental-stimulus, Parameter-value/#"
+            hed="Experimental-stimulus, Parameter-value/#",
         )
-        
+
         # Create table with HedValueVector
-        table = DynamicTable(
-            name="value_table",
-            description="Table containing HedValueVector",
-            columns=[values]
-        )
-        
+        table = DynamicTable(name="value_table", description="Table containing HedValueVector", columns=[values])
+
         # Add to NWB file
         self.nwbfile.add_analysis(table)
-        
+
         # Write to file
         with NWBHDF5IO(self.path, mode="w") as io:
             io.write(self.nwbfile)
-        
+
         # Read from file
         with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
             read_nwbfile = io.read()
             read_table = read_nwbfile.analysis["value_table"]
             read_values = read_table["test_data"]
-            
+
             # Verify data integrity
             self.assertIsInstance(read_values, HedValueVector)
             self.assertEqual(read_values.name, "test_data")

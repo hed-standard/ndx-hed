@@ -2,6 +2,7 @@
 
 import unittest
 
+
 class TestSimple(unittest.TestCase):
     def test_simple(self):
         """A simple test that should be discovered by VSCode."""
@@ -11,5 +12,6 @@ class TestSimple(unittest.TestCase):
         """Another simple test."""
         self.assertTrue(True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
