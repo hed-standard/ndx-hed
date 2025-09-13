@@ -220,4 +220,4 @@ if __name__ == "__main__":
     # print(df_out)
     # print(json_out)
 
-    lab_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.3.0")
+    lab_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
