@@ -1,11 +1,32 @@
 import os
 import json
+import io
 import pandas as pd
 import numpy as np
+from typing import Union
+from hed.models import Sidecar, DefinitionDict
+from hed.schema import load_schema_version, HedSchema, HedSchemaGroup
 from pynwb.core import VectorData
 from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
-from ndx_hed import HedTags, HedValueVector, HedLabMetaData
+from ndx_hed import HedTags, HedValueVector
 
+def extract_definitions(sidecar_data: dict, hed_schema: Union[HedSchema, HedSchemaGroup]) -> tuple:
+    """
+    Extracts definitions from a HED sidecar JSON data using the provided HED schema.
+
+    Args:
+        sidecar_data (dict): A dictionary representing the loaded HED Sidecar JSON data.
+        hed_schema (HedSchema or HedSchemaGroup): The HED schema object for validation and processing.
+
+    Returns:
+        tuple: A tuple containing:
+            - DefinitionDict: A dictionary of definitions extracted from the sidecar.
+            - list: A list of validation issues found during extraction.
+    """
+    sidecar = Sidecar(io.StringIO(json.dumps(sidecar_data)))
+    definitions = sidecar.get_def_dict(hed_schema)
+    issues = sidecar._extract_definition_issues
+    return definitions, issues
 
 def extract_meanings(sidecar_data: dict) -> dict:
     """
@@ -21,6 +42,7 @@ def extract_meanings(sidecar_data: dict) -> dict:
     """
 
     meanings = {"categorical": {}, "value": {}}
+
     for column_name, column_info in sidecar_data.items():
         if "Levels" in column_info or ("HED" in column_info and isinstance(column_info.get("HED", None), dict)):
             meanings["categorical"][column_name] = get_categorical_meanings(column_name, column_info)
@@ -112,12 +134,14 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
     return events_tab
 
 
-def get_bids_events(events_table: "EventsTable") -> tuple:
+def get_bids_events(events_table: EventsTable, definition_dict: DefinitionDict = None) -> tuple:
     """
     Converts an EventsTable back to BIDS format (DataFrame and JSON sidecar).
 
     Parameters:
         events_table (EventsTable): The EventsTable to convert.
+        definition_dict (DefinitionDict, optional): A dictionary of HED definitions to include in the sidecar.
+
 
     Returns:
         tuple: A tuple containing:
@@ -191,20 +215,42 @@ def get_bids_events(events_table: "EventsTable") -> tuple:
 
 
 if __name__ == "__main__":
-    # Test data files
-    tsv_file = "sub-001_ses-01_task-WorkingMemory_run-1_events.tsv"
-    json_file = "task-WorkingMemory_events.json"
-    # json_file = 'task-FacePerception_events.json'
-
-    # Construct paths to the data files
+    # Get a HED schema
+    schema = load_schema_version("8.4.0")
+    # Test definitions
     current_dir = os.path.dirname(__file__)
     data_dir = os.path.join(current_dir, "..", "..", "tests", "data")
-    tsv_path = os.path.realpath(os.path.join(data_dir, tsv_file))
-    json_path = os.path.realpath(os.path.join(data_dir, json_file))
-    json_data = json.load(open(json_path, "r"))
-    meanings = extract_meanings(json_data)
+    json_file1 = 'task-FacePerception_events.json'
+    json_path1 = os.path.realpath(os.path.join(data_dir, json_file1))
+    sidecar = Sidecar(json_path1)
 
-    events_table = EventsTable(name="my_events", description="Event data")
+    def_dict = sidecar.def_dict
+    print(def_dict)
+    definition_dict = sidecar.get_def_dict()
+    columns = sidecar.all_hed_columns
+    column_data = sidecar.column_data
+    print(columns)
+    print(column_data)
+    for col in columns:
+        print(f"Column: {col}, Data: {column_data.get(col, None)}")
+    for col_name, column in column_data.items():
+        print(f"Column: {col_name}, Data: {column}")
+
+    # # Test data files
+    # tsv_file = "sub-001_ses-01_task-WorkingMemory_run-1_events.tsv"
+    # json_file = "task-WorkingMemory_events.json"
+    # json_file1 = 'task-FacePerception_events.json'
+
+    # # Construct paths to the data files
+    # current_dir = os.path.dirname(__file__)
+    # data_dir = os.path.join(current_dir, "..", "..", "tests", "data")
+    # tsv_path = os.path.realpath(os.path.join(data_dir, tsv_file))
+    # json_path = os.path.realpath(os.path.join(data_dir, json_file))
+ 
+    # json_data = json.load(open(json_path, "r"))
+    # meanings = extract_meanings(json_data)
+
+    # events_table = EventsTable(name="my_events", description="Event data")
 
     # If meanings is a dictionary attribute
     # if hasattr(events_table, 'meanings_tables'):
@@ -212,12 +258,12 @@ if __name__ == "__main__":
     #     print(events_table.meanings_tables)
     # else:
     #     print("nope")
-    df = pd.read_csv(tsv_path, sep="\t")
-    events = get_events_table(name="events", description="Event data", df=df, meanings=meanings)
+    # df = pd.read_csv(tsv_path, sep="\t")
+    # events = get_events_table(name="events", description="Event data", df=df, meanings=meanings)
 
-    # Convert back to BIDS format
-    df_out, json_out = get_bids_events(events)
+    # # Convert back to BIDS format
+    # df_out, json_out = get_bids_events(events)
     # print(df_out)
     # print(json_out)
 
-    lab_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+    #lab_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
