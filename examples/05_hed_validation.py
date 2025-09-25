@@ -163,17 +163,21 @@ def validate_events_table(validator):
     events_table = EventsTable(name="test_events", description="EventsTable with validation issues")
 
     events_table.add_column(
-        "timestamp", TimestampVectorData(name="timestamp", description="Event timestamps", data=[1.0, 2.0, 3.0])
+        name="HED",
+        description="Event HED annotations",
+        data=[],  # Start empty
+        col_cls=HedTags
     )
-
-    events_table.add_column(
-        "HED",
-        HedTags(
-            name="HED",
-            description="Event HED annotations",
-            data=["Sensory-event", "InvalidEventTag", "Agent-action, Press"],  # Valid  # Invalid  # Valid
-        ),
-    )
+    
+    # Add rows of data
+    events = [
+        {"timestamp": 1.0, "HED": "Sensory-event"},        # Valid
+        {"timestamp": 2.0, "HED": "InvalidEventTag"},       # Invalid
+        {"timestamp": 3.0, "HED": "Agent-action, Press"},   # Valid
+    ]
+    
+    for event in events:
+        events_table.add_row(event)
 
     # Validate EventsTable
     issues = validator.validate_events(events_table)

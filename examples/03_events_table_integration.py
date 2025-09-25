@@ -23,25 +23,32 @@ def create_direct_hed_events():
 
     events_table = EventsTable(name="stimulus_events", description="Stimulus events with direct HED annotations")
 
-    # Add standard event columns
+    # Add duration column first
     events_table.add_column(
-        "timestamp",
-        TimestampVectorData(name="timestamp", description="Event timestamps", data=[1.0, 25.5, 100.0, 200.5]),
-    )
-
-    events_table.add_column(
-        "duration", DurationVectorData(name="duration", description="Event durations", data=[0.5, 3.5, 1.05, 0.5])
+        name="duration", 
+        description="Event durations",
+        data=[],  # Start empty, we'll add rows
+        col_cls=DurationVectorData
     )
 
     # Add HED tags column for event-specific annotations
     events_table.add_column(
-        "HED",
-        HedTags(
-            name="HED",
-            description="HED annotations for each event",
-            data=["Eye-blink-artifact", "Chewing-artifact", "Movement-artifact", "Eye-movement-artifact"],
-        ),
+        name="HED",
+        description="HED annotations for each event",
+        data=[],  # Start empty, we'll add rows
+        col_cls=HedTags
     )
+
+    # Add rows of data
+    events = [
+        {"timestamp": 1.0, "duration": 0.5, "HED": "Eye-blink-artifact"},
+        {"timestamp": 25.5, "duration": 3.5, "HED": "Chewing-artifact"},
+        {"timestamp": 100.0, "duration": 1.05, "HED": "Movement-artifact"},
+        {"timestamp": 200.5, "duration": 0.5, "HED": "Eye-movement-artifact"},
+    ]
+    
+    for event in events:
+        events_table.add_row(event)
 
     print(f"   Created table with {len(events_table)} events")
     return events_table
@@ -53,32 +60,34 @@ def create_value_vector_events():
 
     events_table = EventsTable(name="behavioral_events", description="Events with HedValueVector columns")
 
-    # Add timing columns
-    events_table.add_column(
-        "timestamp", TimestampVectorData(name="timestamp", description="Event timestamps", data=[1.0, 2.5, 4.0, 5.5])
-    )
-
     # Add intensity column with HED value annotation
     events_table.add_column(
-        "intensity",
-        HedValueVector(
-            name="stimulus_intensity",
-            description="Brightness of visual stimulus",
-            data=[0.3, 0.7, 0.5, 0.9],
-            hed="(Luminance, Parameter-value/#)",
-        ),
+        name="intensity",
+        description="Brightness of visual stimulus",
+        data=[],  # Start empty
+        col_cls=HedValueVector,
+        hed="(Luminance, Parameter-value/#)"
     )
 
     # Add reaction time column with HED annotation
     events_table.add_column(
-        "reaction_time",
-        HedValueVector(
-            name="reaction_time",
-            description="Participant response time",
-            data=[0.45, 0.52, 0.38, 0.61],
-            hed="(Behavioral-evidence, Parameter-label/Reaction-time, Time-interval/# s)",
-        ),
+        name="reaction_time",
+        description="Participant response time",
+        data=[],  # Start empty
+        col_cls=HedValueVector,
+        hed="(Behavioral-evidence, Parameter-label/Reaction-time, Time-interval/# s)"
     )
+
+    # Add rows of data
+    events = [
+        {"timestamp": 1.0, "intensity": 0.3, "reaction_time": 0.45},
+        {"timestamp": 2.5, "intensity": 0.7, "reaction_time": 0.52},
+        {"timestamp": 4.0, "intensity": 0.5, "reaction_time": 0.38},
+        {"timestamp": 5.5, "intensity": 0.9, "reaction_time": 0.61},
+    ]
+    
+    for event in events:
+        events_table.add_row(event)
 
     print(f"   Created table with {len(events_table)} events and HedValueVector columns")
     return events_table
@@ -89,11 +98,6 @@ def create_categorical_events():
     print("\n3. Creating EventsTable with categorical columns and MeaningsTable...")
 
     events_table = EventsTable(name="categorized_events", description="Events with categorical data and MeaningsTable")
-
-    # Add timing columns
-    events_table.add_column(
-        "timestamp", TimestampVectorData(name="timestamp", description="Event timestamps", data=[1.0, 2.0, 3.0, 4.0])
-    )
 
     # Create MeaningsTable with HED annotations
     stimulus_meanings = MeaningsTable(
@@ -112,31 +116,35 @@ def create_categorical_events():
 
     # Add HED annotations as a column in the MeaningsTable
     stimulus_meanings.add_column(
-        "HED",
-        HedTags(
-            name="HED",
-            description="HED tags for stimulus categories",
-            data=[
-                "Sensory-event, Visual-presentation, Circle",
-                "Sensory-event, Visual-presentation, Square",
-                "Sensory-event, Visual-presentation, Triangle",
-            ],
-        ),
+        name="HED",
+        description="HED tags for stimulus categories",
+        data=[
+            "Sensory-event, Visual-presentation, Circle",
+            "Sensory-event, Visual-presentation, Square",
+            "Sensory-event, Visual-presentation, Triangle",
+        ],
+        col_cls=HedTags
     )
-
-    # Add the MeaningsTable to the EventsTable
-    events_table.add_meanings_table(stimulus_meanings)
 
     # Add categorical column that references the meanings table
     events_table.add_column(
-        "stimulus_type",
-        CategoricalVectorData(
-            name="stimulus_type",
-            description="Type of visual stimulus presented",
-            data=["circle", "square", "triangle", "circle"],
-            meanings=stimulus_meanings,
-        ),
+        name="stimulus_type",
+        description="Type of visual stimulus presented",
+        data=[],  # Start empty
+        col_cls=CategoricalVectorData,
+        meanings=stimulus_meanings
     )
+
+    # Add rows of data
+    events = [
+        {"timestamp": 1.0, "stimulus_type": "circle"},
+        {"timestamp": 2.0, "stimulus_type": "square"},
+        {"timestamp": 3.0, "stimulus_type": "triangle"},
+        {"timestamp": 4.0, "stimulus_type": "circle"},
+    ]
+    
+    for event in events:
+        events_table.add_row(event)
 
     print(
         f"   Created table with {len(events_table)} events and MeaningsTable with {len(stimulus_meanings)} categories"

@@ -89,7 +89,7 @@ def demonstrate_bids_conversion():
 
     print(f"\n✓ Successfully converted to EventsTable:")
     print(f"  - Number of events: {len(events_table)}")
-    print(f"  - Columns: {list(events_table.columns.keys())}")
+    print(f"  - Columns: {events_table.colnames}")
 
     return events_table
 

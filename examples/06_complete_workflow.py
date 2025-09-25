@@ -20,6 +20,7 @@ from ndx_events import EventsTable, TimestampVectorData, DurationVectorData
 from datetime import datetime
 import tempfile
 import os
+import numpy as np
 
 
 def create_comprehensive_nwb_file():
@@ -76,7 +77,7 @@ def create_comprehensive_nwb_file():
             HedValueVector(
                 name="reaction_time",
                 description="Reaction time in seconds",
-                data=[None, 0.5, None, 0.3, None],
+                data=[np.nan, 0.5, np.nan, 0.3, np.nan],
                 hed="Behavioral-evidence, Reaction-time/# s",
             ),
         ],
@@ -90,40 +91,39 @@ def create_comprehensive_nwb_file():
     )
 
     events_table.add_column(
-        "timestamp",
-        TimestampVectorData(name="timestamp", description="Event onset times", data=[1.0, 2.5, 4.0, 5.5, 7.0, 8.5]),
+        name="duration",
+        description="Event durations",
+        data=[],  # Start empty
+        col_cls=DurationVectorData
     )
 
     events_table.add_column(
-        "duration",
-        DurationVectorData(name="duration", description="Event durations", data=[0.5, 0.3, 0.8, 0.4, 0.6, 0.2]),
+        name="HED",
+        description="Event-specific HED annotations",
+        data=[],  # Start empty
+        col_cls=HedTags
     )
 
     events_table.add_column(
-        "HED",
-        HedTags(
-            name="HED",
-            description="Event-specific HED annotations",
-            data=[
-                "Experimental-trial, (Sensory-event, Visual-presentation)",
-                "Experimental-trial, (Agent-action, Participant-response)",
-                "Experimental-trial, (Sensory-event, Auditory-presentation)",
-                "Experimental-trial, (Agent-action, Participant-response)",
-                "Experimental-trial, Pause",
-                "Experimental-trial, End-session",
-            ],
-        ),
+        name="stimulus_intensity",
+        description="Stimulus intensity values",
+        data=[],  # Start empty
+        col_cls=HedValueVector,
+        hed="Sensory-event, Luminance-attribute/# cd-per-m2"
     )
 
-    events_table.add_column(
-        "stimulus_intensity",
-        HedValueVector(
-            name="stimulus_intensity",
-            description="Stimulus intensity values",
-            data=[0.7, 0.0, 0.9, 0.0, 0.0, 0.0],
-            hed="Sensory-event, Luminance-attribute/# cd-per-m2",
-        ),
-    )
+    # Add rows of event data
+    events = [
+        {"timestamp": 1.0, "duration": 0.5, "HED": "Experimental-trial, (Sensory-event, Visual-presentation)", "stimulus_intensity": 0.7},
+        {"timestamp": 2.5, "duration": 0.3, "HED": "Experimental-trial, (Agent-action, Participant-response)", "stimulus_intensity": 0.0},
+        {"timestamp": 4.0, "duration": 0.8, "HED": "Experimental-trial, (Sensory-event, Auditory-presentation)", "stimulus_intensity": 0.9},
+        {"timestamp": 5.5, "duration": 0.4, "HED": "Experimental-trial, (Agent-action, Participant-response)", "stimulus_intensity": 0.0},
+        {"timestamp": 7.0, "duration": 0.6, "HED": "Experimental-trial, Pause", "stimulus_intensity": 0.0},
+        {"timestamp": 8.5, "duration": 0.2, "HED": "Experimental-trial, End-session", "stimulus_intensity": 0.0},
+    ]
+    
+    for event in events:
+        events_table.add_row(event)
 
     nwbfile.add_acquisition(events_table)
     print(f"   - Added comprehensive events table with {len(events_table)} events")
