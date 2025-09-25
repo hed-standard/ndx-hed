@@ -1,9 +1,10 @@
 """The HED Lab Metadata class for storing HED (Hierarchical Event Descriptors) information."""
 
-from typing import Union, Dict
+from typing import Union
 from hdmf.utils import docval, popargs
+from hed.errors import get_printable_issue_string, ErrorSeverity
 from hed.schema import load_schema_version, HedSchema, HedSchemaGroup
-from hed.models import DefinitionDict, DefinitionEntry
+from hed.models import DefinitionDict
 from pynwb import register_class
 from pynwb.file import LabMetaData
 
@@ -41,7 +42,7 @@ class HedLabMetaData(LabMetaData):
         self.hed_schema_version = hed_schema_version
         self._init_internal(definitions)
 
-    @property 
+    @property
     def definitions(self):
         """Get the definitions as a string."""
         if len(self._definition_dict.defs) == 0:
@@ -51,14 +52,16 @@ class HedLabMetaData(LabMetaData):
     def _init_internal(self, original_definitions: Union[str, list, dict, None]):
         """
         Load the HED schema and initialize the internal DefinitionDict.
-        
+
         This internal method is called during initialization to set up the
         HED schema object and create a DefinitionDict from any provided definitions.
-        
+
         Parameters:
-            original_definitions (str or list or Dict[str, DefinitionEntry] or None): A string containing one or more HED definitions,
-                                        a list of such strings, a dict of DefinitionEntry objects, or None.
-                                        If None or empty, an empty DefinitionDict is created.
+            original_definitions (str or list or Dict[str, DefinitionEntry] or None): 
+                A string containing one or more HED definitions,
+                a list of such strings, a dict of DefinitionEntry objects, or None.
+                If None or empty, an empty DefinitionDict is created.
+                
         Raises:
             ValueError: If the HED schema version cannot be loaded or if the
                        definitions cannot be parsed into a valid DefinitionDict.
@@ -67,16 +70,21 @@ class HedLabMetaData(LabMetaData):
             self._hed_schema = load_schema_version(self.hed_schema_version)
         except Exception as e:
             raise ValueError(f"Failed to load HED schema version {self.hed_schema_version}: {e}")
-        
+
         try:
             self._definition_dict = DefinitionDict(original_definitions, self._hed_schema)
+            errors = [issue for issue in self._definition_dict.issues if issue["severity"] < ErrorSeverity.WARNING]
+            if errors:
+                raise ValueError(
+                    f"DefinitionDict has issues: {get_printable_issue_string(self._definition_dict.issues)}"
+                )
         except Exception as e:
             raise ValueError(f"Failed to create DefinitionDict for HedLabMetaData: {e}")
 
     def add_definitions(self, defs: Union[str, list, dict, None]):
         """
         Add new definitions to the existing definition dictionary.
-        
+
         Args:
             defs (str or list or dict or None): A string containing one or more HED definitions,
                                                 a list of such strings, a dict of DefinitionEntry objects, or None.
@@ -89,7 +97,7 @@ class HedLabMetaData(LabMetaData):
     def get_definition_dict(self) -> DefinitionDict:
         """
         Get the internal DefinitionDict object.
-        
+
         Returns:
             DefinitionDict: The internal DefinitionDict containing all definitions.
         """
@@ -98,7 +106,7 @@ class HedLabMetaData(LabMetaData):
     def get_hed_schema_version(self):
         """
         Get the HED schema version string.
-        
+
         Returns:
             str: The HED schema version used by this metadata object.
         """
@@ -107,7 +115,7 @@ class HedLabMetaData(LabMetaData):
     def get_hed_schema(self) -> Union[HedSchema, HedSchemaGroup]:
         """
         Get the loaded HED schema object.
-        
+
         Returns:
             HedSchema or HedSchemaGroup: The loaded HED schema object.
         """
@@ -116,13 +124,13 @@ class HedLabMetaData(LabMetaData):
     def extract_definitions(self) -> str:
         """
         Extract definitions as string (for serialization).
-        
+
         Returns:
             str: A string representation of the definitions.
         """
         def_list = []
         for def_name, def_entry in self._definition_dict.items():
-            takes_value = '/#' if def_entry.takes_value else ''
+            takes_value = "/#" if def_entry.takes_value else ""
             def_str = f"(Definition/{def_name}{takes_value},{def_entry.contents})"
             def_list.append(def_str)
-        return ','.join(def_list)
+        return ",".join(def_list)

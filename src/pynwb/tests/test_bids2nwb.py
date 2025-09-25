@@ -6,12 +6,18 @@ import unittest
 import os
 import json
 import pandas as pd
-from hed.schema import HedSchema, HedSchemaGroup, load_schema_version
+from hed.schema import load_schema_version
 from hed.models import DefinitionDict
 from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
 from ndx_hed import HedTags, HedValueVector
 from pynwb.core import VectorData
-from ndx_hed.utils.bids2nwb import extract_meanings, get_categorical_meanings, get_events_table, get_bids_events, extract_definitions
+from ndx_hed.utils.bids2nwb import (
+    extract_meanings,
+    get_categorical_meanings,
+    get_events_table,
+    get_bids_events,
+    extract_definitions,
+)
 
 
 class TestExtractMeanings(unittest.TestCase):
@@ -192,24 +198,26 @@ class TestExtractDefinitions(unittest.TestCase):
             "event_type": {
                 "Levels": {
                     "face_stimulus": "A face stimulus appears on screen",
-                    "house_stimulus": "A house stimulus appears on screen"
+                    "house_stimulus": "A house stimulus appears on screen",
                 },
                 "HED": {
                     "face_stimulus": "Sensory-event, (Visual-presentation, Def/Face-image)",
-                    "house_stimulus": "Sensory-event, (Visual-presentation, Def/House-image)"
-                }
+                    "house_stimulus": "Sensory-event, (Visual-presentation, Def/House-image)",
+                },
             },
             "response_time": {
                 "Description": "Time from stimulus onset to response",
                 "Units": "ms",
-                "HED": "Parameter-value/#"
+                "HED": "Parameter-value/#",
             },
             "definitions": {
                 "HED": {
-                   "defList": "(Definition/Face-image, (Image, Face)), (Definition/House-image, (Image, Building/House)), (Definition/Response-event, (Agent-action, Participant-response))",
-                   "defThreeLevel": "(Definition/Three-level/#, (Item, Parameter-value/#))"
+                    "defList": "(Definition/Face-image, (Image, Face))," + 
+                    "(Definition/House-image, (Image, Building/House))," + 
+                    "(Definition/Response-event, (Agent-action, Participant-response))",
+                    "defThreeLevel": "(Definition/Three-level/#, (Item, Parameter-value/#))",
                 }
-            }
+            },
         }
 
         # Sidecar data without {definitions
@@ -217,12 +225,12 @@ class TestExtractDefinitions(unittest.TestCase):
             "event_type": {
                 "Levels": {
                     "left_click": "Participant pushes the left button",
-                    "right_click": "Participant pushes the right button"
+                    "right_click": "Participant pushes the right button",
                 },
                 "HED": {
                     "left_click": "Agent-action, Participant-response, (Press, (Push-button, (Left-side-of)))",
-                    "right_click": "Agent-action, Participant-response, (Press, (Push-button, (Right-side-of)))"
-                }
+                    "right_click": "Agent-action, Participant-response, (Press, (Push-button, (Right-side-of)))",
+                },
             }
         }
 
@@ -232,13 +240,13 @@ class TestExtractDefinitions(unittest.TestCase):
     def test_extract_definitions_with_definitions(self):
         """Test extract_definitions with sidecar containing definitions."""
         definitions, issues = extract_definitions(self.sample_sidecar_with_definitions, self.hed_schema)
-        
+
         # Check that definitions is a DefinitionDict
         self.assertIsInstance(definitions, DefinitionDict)
-        
+
         # Check that issues is a list
         self.assertIsInstance(issues, list)
-        
+
         # Check specific definitions exist
         def_names = definitions.defs.keys()
         self.assertIn("face-image", def_names)
@@ -249,13 +257,13 @@ class TestExtractDefinitions(unittest.TestCase):
     def test_extract_definitions_without_definitions(self):
         """Test extract_definitions with sidecar without definitions."""
         definitions, issues = extract_definitions(self.sample_sidecar_no_definitions, self.hed_schema)
-        
+
         # Check that definitions is a DefinitionDict
         self.assertIsInstance(definitions, DefinitionDict)
-        
-        # Check that issues is a list  
+
+        # Check that issues is a list
         self.assertIsInstance(issues, list)
-        
+
         # Check that no definitions were extracted
         self.assertEqual(len(definitions), 0)
 
@@ -264,15 +272,15 @@ class TestExtractDefinitions(unittest.TestCase):
         # Create a schema group with library schemas
         library_schema_version = '["score_2.1.0","lang_1.1.0"]'
         hed_schema_group = load_schema_version(library_schema_version)
-        
+
         definitions, issues = extract_definitions(self.sample_sidecar_with_definitions, hed_schema_group)
-        
+
         # Check that definitions is a DefinitionDict
         self.assertIsInstance(definitions, DefinitionDict)
-        
+
         # Check that issues is a list
         self.assertIsInstance(issues, list)
-        
+
         # Check that function works with HedSchemaGroup
         self.assertGreaterEqual(len(definitions), 0)
 
@@ -280,13 +288,13 @@ class TestExtractDefinitions(unittest.TestCase):
         """Test extract_definitions with empty sidecar."""
         empty_sidecar = {}
         definitions, issues = extract_definitions(empty_sidecar, self.hed_schema)
-        
+
         # Check that definitions is a DefinitionDict
         self.assertIsInstance(definitions, DefinitionDict)
-        
+
         # Check that issues is a list
         self.assertIsInstance(issues, list)
-        
+
         # Check that no definitions were extracted
         self.assertEqual(len(definitions), 0)
 

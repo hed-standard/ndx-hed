@@ -15,40 +15,35 @@ from pynwb.core import DynamicTable, VectorData
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from datetime import datetime
 
+
 def main():
     # Create NWB file
     nwbfile = NWBFile(
         session_description="Basic HED classes demonstration",
         identifier="basic_hed_example",
-        session_start_time=datetime.now()
+        session_start_time=datetime.now(),
     )
 
     # 1. HedLabMetaData - Required for HED schema specification
     print("1. Creating HED Lab Metadata...")
-    hed_metadata = HedLabMetaData(
-        name="hed_schema",  # Must be "hed_schema" if given
-        hed_schema_version="8.3.0"
-    )
+    hed_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.3.0")  # Must be "hed_schema" if given
     nwbfile.add_lab_meta_data(hed_metadata)
     print(f"   Added HED schema version: {hed_metadata.hed_schema_version}")
 
     # 2. HedTags - For row-specific HED annotations
     print("\n2. Creating HedTags column...")
-    hed_tags = HedTags(data=[
-        "Sensory-event, Visual-presentation",
-        "Agent-action, Participant-response",
-        "Experimental-trial"
-    ])
+    hed_tags = HedTags(
+        data=["Sensory-event, Visual-presentation", "Agent-action, Participant-response", "Experimental-trial"]
+    )
 
     # Create a dynamic table with HED annotations
     events_table = DynamicTable(
-        name='events',
-        description='Event data with HED annotations',
+        name="events",
+        description="Event data with HED annotations",
         columns=[
-            VectorData(name="event_type", description="Type of event", 
-                      data=["stimulus", "response", "trial"]),
-            hed_tags  # Column name will automatically be "HED"
-        ]
+            VectorData(name="event_type", description="Type of event", data=["stimulus", "response", "trial"]),
+            hed_tags,  # Column name will automatically be "HED"
+        ],
     )
 
     # Add rows with HED annotations
@@ -62,18 +57,14 @@ def main():
         name="stimulus_intensity",
         description="Intensity of visual stimulus",
         data=[0.5, 0.7, 0.3, 0.9],
-        hed="Sensory-event, Visual-presentation, Luminance-attribute/#"
+        hed="Sensory-event, Visual-presentation, Luminance-attribute/#",
     )
 
     # Create another table with HedValueVector
     stimulus_table = DynamicTable(
         name="stimulus_data",
         description="Stimulus intensity with HED value annotations",
-        columns=[
-            VectorData(name="trial_number", description="Trial number", 
-                      data=[1, 2, 3, 4]),
-            stimulus_column
-        ]
+        columns=[VectorData(name="trial_number", description="Trial number", data=[1, 2, 3, 4]), stimulus_column],
     )
     print(f"   Created stimulus table with HED annotation: {stimulus_column.hed}")
 
@@ -87,6 +78,7 @@ def main():
     print(f"  - HED schema version: {hed_metadata.hed_schema_version}")
 
     return nwbfile
+
 
 if __name__ == "__main__":
     nwbfile = main()

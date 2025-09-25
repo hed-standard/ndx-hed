@@ -65,9 +65,9 @@ The ndx-hed extension provides three main classes:
 
 | Class | Purpose | Use Cases |
 |-------|---------|-----------|
-| **HedLabMetaData** | HED schema specification | Required for all HED validation |
-| **HedTags** | Row-specific HED annotations | Event-specific tags in any DynamicTable |
-| **HedValueVector** | Column-wide HED templates | Shared annotations with value placeholders |
+| **HedLabMetaData** | HED schema specification and lab-specific definitions | Required for all HED validation |
+| **HedTags** | Row-specific HED annotations | Row-specific tags in any DynamicTable |
+| **HedValueVector** | Column-wide HED templates | Shared annotations with value placeholders (#) |
 
 ## Examples
 
@@ -79,11 +79,19 @@ The `examples/` directory contains comprehensive runnable examples:
 - **[04_bids_conversion.py](examples/04_bids_conversion.py)** - Converting BIDS events to NWB with HED
 - **[05_hed_validation.py](examples/05_hed_validation.py)** - Comprehensive validation examples
 - **[06_complete_workflow.py](examples/06_complete_workflow.py)** - End-to-end workflow demonstration
+- **[07_hed_definitions.py](examples/07_hed_definitions.py)** - Custom HED definitions usage
+- **[08_advanced_integration.py](examples/08_advanced_integration.py)** - Advanced real-world integration
 
 Run any example:
 ```bash
 cd examples
 python 01_basic_hed_classes.py
+```
+
+Or run all examples:
+```bash
+cd examples
+python run_all_examples.py
 ```
 
 ## Integration with NWB events

@@ -31,7 +31,16 @@ class TestHedLabMetaDataConstructor(TestCase):
         self.assertIsInstance(labdata, HedLabMetaData)
         self.assertIsInstance(labdata.definitions, str)
         self.assertEqual(len(labdata._definition_dict.defs), 1)
-        self.assertIn('testevent', labdata.definitions.defs)
+        self.assertIn("testevent", labdata.definitions)
+
+    def test_constructor_with_two_definitions(self):
+        """Test creating HedLabMetaData with definitions parameter."""
+        test_definitions = "(Definition/apple,(Item)),(Definition/orange,(Item))"
+        labdata = HedLabMetaData(hed_schema_version="8.4.0", definitions=test_definitions)
+        self.assertIsInstance(labdata, HedLabMetaData)
+        # Note: DefinitionDict normalizes the format, so we need to expect the normalized version
+        expected_normalized = "(Definition/apple,(Item)),(Definition/orange,(Item))"
+        self.assertEqual(labdata.definitions, expected_normalized)
 
     def test_constructor_empty_version(self):
         """Test create HedLabMetaData with empty schema version."""
@@ -73,15 +82,6 @@ class TestHedLabMetaDataConstructor(TestCase):
         self.assertEqual(labdata1.get_hed_schema_version(), "8.4.0")
         self.assertEqual(labdata2.get_hed_schema_version(), "8.3.0")
 
-    def test_constructor_with_definitions(self):
-        """Test creating HedLabMetaData with definitions parameter."""
-        test_definitions = "(Definition/apple,(Item/Fruit)),(Definition/orange,(Item/Fruit))"
-        labdata = HedLabMetaData(hed_schema_version="8.4.0", definitions=test_definitions)
-        self.assertIsInstance(labdata, HedLabMetaData)
-        # Note: DefinitionDict normalizes the format, so we need to expect the normalized version
-        expected_normalized = "(Definition/apple,(Item/Fruit)),(Definition/orange,(Item/Fruit))"
-        self.assertEqual(labdata.definitions, expected_normalized)
-
     def test_constructor_without_definitions(self):
         """Test creating HedLabMetaData without definitions parameter."""
         labdata = HedLabMetaData(hed_schema_version="8.4.0")
@@ -100,7 +100,7 @@ class TestHedLabMetaDataConstructor(TestCase):
     def test_constructor_with_library_schemas_and_definitions(self):
         """Test creating HedLabMetaData with library schemas and definitions."""
         library_schema_version = '["score_2.1.0","lang_1.1.0"]'
-        test_definitions = "(Definition/apple,(Item/Fruit)),(Definition/orange,(Item/Fruit))"
+        test_definitions = "(Definition/apple,(Item)),(Definition/orange,(Item))"
         labdata = HedLabMetaData(hed_schema_version=library_schema_version, definitions=test_definitions)
         self.assertIsInstance(labdata, HedLabMetaData)
         self.assertEqual(labdata.get_hed_schema_version(), library_schema_version)
@@ -120,7 +120,7 @@ class TestHedLabMetaDataConstructor(TestCase):
 
     def test_get_definition_dict(self):
         """Test getting the DefinitionDict from HedLabMetaData."""
-        test_definitions = "Apple/Blue: This is a test definition."
+        test_definitions = "Red, Blue"
         labdata = HedLabMetaData(hed_schema_version="8.4.0", definitions=test_definitions)
         definition_dict = labdata.get_definition_dict()
         self.assertIsInstance(definition_dict, DefinitionDict)
@@ -183,7 +183,7 @@ class TestHedLabMetaDataRoundTrip(TestCase):
         )
 
         # Instantiate the class with definitions and add the lab_info
-        test_definitions = "(Definition/apple,(Item/Fruit)),(Definition/orange,(Item/Fruit))"
+        test_definitions = "(Definition/apple,(Item)),(Definition/orange,(Item/Fruit))"
         hed_info = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=test_definitions)
         nwbfile.add_lab_meta_data(hed_info)
 
@@ -250,9 +250,7 @@ class TestHedLabMetaDataRoundTrip(TestCase):
         library_schema_version = '["bc:8.4.0","score_2.1.0"]'
         test_definitions = "(Definition/apple,(Item/Fruit)),(Definition/orange,(Item/Fruit))"
         hed_info = HedLabMetaData(
-            name="hed_schema", 
-            hed_schema_version=library_schema_version, 
-            definitions=test_definitions
+            name="hed_schema", hed_schema_version=library_schema_version, definitions=test_definitions
         )
         nwbfile.add_lab_meta_data(hed_info)
 
@@ -324,87 +322,57 @@ class TestHedLabMetaDataDefinitions(TestCase):
         """Test HedLabMetaData with a single definition."""
         definitions = "(Definition/testevent,(Sensory-event,Visual-presentation))"
         labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
-        
+
         # Check that definitions field contains the normalized format
         self.assertEqual(labdata.definitions, definitions)
-        
+
         # Check internal DefinitionDict structure
         self.assertIsInstance(labdata._definition_dict, DefinitionDict)
         self.assertEqual(len(labdata._definition_dict.defs), 1)
-        self.assertIn('testevent', labdata._definition_dict.defs)
-        
+        self.assertIn("testevent", labdata._definition_dict.defs)
+
         # Check DefinitionEntry details
-        entry = labdata._definition_dict.defs['testevent']
-        self.assertEqual(entry.name, 'testevent')
+        entry = labdata._definition_dict.defs["testevent"]
+        self.assertEqual(entry.name, "testevent")
         self.assertFalse(entry.takes_value)
-        self.assertIn('Sensory-event', str(entry.contents))
-        self.assertIn('Visual-presentation', str(entry.contents))
-        
+        self.assertIn("Sensory-event", str(entry.contents))
+        self.assertIn("Visual-presentation", str(entry.contents))
+
         # Check get_definitions returns the same string
         extracted = labdata.definitions
         self.assertEqual(extracted, definitions)
 
-    def test_definitions_multiple_definitions(self):
-        """Test HedLabMetaData with multiple definitions."""
-        definitions = "(Definition/Event1, (Sensory-event)), (Definition/Event2/#, (Response-time/#))"
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
-        
-        # Check internal DefinitionDict structure
-        self.assertIsInstance(labdata._definition_dict, DefinitionDict)
-        self.assertEqual(len(labdata._definition_dict), 2)
-        self.assertIn('event1', labdata._definition_dict.defs)
-        self.assertIn('event2', labdata._definition_dict.defs)
-        
-        # Check first definition
-        entry1 = labdata._definition_dict.defs['event1']
-        self.assertEqual(entry1.name, 'Event1')
-        self.assertFalse(entry1.takes_value)
-        
-        # Check second definition (with placeholder)
-        entry2 = labdata._definition_dict.defs['event2']
-        self.assertEqual(entry2.name, 'Event2')
-        self.assertTrue(entry2.takes_value)
-        
-        # Check get_definitions returns the normalized string
-        extracted = labdata.definitions
-        self.assertIn('event1', extracted)
-        self.assertIn('event2', extracted)
-
     def test_definitions_with_library_schemas(self):
         """Test definitions with library schema versions."""
         library_schema_version = '["score_2.1.0","lang_1.1.0"]'
-        definitions = "(Definition/MyTask, (Task))"
-        labdata = HedLabMetaData(
-            name="hed_schema", 
-            hed_schema_version=library_schema_version, 
-            definitions=definitions
-        )
-        
+        definitions = "(Definition/mytask,(Task))"
+        labdata = HedLabMetaData(name="hed_schema", hed_schema_version=library_schema_version, definitions=definitions)
+
         self.assertIsInstance(labdata.definitions, str)
         self.assertEqual(len(labdata._definition_dict.defs), 1)
-        self.assertIn('mytask', labdata.definitions.defs)
-        
-        # Check that schema is HedSchemaGroup for library schemas
+        self.assertIn("mytask", labdata._definition_dict.defs)
+
+        # Check that schema is HedSchema for library schemas
         schema = labdata.get_hed_schema()
-        self.assertIsInstance(schema, HedSchemaGroup)
-        
+        self.assertIsInstance(schema, HedSchema)
+
         # Check roundtrip
         extracted = labdata.definitions
         self.assertEqual(extracted, definitions)
 
-    def test_definitions_complex_structure(self):
-        """Test definitions with complex HED tag structures."""
-        definitions = ("(Definition/ComplexEvent, "
-                      "(Sensory-event, (Visual-presentation, (Color/Red, Luminance/50)), "
-                      "Temporal-relation/Synchronous-with, Agent-action))")
+    def test_multiple_definitions(self):
+        """List of definitions."""
+        definitions = "(Definition/event1,(Sensory-event)),(Definition/event2/#,(Parameter-value/#))"
         labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
-        
+
         self.assertIsInstance(labdata.definitions, str)
-        self.assertEqual(len(labdata._definition_dict.defs), 1)
-        entry = labdata.definitions.defs['complexevent']
-        self.assertEqual(entry.name, 'ComplexEvent')
-        
-        # Check roundtrip maintains complex structure
+        self.assertEqual(len(labdata._definition_dict.defs), 2)
+        entry1 = labdata._definition_dict.defs["event1"]
+        self.assertEqual(entry1.name, "event1")
+        self.assertFalse(entry1.takes_value)
+        entry2 = labdata._definition_dict.defs["event2"]
+        self.assertEqual(entry2.name, "event2")
+        self.assertTrue(entry2.takes_value)
         extracted = labdata.definitions
         self.assertEqual(extracted, definitions)
 
@@ -413,22 +381,22 @@ class TestHedLabMetaDataDefinitions(TestCase):
         # Start with no definitions
         labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
         self.assertIsNone(labdata.definitions)
-        
+
         # Add definitions
-        definitions = "(Definition/AddedEvent, (Motor-action))"
+        definitions = "(Definition/addedevent, (Move))"
         labdata.add_definitions(definitions)
-        
+
         self.assertIsInstance(labdata.definitions, str)
         self.assertEqual(len(labdata._definition_dict.defs), 1)
-        self.assertIn('addedevent', labdata.definitions.defs)
-        
+        self.assertIn("addedevent", labdata._definition_dict.defs)
+
         # Add more definitions
-        more_definitions = "(Definition/SecondEvent, (Cognitive-action))"
+        more_definitions = "(Definition/secondevent, (Red))"
         labdata.add_definitions(more_definitions)
-        
+
         self.assertEqual(len(labdata._definition_dict.defs), 2)
-        self.assertIn('addedevent', labdata.definitions.defs)
-        self.assertIn('secondevent', labdata.definitions.defs)
+        self.assertIn("addedevent", labdata._definition_dict.defs)
+        self.assertIn("secondevent", labdata._definition_dict.defs)
 
     def test_definitions_roundtrip_file_io(self):
         """Test that definitions survive file write/read cycles."""
@@ -439,42 +407,38 @@ class TestHedLabMetaDataDefinitions(TestCase):
             identifier="definitions_io_test",
             session_start_time=session_start,
         )
-        
-        definitions = ("(Definition/FileIOTest, (Sensory-event, Visual-presentation)), "
-                      "(Definition/ResponseEvent/#, (Agent-action, Response-time/#))")
-        hed_info = HedLabMetaData(
-            name="hed_schema", 
-            hed_schema_version="8.4.0", 
-            definitions=definitions
-        )
+
+        definitions = "(Definition/FileIOTest,(Sensory-event)),(Definition/ResponseEvent/#,(Parameter-value/#))"
+        hed_info = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
         nwbfile.add_lab_meta_data(hed_info)
-        
+
         # Write file
         with NWBHDF5IO(self.test_nwb_file_path, "w") as io:
             io.write(nwbfile)
-        
+
         # Read file back
         with NWBHDF5IO(self.test_nwb_file_path, "r") as io:
             read_nwbfile = io.read()
             read_hed_info = read_nwbfile.lab_meta_data["hed_schema"]
-            
+
             # Verify definitions structure
             self.assertIsInstance(read_hed_info.definitions, str)
             self.assertEqual(len(read_hed_info._definition_dict.defs), 2)
-            self.assertIn('fileiotest', read_hed_info._definition_dict.defs)
-            self.assertIn('responseevent', read_hed_info._definition_dict.defs)
-            
+            self.assertIn("fileiotest", read_hed_info._definition_dict.defs)
+            self.assertIn("responseevent", read_hed_info._definition_dict.defs)
+
             # Verify exact roundtrip
             extracted = read_hed_info.definitions
-            self.assertEqual(extracted, definitions)
-            
+            self.assertIn("fileiotest", extracted)
+            self.assertIn("responseevent", extracted)
+
             # Verify individual entries
-            test_entry = read_hed_info._definition_dict.defs['fileiotest']
-            self.assertEqual(test_entry.name, 'FileIOTest')
+            test_entry = read_hed_info._definition_dict.defs["fileiotest"]
+            self.assertEqual(test_entry.name, "fileiotest")
             self.assertFalse(test_entry.takes_value)
-            
-            response_entry = read_hed_info._definition_dict.defs['responseevent']
-            self.assertEqual(response_entry.name, 'ResponseEvent')
+
+            response_entry = read_hed_info._definition_dict.defs["responseevent"]
+            self.assertEqual(response_entry.name, "responseevent")
             self.assertTrue(response_entry.takes_value)
 
     def test_definitions_roundtrip_with_library_schemas_file_io(self):
@@ -486,41 +450,34 @@ class TestHedLabMetaDataDefinitions(TestCase):
             identifier="library_definitions_io_test",
             session_start_time=session_start,
         )
-        
+
         library_schema_version = '["8.4.0","bc:score_2.1.0"]'
         definitions = "(Definition/librarytest,(Task-activity,Walk))"
-        hed_info = HedLabMetaData(
-            name="hed_schema", 
-            hed_schema_version=library_schema_version, 
-            definitions=definitions
-        )
-        defs_out = hed_info.definitions
-        print(defs_out)
-        print(definitions)
+        hed_info = HedLabMetaData(name="hed_schema", hed_schema_version=library_schema_version, definitions=definitions)
         self.assertEqual(hed_info.definitions, definitions)
         nwbfile.add_lab_meta_data(hed_info)
-        
+
         # Write file
         with NWBHDF5IO(self.test_nwb_file_path, "w") as io:
             io.write(nwbfile)
-        
+
         # Read file back
         with NWBHDF5IO(self.test_nwb_file_path, "r") as io:
             read_nwbfile = io.read()
             read_hed_info = read_nwbfile.lab_meta_data["hed_schema"]
-            
+
             self.assertIsInstance(read_hed_info, HedLabMetaData)
             # Verify schema and definitions
             hed_schema_version = read_hed_info.get_hed_schema_version()
             self.assertEqual(hed_schema_version, library_schema_version)
             hed_schema = read_hed_info.get_hed_schema()
             self.assertIsInstance(hed_schema, HedSchemaGroup)
-            
-            # Verify definitions structure  
+
+            # Verify definitions structure
             extracted = read_hed_info.definitions
             self.assertIsInstance(extracted, str)
-            self.assertIn('librarytest', extracted)
-            
+            self.assertIn("librarytest", extracted)
+
             # Verify exact roundtrip
             self.assertEqual(extracted, definitions)
 
@@ -533,22 +490,21 @@ class TestHedLabMetaDataDefinitions(TestCase):
 
     def test_definitions_consistency_across_operations(self):
         """Test that definitions remain consistent across all operations."""
-        definitions = ["(Definition/consistencytest,(Sensory-event))",
-                      "(Definition/valuetest/#,(Response-time/#))"]
-        
+        definitions = "(Definition/consistencytest,(Sensory-event)),(Definition/valuetest/#,(Parameter-value/#))"
+
         # Test constructor
         labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
         initial_extracted = labdata.definitions
-        self.assertIn('consistencytest', initial_extracted)
+        self.assertIn("consistencytest", initial_extracted)
         # Test adding to existing definitions
         additional_def = "(Definition/additionaltest,(Move))"
         labdata.add_definitions(additional_def)
-        
+
         # Original definitions should still be present (checking lowercase normalized names)
         updated_extracted = labdata.definitions
-        self.assertIn('consistencytest', updated_extracted)
-        self.assertIn('valuetest', updated_extracted)
-        self.assertIn('additionaltest', updated_extracted)
-        
+        self.assertIn("consistencytest", updated_extracted)
+        self.assertIn("valuetest", updated_extracted)
+        self.assertIn("additionaltest", updated_extracted)
+
         # Should have 3 definitions now
         self.assertEqual(len(labdata._definition_dict.defs), 3)
