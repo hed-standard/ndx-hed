@@ -19,7 +19,7 @@ class TestHedNWBValidator(unittest.TestCase):
     def setUp(self):
         """Set up test data."""
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.3.0")
+        self.hed_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
 
         # Create HedNWBValidator instance
         self.validator = HedNWBValidator(self.hed_metadata)

@@ -55,10 +55,17 @@ def main():
         attributes=[
             NWBAttributeSpec(
                 name="hed_schema_version",
-                doc="The HED schema version used in this NWB file, e.g., '8.4.0'.",
+                doc="The HED schema version(s) used in this NWB file, e.g., '8.4.0' or" +
+                 " '[\"score_2.1.0\",\"lang_1.1.0\"]'.",
                 dtype="text",
                 required=True,
-            )
+            ),
+            NWBAttributeSpec(
+                name="definitions",
+                doc="A string containing one or more HED definitions.",
+                dtype="text",
+                required=False,
+            ),
         ],
     )
 

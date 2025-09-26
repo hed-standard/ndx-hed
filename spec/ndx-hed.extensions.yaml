@@ -21,4 +21,9 @@ groups:
   attributes:
   - name: hed_schema_version
     dtype: text
-    doc: The HED schema version used in this NWB file, e.g., '8.4.0'.
+    doc: The HED schema version(s) used in this NWB file, e.g., '8.4.0' or 
+      '["score_2.1.0","lang_1.1.0"]'.
+  - name: definitions
+    dtype: text
+    doc: A string containing one or more HED definitions.
+    required: false

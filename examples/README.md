@@ -61,13 +61,21 @@ python run_all_examples.py
 - Tests file save/reload consistency
 - Real-world usage patterns and best practices
 
+### 07_hed_definitions.py
+**HED definitions example**
+- Creating and using custom HED definitions in experimental contexts
+- Definition validation and expansion patterns
+- Advanced definition usage with value placeholders
+- Integration of custom definitions with standard HED vocabulary
+
 ## Prerequisites
 
 All examples require:
 - `pynwb`
 - `ndx-hed`
-- `ndx-events` (for examples 3, 4, 5, 6)
+- `ndx-events` (for examples 3-8)
 - `pandas` (for example 4)
+- `numpy` (for example 8)
 
 Install with:
 ```bash
