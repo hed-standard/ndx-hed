@@ -12,26 +12,26 @@ from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-from ndx_events import EventsTable, TimestampVectorData
+from ndx_events import EventsTable,  NdxEventsNWBFile
 from hed.errors import ErrorHandler
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def create_test_data():
     """Create NWB file with both valid and invalid HED annotations for testing"""
     print("Creating test data with valid and invalid HED annotations...")
 
-    nwbfile = NWBFile(
+    nwbfile =  NdxEventsNWBFile(
         session_description="HED validation test data",
         identifier="hed_validation_example",
-        session_start_time=datetime.now(),
+        session_start_time=datetime.now(timezone.utc),
     )
 
     # Add HED schema metadata
-    hed_metadata = HedLabMetaData(hed_schema_version="8.3.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
     nwbfile.add_lab_meta_data(hed_metadata)
 
-    # Table 1: Valid HED annotations
+    # Table 1: Valid HED annotations from DynamicTable
     valid_table = DynamicTable(
         name="valid_events",
         description="Events with valid HED annotations",

@@ -15,7 +15,7 @@ from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
 from ndx_hed import HedLabMetaData, HedTags
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def create_file_with_definitions():
@@ -26,7 +26,7 @@ def create_file_with_definitions():
     nwbfile = NWBFile(
         session_description="HED definitions demonstration",
         identifier="hed_definitions_example",
-        session_start_time=datetime.now(),
+        session_start_time=datetime.now(timezone.utc),
     )
     
     # Define custom HED definitions using valid HED tags

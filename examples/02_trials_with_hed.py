@@ -9,7 +9,7 @@ This example demonstrates how to add HED annotations to the trials table in NWB.
 
 from pynwb import NWBFile
 from ndx_hed import HedTags, HedLabMetaData
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def main():
@@ -17,12 +17,12 @@ def main():
     nwbfile = NWBFile(
         session_description="Example session with HED annotations in trials",
         identifier="trials_hed_example",
-        session_start_time=datetime.now(),
+        session_start_time=datetime.now(timezone.utc),
     )
 
     # Add HED schema metadata
     print("Setting up HED metadata...")
-    hed_metadata = HedLabMetaData(hed_schema_version="8.3.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
     nwbfile.add_lab_meta_data(hed_metadata)
 
     # Add HED column to trials table

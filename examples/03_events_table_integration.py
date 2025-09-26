@@ -11,10 +11,9 @@ the ndx-events EventsTable:
 
 """
 
-from pynwb import NWBFile
-from ndx_events import EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData, MeaningsTable
+from ndx_events import EventsTable, NdxEventsNWBFile, DurationVectorData, CategoricalVectorData, MeaningsTable
 from ndx_hed import HedTags, HedValueVector, HedLabMetaData
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def create_direct_hed_events():
@@ -154,14 +153,14 @@ def create_categorical_events():
 
 def main():
     # Create NWB file with HED metadata
-    nwbfile = NWBFile(
+    nwbfile = NdxEventsNWBFile(
         session_description="EventsTable HED integration examples",
         identifier="events_hed_example",
-        session_start_time=datetime.now(),
+        session_start_time=datetime.now(timezone.utc),
     )
 
     # Add HED schema metadata
-    hed_metadata = HedLabMetaData(hed_schema_version="8.3.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
     nwbfile.add_lab_meta_data(hed_metadata)
 
     # Create the three types of EventsTable examples
@@ -170,9 +169,9 @@ def main():
     categorical_events = create_categorical_events()
 
     # Add all tables to NWB file
-    nwbfile.add_acquisition(direct_events)
-    nwbfile.add_acquisition(value_vector_events)
-    nwbfile.add_acquisition(categorical_events)
+    nwbfile.add_events_table(direct_events)
+    nwbfile.add_events_table(value_vector_events)
+    nwbfile.add_events_table(categorical_events)
 
     print(f"\n✓ Successfully created NWB file with EventsTable HED integration!")
     print(f"  - Direct HED events: {len(direct_events)} events")

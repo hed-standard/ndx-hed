@@ -50,7 +50,6 @@ def main():
         ("05_hed_validation.py", "HED validation examples"),
         ("06_complete_workflow.py", "Complete end-to-end workflow"),
         ("07_hed_definitions.py", "Custom HED definitions usage"),
-        ("08_advanced_integration.py", "Advanced real-world integration"),
     ]
 
     results = []

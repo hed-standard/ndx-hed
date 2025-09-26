@@ -68,14 +68,6 @@ python run_all_examples.py
 - Advanced definition usage with value placeholders
 - Integration of custom definitions with standard HED vocabulary
 
-### 08_advanced_integration.py
-**Advanced integration example**
-- Complex real-world experimental session demonstration
-- Integration with multiple NWB data types (behavior, ophys, etc.)
-- Performance considerations for large datasets
-- Advanced validation strategies and error handling
-- Comprehensive reporting and summary generation
-
 ## Prerequisites
 
 All examples require:

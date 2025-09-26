@@ -12,10 +12,10 @@ import pandas as pd
 import json
 import tempfile
 import os
-from pynwb import NWBFile
+from ndx_events import  NdxEventsNWBFile
 from ndx_hed import HedLabMetaData
 from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def create_sample_bids_data():
@@ -48,9 +48,9 @@ def create_sample_bids_data():
             },
         },
         "trial_number": {"Description": "Trial number in the experiment", "HED": "Experimental-trial/#"},
-        "stimulus_intensity": {
-            "Description": "Intensity of the visual stimulus",
-            "HED": "Sensory-event, Luminance-attribute/#",
+        "stimulus_constrast": {
+            "Description": "Contrast of the visual stimulus with the background",
+            "HED": "Luminance-contrast/#",
         },
     }
 
@@ -150,14 +150,14 @@ def demonstrate_file_conversion():
 
 def main():
     # Create NWB file with HED metadata
-    nwbfile = NWBFile(
+    nwbfile =  NdxEventsNWBFile(
         session_description="BIDS to NWB conversion example",
         identifier="bids_conversion_example",
-        session_start_time=datetime.now(),
+        session_start_time=datetime.now(timezone.utc),
     )
 
     # Add HED schema metadata
-    hed_metadata = HedLabMetaData(hed_schema_version="8.3.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
     nwbfile.add_lab_meta_data(hed_metadata)
 
     # Demonstrate different conversion approaches

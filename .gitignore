@@ -1,6 +1,9 @@
 # output NWB files
 *.nwb
 
+# copilot instructions
+.github/copilot-instructions.md
+
 # generated docs
 docs/source/_format_auto_docs
 

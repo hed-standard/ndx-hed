@@ -40,7 +40,7 @@ nwbfile = NWBFile(
 )
 
 # Add HED schema metadata (required)
-hed_metadata = HedLabMetaData(hed_schema_version="8.3.0")
+hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
 nwbfile.add_lab_meta_data(hed_metadata)
 
 # Add HED column to trials table
@@ -80,7 +80,7 @@ The `examples/` directory contains comprehensive runnable examples:
 - **[05_hed_validation.py](examples/05_hed_validation.py)** - Comprehensive validation examples
 - **[06_complete_workflow.py](examples/06_complete_workflow.py)** - End-to-end workflow demonstration
 - **[07_hed_definitions.py](examples/07_hed_definitions.py)** - Custom HED definitions usage
-- **[08_advanced_integration.py](examples/08_advanced_integration.py)** - Advanced real-world integration
+
 
 Run any example:
 ```bash
