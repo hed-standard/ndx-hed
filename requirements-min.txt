@@ -3,5 +3,5 @@
 # NOTE: it may be possible to relax these minimum requirements
 pynwb==2.8.2
 hdmf==3.14.4
-hedtools==0.6.0
+hedtools==0.7.0
 ndx-events==0.4.0

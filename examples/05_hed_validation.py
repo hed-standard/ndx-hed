@@ -12,7 +12,7 @@ from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-from ndx_events import EventsTable,  NdxEventsNWBFile
+from ndx_events import EventsTable, NdxEventsNWBFile
 from hed.errors import ErrorHandler
 from datetime import datetime, timezone
 
@@ -21,7 +21,7 @@ def create_test_data():
     """Create NWB file with both valid and invalid HED annotations for testing"""
     print("Creating test data with valid and invalid HED annotations...")
 
-    nwbfile =  NdxEventsNWBFile(
+    nwbfile = NdxEventsNWBFile(
         session_description="HED validation test data",
         identifier="hed_validation_example",
         session_start_time=datetime.now(timezone.utc),
@@ -162,20 +162,15 @@ def validate_events_table(validator):
     # Create EventsTable with HED issues
     events_table = EventsTable(name="test_events", description="EventsTable with validation issues")
 
-    events_table.add_column(
-        name="HED",
-        description="Event HED annotations",
-        data=[],  # Start empty
-        col_cls=HedTags
-    )
-    
+    events_table.add_column(name="HED", description="Event HED annotations", data=[], col_cls=HedTags)  # Start empty
+
     # Add rows of data
     events = [
-        {"timestamp": 1.0, "HED": "Sensory-event"},        # Valid
-        {"timestamp": 2.0, "HED": "InvalidEventTag"},       # Invalid
-        {"timestamp": 3.0, "HED": "Agent-action, Press"},   # Valid
+        {"timestamp": 1.0, "HED": "Sensory-event"},  # Valid
+        {"timestamp": 2.0, "HED": "InvalidEventTag"},  # Invalid
+        {"timestamp": 3.0, "HED": "Agent-action, Press"},  # Valid
     ]
-    
+
     for event in events:
         events_table.add_row(event)
 

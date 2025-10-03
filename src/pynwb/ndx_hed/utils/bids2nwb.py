@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import Union
 from hed.models import Sidecar, DefinitionDict
-from hed.schema import  HedSchema, HedSchemaGroup
+from hed.schema import HedSchema, HedSchemaGroup
 from pynwb.core import VectorData
 from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
 from ndx_hed import HedTags, HedValueVector

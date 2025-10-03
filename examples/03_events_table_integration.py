@@ -24,10 +24,10 @@ def create_direct_hed_events():
 
     # Add duration column first
     events_table.add_column(
-        name="duration", 
+        name="duration",
         description="Event durations",
         data=[],  # Start empty, we'll add rows
-        col_cls=DurationVectorData
+        col_cls=DurationVectorData,
     )
 
     # Add HED tags column for event-specific annotations
@@ -35,7 +35,7 @@ def create_direct_hed_events():
         name="HED",
         description="HED annotations for each event",
         data=[],  # Start empty, we'll add rows
-        col_cls=HedTags
+        col_cls=HedTags,
     )
 
     # Add rows of data
@@ -45,7 +45,7 @@ def create_direct_hed_events():
         {"timestamp": 100.0, "duration": 1.05, "HED": "Movement-artifact"},
         {"timestamp": 200.5, "duration": 0.5, "HED": "Eye-movement-artifact"},
     ]
-    
+
     for event in events:
         events_table.add_row(event)
 
@@ -65,7 +65,7 @@ def create_value_vector_events():
         description="Brightness of visual stimulus",
         data=[],  # Start empty
         col_cls=HedValueVector,
-        hed="(Luminance, Parameter-value/#)"
+        hed="(Luminance, Parameter-value/#)",
     )
 
     # Add reaction time column with HED annotation
@@ -74,7 +74,7 @@ def create_value_vector_events():
         description="Participant response time",
         data=[],  # Start empty
         col_cls=HedValueVector,
-        hed="(Behavioral-evidence, Parameter-label/Reaction-time, Time-interval/# s)"
+        hed="(Behavioral-evidence, Parameter-label/Reaction-time, Time-interval/# s)",
     )
 
     # Add rows of data
@@ -84,7 +84,7 @@ def create_value_vector_events():
         {"timestamp": 4.0, "intensity": 0.5, "reaction_time": 0.38},
         {"timestamp": 5.5, "intensity": 0.9, "reaction_time": 0.61},
     ]
-    
+
     for event in events:
         events_table.add_row(event)
 
@@ -122,7 +122,7 @@ def create_categorical_events():
             "Sensory-event, Visual-presentation, Square",
             "Sensory-event, Visual-presentation, Triangle",
         ],
-        col_cls=HedTags
+        col_cls=HedTags,
     )
 
     # Add categorical column that references the meanings table
@@ -131,7 +131,7 @@ def create_categorical_events():
         description="Type of visual stimulus presented",
         data=[],  # Start empty
         col_cls=CategoricalVectorData,
-        meanings=stimulus_meanings
+        meanings=stimulus_meanings,
     )
 
     # Add rows of data
@@ -141,7 +141,7 @@ def create_categorical_events():
         {"timestamp": 3.0, "stimulus_type": "triangle"},
         {"timestamp": 4.0, "stimulus_type": "circle"},
     ]
-    
+
     for event in events:
         events_table.add_row(event)
 
