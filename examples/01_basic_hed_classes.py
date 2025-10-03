@@ -33,9 +33,11 @@ def main():
     # 2. HedTags - For row-specific HED annotations
     print("\n2. Creating HedTags column...")
     hed_tags = HedTags(
-        data=["(Visual-presentation, Image, Building/House)", 
-              "(Auditory-presentation, Buzz)", 
-              "(Visual-presentation, Blue Square)"]
+        data=[
+            "(Visual-presentation, Image, Building/House)",
+            "(Auditory-presentation, Buzz)",
+            "(Visual-presentation, Blue Square)",
+        ]
     )
 
     # Create a dynamic table with HED annotations
@@ -43,7 +45,9 @@ def main():
         name="stimuli_information",
         description="Information about stimuli with HED annotations",
         columns=[
-            VectorData(name="stim_type", description="Type of stimulus", data=["house-image", "buzz-sound", "blue-square"]),
+            VectorData(
+                name="stim_type", description="Type of stimulus", data=["house-image", "buzz-sound", "blue-square"]
+            ),
             hed_tags,  # Column name will automatically be "HED"
         ],
     )

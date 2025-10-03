@@ -91,17 +91,11 @@ def create_comprehensive_nwb_file():
     )
 
     events_table.add_column(
-        name="duration",
-        description="Event durations",
-        data=[],  # Start empty
-        col_cls=DurationVectorData
+        name="duration", description="Event durations", data=[], col_cls=DurationVectorData  # Start empty
     )
 
     events_table.add_column(
-        name="HED",
-        description="Event-specific HED annotations",
-        data=[],  # Start empty
-        col_cls=HedTags
+        name="HED", description="Event-specific HED annotations", data=[], col_cls=HedTags  # Start empty
     )
 
     events_table.add_column(
@@ -109,7 +103,7 @@ def create_comprehensive_nwb_file():
         description="Stimulus contrast with background",
         data=[],  # Start empty
         col_cls=HedValueVector,
-        hed="Luminance-contrast/#"
+        hed="Luminance-contrast/#",
     )
 
     # Add rows of event data
@@ -121,7 +115,7 @@ def create_comprehensive_nwb_file():
         {"timestamp": 7.0, "duration": 0.6, "HED": "Pause", "stimulus_contrast": 0.0},
         {"timestamp": 8.5, "duration": 0.2, "HED": "Label/End-session", "stimulus_contrast": 0.0},
     ]
-    
+
     for event in events:
         events_table.add_row(event)
 
@@ -133,10 +127,10 @@ def create_comprehensive_nwb_file():
 
 def validate_annotations(nwbfile):
     """Validate all HED annotations in the NWB file.
-    
+
     Args:
         nwbfile: An in-memory NWBFile object or an open NWB file
-        
+
     Returns:
         list: List of validation issues
     """
@@ -148,6 +142,7 @@ def validate_annotations(nwbfile):
     issues = validator.validate_file(nwbfile)
 
     return issues
+
 
 def get_context(issue):
     """Extract context information from a validation issue."""
@@ -161,9 +156,10 @@ def get_context(issue):
 
     return context_string
 
+
 def print_issues(title, issues):
     """Print validation issues with formatting.
-    
+
     Args:
         title: Title to display for this set of issues
         issues: List of validation issues to display
@@ -182,7 +178,7 @@ def print_issues(title, issues):
         if errors:
             print("     Error examples:")
             for i, error in enumerate(errors[:3]):  # Show first 3 errors
-                message = error.get("message", "Unknown error")     
+                message = error.get("message", "Unknown error")
                 print(f"       {i+1}. [{get_context(error)}] {message}")
     else:
         print("   ✓ All HED annotations are valid!")
@@ -218,7 +214,7 @@ def save_and_reload_file(nwbfile):
 
             # Validate while file is open
             reloaded_issues = validate_annotations(reloaded_nwbfile)
-            
+
             return reloaded_issues
 
     finally:
@@ -227,10 +223,9 @@ def save_and_reload_file(nwbfile):
             os.remove(temp_filename)
 
 
-
 def verify_validation_consistency(original_issues, reloaded_issues):
     """Verify that validation results are consistent after file I/O.
-    
+
     Args:
         original_issues: List of issues from original in-memory file
         reloaded_issues: List of issues from reloaded file
@@ -285,7 +280,7 @@ def display_summary(nwbfile):
                         value_vector_columns.append(col)
                 except:
                     pass  # Skip if column access fails
-            
+
             print(
                 f"     - {name}: {len(obj)} rows, "
                 f"{len(colnames)} columns (HED: {len(hed_columns)}, ValueVector: {len(value_vector_columns)})"
@@ -307,7 +302,7 @@ def display_summary(nwbfile):
                         value_vector_columns.append(col)
                 except:
                     pass
-            
+
             print(
                 f"     - {name}: {len(events_table)} rows, "
                 f"{len(colnames)} columns (HED: {len(hed_columns)}, ValueVector: {len(value_vector_columns)})"

@@ -57,11 +57,11 @@ class HedLabMetaData(LabMetaData):
         HED schema object and create a DefinitionDict from any provided definitions.
 
         Parameters:
-            original_definitions (str or list or Dict[str, DefinitionEntry] or None): 
+            original_definitions (str or list or Dict[str, DefinitionEntry] or None):
                 A string containing one or more HED definitions,
                 a list of such strings, a dict of DefinitionEntry objects, or None.
                 If None or empty, an empty DefinitionDict is created.
-                
+
         Raises:
             ValueError: If the HED schema version cannot be loaded or if the
                        definitions cannot be parsed into a valid DefinitionDict.

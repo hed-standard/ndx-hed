@@ -12,7 +12,7 @@ import pandas as pd
 import json
 import tempfile
 import os
-from ndx_events import  NdxEventsNWBFile
+from ndx_events import NdxEventsNWBFile
 from ndx_hed import HedLabMetaData
 from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table
 from datetime import datetime, timezone
@@ -150,7 +150,7 @@ def demonstrate_file_conversion():
 
 def main():
     # Create NWB file with HED metadata
-    nwbfile =  NdxEventsNWBFile(
+    nwbfile = NdxEventsNWBFile(
         session_description="BIDS to NWB conversion example",
         identifier="bids_conversion_example",
         session_start_time=datetime.now(timezone.utc),

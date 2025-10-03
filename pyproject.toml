@@ -37,7 +37,7 @@ keywords = [
 dependencies = [
     "pynwb>=2.8.2",
     "hdmf>=3.14.1",
-    "hedtools>=0.6.0"
+    "hedtools>=0.7.0"
 ]
 
 [tool.hatch.version]

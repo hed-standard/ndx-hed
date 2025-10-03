@@ -212,9 +212,9 @@ class TestExtractDefinitions(unittest.TestCase):
             },
             "definitions": {
                 "HED": {
-                    "defList": "(Definition/Face-image, (Image, Face))," + 
-                    "(Definition/House-image, (Image, Building/House))," + 
-                    "(Definition/Response-event, (Agent-action, Participant-response))",
+                    "defList": "(Definition/Face-image, (Image, Face)),"
+                    + "(Definition/House-image, (Image, Building/House)),"
+                    + "(Definition/Response-event, (Agent-action, Participant-response))",
                     "defThreeLevel": "(Definition/Three-level/#, (Item, Parameter-value/#))",
                 }
             },
