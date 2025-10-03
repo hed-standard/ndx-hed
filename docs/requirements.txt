@@ -1,0 +1,10 @@
+# Documentation build requirements
+sphinx>=5.0
+sphinx-rtd-theme>=1.0
+sphinx-autodoc-typehints>=1.12
+myst-parser>=0.18
+hdmf-docutils>=0.4.7
+pynwb>=2.8.2
+hdmf>=3.14.1
+hedtools>=0.7.0
+ndx-events>=0.4.0

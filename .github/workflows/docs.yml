@@ -1,0 +1,83 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.9'
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r docs/requirements.txt
+        pip install -e .
+
+    - name: Build documentation
+      run: |
+        cd docs
+        make html
+      env:
+        SPHINXOPTS: "-W --keep-going"
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v5
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v4
+      with:
+        path: ./docs/build/html
+
+  #------------------------------------------------
+  # Deploy Job: Deploys the built site
+  #------------------------------------------------
+  deploy:
+    # This job depends on the 'build' job completing successfully
+    needs: build
+    # Only deploy when pushing to main branch, not on pull requests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+
+    # Specify the deployment environment
+    environment:
+      name: github-pages
+      # The URL will be automatically set by the deployment step's output
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        # This is the official action for deploying the artifact to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
