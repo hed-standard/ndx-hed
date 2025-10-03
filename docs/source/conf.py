@@ -3,15 +3,21 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+# -- Path setup --------------------------------------------------------------
+
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../../src/pynwb'))
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'ndx-hed'
-copyright = '2023, Ryan Ly, Oliver Ruebel, Kay Robbins'
-author = 'Ryan Ly, Oliver Ruebel, Kay Robbins'
+copyright = '2025, Ryan Ly, Oliver Ruebel, Kay Robbins, Ian Callanan'
+author = 'Ryan Ly, Oliver Ruebel, Kay Robbins, Ian Callanan'
 
 version = '0.2.0'
-release = 'alpha'
+release = '0.2.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -19,11 +25,31 @@ release = 'alpha'
 extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode',
+    'myst_parser',
 ]
 
+# Napoleon settings for Google/NumPy style docstrings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = True
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = True
+napoleon_use_admonition_for_examples = True
+napoleon_use_admonition_for_notes = True
+napoleon_use_admonition_for_references = False
+napoleon_use_ivar = False
+napoleon_use_param = True
+napoleon_use_rtype = True
+
+# Autosummary settings
+autosummary_generate = True
+
 templates_path = ['_templates']
-exclude_patterns = []
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 language = 'en'
 
@@ -32,6 +58,7 @@ language = 'en'
 
 html_theme = 'alabaster'
 html_static_path = ['_static']
+html_favicon = None  # Disable favicon to avoid 404 warnings
 
 # -- Options for intersphinx extension ---------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html#configuration
@@ -52,6 +79,9 @@ import textwrap  # noqa: E402
 intersphinx_mapping.update({
     'core': ('https://nwb-schema.readthedocs.io/en/latest/', None),
     'hdmf-common': ('https://hdmf-common-schema.readthedocs.io/en/latest/', None),
+    'pynwb': ('https://pynwb.readthedocs.io/en/stable/', None),
+    'hdmf': ('https://hdmf.readthedocs.io/en/stable/', None),
+    'hed': ('https://hed-python.readthedocs.io/en/latest/', None),
 })
 
 # -- Generate sources from YAML---------------------------------------------------
@@ -92,6 +122,7 @@ add_function_parentheses = False
 # -- HTML sphinx options
 html_theme = "sphinx_rtd_theme"
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_favicon = None  # Disable favicon to avoid 404 warnings
 
 # LaTeX Sphinx options
 latex_elements = {

@@ -9,6 +9,12 @@ Specification for the ndx-hed extension
     description
 
 .. toctree::
+    :maxdepth: 3
+    :caption: API Documentation
+
+    api
+
+.. toctree::
     :numbered:
     :maxdepth: 5
     :caption: Extension Specification
