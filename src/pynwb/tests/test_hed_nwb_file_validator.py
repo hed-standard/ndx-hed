@@ -293,10 +293,10 @@ class TestHedNWBFileValidator(unittest.TestCase):
         """Test validate_file with HedValueVector columns."""
         # Create table with HedValueVector
         hed_value_vector = HedValueVector(
-            name="stimulus_intensity",
-            description="Stimulus intensity with HED annotation",
+            name="stimulus_contrast",
+            description="Stimulus contrast with HED annotation",
             data=[0.5, 0.7, 0.3],
-            hed="Sensory-event, Visual-presentation, Luminance-attribute/#",
+            hed="Sensory-event, Visual-presentation, Luminance-contrast/#",
         )
 
         table_with_value_vector = DynamicTable(

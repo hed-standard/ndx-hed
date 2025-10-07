@@ -206,20 +206,20 @@ class TestHedValueVectorConstructor(TestCase):
             name="test_values",
             description="Test value vector",
             data=[1, 2, 3, 4],
-            hed="Sensory-event, Visual-presentation",
+            hed="Label/#, Sensory-event, Visual-presentation",
         )
         self.assertEqual(values.name, "test_values")
         self.assertEqual(values.description, "Test value vector")
         self.assertEqual(values.data, [1, 2, 3, 4])
-        self.assertEqual(values.hed, "Sensory-event, Visual-presentation")
+        self.assertEqual(values.hed, "Label/#, Sensory-event, Visual-presentation")
 
     def test_constructor_empty_data(self):
         """Test setting HED value vector with empty data."""
-        values = HedValueVector(name="empty_values", description="Empty value vector", data=[], hed="Agent-action")
+        values = HedValueVector(name="empty_values", description="Empty value vector", data=[], hed="Agent-action, Label/#")
         self.assertEqual(values.name, "empty_values")
         self.assertEqual(values.description, "Empty value vector")
         self.assertFalse(values.data)
-        self.assertEqual(values.hed, "Agent-action")
+        self.assertEqual(values.hed, "Agent-action, Label/#")
 
     def test_constructor_no_hed(self):
         """Test creating HedValueVector without HED annotation."""
@@ -233,10 +233,10 @@ class TestHedValueVectorConstructor(TestCase):
             name="string_values",
             description="String value vector",
             data=["red", "green", "blue"],
-            hed="Sensory-event, Visual-presentation, Color",
+            hed="Sensory-event, Visual-presentation, Color, Label/#",
         )
         self.assertEqual(values.data, ["red", "green", "blue"])
-        self.assertEqual(values.hed, "Sensory-event, Visual-presentation, Color")
+        self.assertEqual(values.hed, "Sensory-event, Visual-presentation, Color, Label/#")
 
     def test_constructor_numeric_data(self):
         """Test HedValueVector with numeric data."""
@@ -268,28 +268,29 @@ class TestHedValueVectorConstructor(TestCase):
         """Test HedValueVector with different data types."""
         # Test boolean data
         bool_values = HedValueVector(
-            name="bool_data", description="Boolean values", data=[True, False, True], hed="Logical-value"
+            name="bool_data", description="Boolean values", data=[True, False, True], hed="(Parameter-name/Logical-value,Label/#)"
         )
         self.assertEqual(bool_values.data, [True, False, True])
 
         # Test mixed numeric data (should work with VectorData)
         mixed_values = HedValueVector(
-            name="mixed_data", description="Mixed numeric values", data=[1, 2.5, 3, 4.7], hed="Measurement-value/#"
+            name="mixed_data", description="Mixed numeric values", data=[1, 2.5, 3, 4.7], hed="Parameter-value/#"
         )
         self.assertEqual(mixed_values.data, [1, 2.5, 3, 4.7])
 
     def test_hed_attribute_access(self):
         """Test accessing and modifying the hed attribute."""
         values = HedValueVector(
-            name="test_access", description="Test attribute access", data=[1, 2, 3], hed="Initial-tag"
+            name="test_access", description="Test attribute access", data=[1, 2, 3], hed="Label/#"
         )
 
         # Test initial value
-        self.assertEqual(values.hed, "Initial-tag")
+        self.assertEqual(values.hed, "Label/#")
 
-        # Test modification (if allowed)
-        values.hed = "Modified-tag, New-annotation"
-        self.assertEqual(values.hed, "Modified-tag, New-annotation")
+        # Test modification (not allowed, should raise AttributeError)
+        with self.assertRaises(AttributeError) as cm:
+            values.hed = "Label/#, Red"
+        self.assertIn("can't set attribute", str(cm.exception.args[0]))
 
 
 class TestHedValueVectorRoundtrip(TestCase):

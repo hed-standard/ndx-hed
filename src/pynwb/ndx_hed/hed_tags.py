@@ -69,13 +69,25 @@ class HedValueVector(VectorData):
 
     """
 
-    __nwbfields__ = ("hed",)
+    __nwbfields__ = ("_hed",)
 
     @docval(
         *get_docval(VectorData.__init__, "name", "description", "data"),
-        {"name": "hed", "type": str, "doc": "HED tags for all values in the column"},
+        {"name": "hed", "type": str, "doc": "HED annotation template for all values in the column"},
     )
     def __init__(self, **kwargs):
         hed_annotation = kwargs.pop("hed", None)
         super().__init__(**kwargs)
-        self.hed = hed_annotation
+        # Check that the template contains exactly one # placeholder
+        placeholder_count = hed_annotation.count('#')
+        if placeholder_count != 1:
+            raise ValueError(
+                f"HedValueVector '{self.name}' template must contain exactly one '#' placeholder, "
+                f"found {placeholder_count} in: {hed_annotation}"
+            )
+        self._hed = hed_annotation
+
+    @property
+    def hed(self):
+        """Return the HED annotation template for this column."""
+        return self._hed
