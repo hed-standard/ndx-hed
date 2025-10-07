@@ -504,7 +504,6 @@ class TestValidateHedValueVector(unittest.TestCase):
         
         # Should only validate non-skippable values
         self.assertIsInstance(issues, list)
-        self
 
     def test_validate_value_vector_with_custom_error_handler(self):
         """Test validate_value_vector with custom error handler."""
