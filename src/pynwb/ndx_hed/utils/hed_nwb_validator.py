@@ -4,14 +4,16 @@ HedValidator class for validating HED tags in NWB DynamicTable objects.
 
 import io
 import json
+import math
 from typing import List, Dict, Any, Optional
 from pynwb import NWBFile
 from pynwb.core import DynamicTable
 from ndx_events import EventsTable
 from hed.errors import ErrorHandler, ErrorContext, HedExceptions, HedFileError
+from hed.errors.error_reporter import check_for_any_errors
 from hed.models import HedString, TabularInput
 from ..hed_lab_metadata import HedLabMetaData
-from ..hed_tags import HedTags
+from ..hed_tags import HedTags, HedValueVector
 from .bids2nwb import get_bids_events
 
 
@@ -61,6 +63,12 @@ class HedNWBValidator:
                 col_issues = self.validate_vector(col, error_handler)
                 issues += col_issues
                 error_handler.pop_error_context()
+            elif isinstance(col, HedValueVector):
+                error_handler.push_error_context(ErrorContext.COLUMN, col.name)
+                col_issues = self.validate_value_vector(col, error_handler)
+                issues += col_issues
+                error_handler.pop_error_context()
+                
         error_handler.pop_error_context()
         return issues
 
@@ -94,9 +102,46 @@ class HedNWBValidator:
 
         return issues
 
-    def validate_events(
-        self, events: EventsTable, error_handler: Optional[ErrorHandler] = None
-    ) -> List[Dict[str, Any]]:
+    def validate_value_vector(self, hed_values: HedValueVector, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
+        """
+        Validates a HedValueVector column using the provided HED schema metadata.
+
+        Parameters:
+            hed_values (HedValueVector): The HedValueVector column to validate
+            error_handler (ErrorHandler, optional): An ErrorHandler instance for collecting errors.
+                                                   If None, a new instance will be created.
+
+        Returns:
+            List[Dict[str, Any]]: A list of validation issues found in the HedValueVector column
+        """
+        if hed_values is None or not isinstance(hed_values, HedValueVector) or hed_values.hed is None:
+            raise ValueError("The provided hed_values is not a valid HedValueVector instance.")
+        if error_handler is None:
+            error_handler = ErrorHandler(check_for_warnings=False)
+        
+        issues = []
+        # Validate the HED template first
+        hed_template = HedString(hed_values.hed, self.hed_schema)
+        issues += hed_template.validate(allow_placeholders=True, error_handler=error_handler)
+        if check_for_any_errors(issues):
+            return issues
+        
+        
+        
+        for index, tag in enumerate(hed_values.data):
+            if tag is None or tag == "" or tag == "n/a" or (isinstance(tag, float) and math.isnan(tag)):
+                continue
+
+            error_handler.push_error_context(ErrorContext.ROW, index)
+            # Substitute the tag value into the template in place of #
+            eval_tag = hed_values.hed.replace('#', str(tag))
+            hed_obj = HedString(eval_tag, self.hed_schema)
+            row_issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
+            issues += row_issues
+            error_handler.pop_error_context()
+        return issues
+
+    def validate_events(self, events: EventsTable, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
         """
         Validates HED tags in an EventsTable by converting it to BIDS format and validating the events.
 
@@ -200,3 +245,5 @@ class HedNWBValidator:
             issues.extend(table_issues)
         error_handler.pop_error_context()
         return issues
+
+   
