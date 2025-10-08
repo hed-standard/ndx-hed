@@ -173,7 +173,7 @@ def main():
     nwbfile.add_events_table(value_vector_events)
     nwbfile.add_events_table(categorical_events)
 
-    print(f"\n✓ Successfully created NWB file with EventsTable HED integration!")
+    print("\n✓ Successfully created NWB file with EventsTable HED integration!")
     print(f"  - Direct HED events: {len(direct_events)} events")
     print(f"  - HedValueVector events: {len(value_vector_events)} events")
     print(f"  - Categorical events: {len(categorical_events)} events")

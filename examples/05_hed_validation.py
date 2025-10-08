@@ -8,7 +8,6 @@ the HedNWBValidator class.
 
 """
 
-from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
@@ -250,7 +249,7 @@ def main():
     validate_entire_file(validator, nwbfile)
     demonstrate_custom_error_handler(validator, nwbfile)
 
-    print(f"\n✓ HED validation demonstration complete!")
+    print("\n✓ HED validation demonstration complete!")
     print("Use the validation results to identify and fix HED annotation issues.")
 
     return nwbfile, validator

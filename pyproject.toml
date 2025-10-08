@@ -115,6 +115,8 @@ line-length = 120
 
 [tool.ruff.lint.per-file-ignores]
 "src/spec/create_extension_spec.py" = ["T201"]
+"src/pynwb/ndx_hed/__init__.py" = ["E402"]
+"examples/*" = ["T201"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 17

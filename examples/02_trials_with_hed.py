@@ -48,7 +48,7 @@ def main():
     # Trial 4: Rest period
     nwbfile.add_trial(start_time=6.0, stop_time=8.0, HED="Experimental-trial, Rest")
 
-    print(f"\n✓ Successfully created trials table with HED annotations!")
+    print("\n✓ Successfully created trials table with HED annotations!")
     print(f"  - Number of trials: {len(nwbfile.trials)}")
     print(f"  - Trial columns: {list(nwbfile.trials.colnames)}")
 

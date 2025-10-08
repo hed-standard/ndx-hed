@@ -78,7 +78,7 @@ def main():
     nwbfile.add_acquisition(stim_table1)
     nwbfile.add_acquisition(stim_table2)
 
-    print(f"\n✓ Successfully created NWB file with HED annotations!")
+    print("\n✓ Successfully created NWB file with HED annotations!")
     print(f"  - Stimulus table 1: {len(stim_table1)} rows")
     print(f"  - Stimulus table 2: {len(stim_table2)} rows")
     print(f"  - HED schema version: {hed_metadata.hed_schema_version}")
