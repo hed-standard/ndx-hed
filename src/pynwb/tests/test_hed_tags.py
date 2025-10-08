@@ -215,7 +215,8 @@ class TestHedValueVectorConstructor(TestCase):
 
     def test_constructor_empty_data(self):
         """Test setting HED value vector with empty data."""
-        values = HedValueVector(name="empty_values", description="Empty value vector", data=[], hed="Agent-action, Label/#")
+        values = HedValueVector(name="empty_values", description="Empty value vector", 
+                                data=[], hed="Agent-action, Label/#")
         self.assertEqual(values.name, "empty_values")
         self.assertEqual(values.description, "Empty value vector")
         self.assertFalse(values.data)
@@ -268,7 +269,8 @@ class TestHedValueVectorConstructor(TestCase):
         """Test HedValueVector with different data types."""
         # Test boolean data
         bool_values = HedValueVector(
-            name="bool_data", description="Boolean values", data=[True, False, True], hed="(Parameter-name/Logical-value,Label/#)"
+            name="bool_data", description="Boolean values", data=[True, False, True], 
+            hed="(Parameter-name/Logical-value,Label/#)"
         )
         self.assertEqual(bool_values.data, [True, False, True])
 

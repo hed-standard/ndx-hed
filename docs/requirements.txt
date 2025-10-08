@@ -1,8 +1,8 @@
 # Documentation build requirements
-sphinx>=5.0
-sphinx-rtd-theme>=1.0
-sphinx-autodoc-typehints>=1.12
-myst-parser>=0.18
+sphinx>=7.4.7
+sphinx-rtd-theme>=3.0.2
+sphinx-autodoc-typehints>=2.3.0
+myst-parser>=3.0.1
 hdmf-docutils>=0.4.7
 pynwb>=2.8.2
 hdmf>=3.14.1
