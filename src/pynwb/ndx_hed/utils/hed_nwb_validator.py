@@ -102,7 +102,8 @@ class HedNWBValidator:
 
         return issues
 
-    def validate_value_vector(self, hed_values: HedValueVector, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
+    def validate_value_vector(self, hed_values: HedValueVector, 
+                              error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
         """
         Validates a HedValueVector column using the provided HED schema metadata.
 
@@ -141,7 +142,8 @@ class HedNWBValidator:
             error_handler.pop_error_context()
         return issues
 
-    def validate_events(self, events: EventsTable, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
+    def validate_events(self, events: EventsTable, 
+                        error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
         """
         Validates HED tags in an EventsTable by converting it to BIDS format and validating the events.
 

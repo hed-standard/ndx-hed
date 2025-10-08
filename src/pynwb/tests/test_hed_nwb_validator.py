@@ -11,7 +11,6 @@ from ndx_hed import HedTags, HedLabMetaData, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 from ndx_hed.utils.bids2nwb import get_events_table
 from hed.errors import ErrorHandler
-from hed.errors.error_reporter import check_for_any_errors
 
 
 class TestHedNWBValidatorInit(unittest.TestCase):
@@ -450,12 +449,8 @@ class TestValidateHedValueVector(unittest.TestCase):
         """Test validate_value_vector with template missing # placeholder."""
         # Should raise ValueError during construction since no # placeholder
         with self.assertRaises(ValueError) as cm:
-            invalid_template_no_placeholder = HedValueVector(
-                name="no_placeholder",
-                description="Template without placeholder",
-                data=[1.0, 2.0, 3.0],
-                hed="Red, Blue"  # Missing # placeholder
-            )
+             HedValueVector(name="no_placeholder", description="Template without placeholder", 
+                            data=[1.0, 2.0, 3.0], hed="Red, Blue" )
         
         # Verify the error message mentions the placeholder requirement
         self.assertIn("must contain exactly one '#' placeholder", str(cm.exception))
@@ -540,12 +535,7 @@ class TestValidateHedValueVector(unittest.TestCase):
         """Test validate_value_vector with None HED template."""
         # Should raise TypeError during construction when hed=None
         with self.assertRaises(TypeError) as cm:
-            invalid_vector = HedValueVector(
-                name="no_hed",
-                description="Vector without HED template",
-                data=[1.0, 2.0, 3.0],
-                hed=None
-            )
+            HedValueVector(name="no_hed", description="Vector without HED template", data=[1.0, 2.0, 3.0], hed=None)
         
         # Verify the error message mentions that None is not allowed
         self.assertIn("None is not allowed", cm.exception.args[0])
@@ -702,12 +692,8 @@ class TestValidateHedValueVector(unittest.TestCase):
         """Test validate_value_vector with multiple # placeholders in template."""
         # Should raise ValueError during construction since there are multiple # placeholders
         with self.assertRaises(ValueError) as cm:
-            multi_placeholder = HedValueVector(
-                name="multi",
-                description="Multiple placeholders",
-                data=[1.0, 2.0, 3.0],
-                hed="(Delay/# ms, Duration/# s)"  # Two placeholders
-            )
+            HedValueVector(name="multi", description="Multiple placeholders", 
+                           data=[1.0, 2.0, 3.0], hed="(Delay/# ms, Duration/# s)" )
         
         # Verify the error message mentions the placeholder requirement
         self.assertIn("must contain exactly one '#' placeholder", str(cm.exception))

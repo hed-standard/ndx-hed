@@ -1,5 +1,6 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13142816.svg)](https://doi.org/10.5281/zenodo.13142816)
 [![PyPI version](https://badge.fury.io/py/ndx-hed.svg)](https://badge.fury.io/py/ndx-hed)
+[![codecov](https://codecov.io/gh/hed-standard/ndx-hed/branch/main/graph/badge.svg)](https://codecov.io/gh/hed-standard/ndx-hed)
 
 # ndx-hed extension for NWB
 
