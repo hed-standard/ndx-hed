@@ -45,7 +45,6 @@ source = "vcs"
 [tool.hatch.build.hooks.vcs]
 version-file = "_version.py"
 
-# TODO: add URLs before release
 [project.urls]
 "Homepage" = "https://github.com/hed-standard/ndx-hed"
 "Documentation" = "https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html"
