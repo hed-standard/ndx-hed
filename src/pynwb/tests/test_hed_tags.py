@@ -215,7 +215,7 @@ class TestHedValueVectorConstructor(TestCase):
 
     def test_constructor_empty_data(self):
         """Test setting HED value vector with empty data."""
-        values = HedValueVector(name="empty_values", description="Empty value vector", 
+        values = HedValueVector(name="empty_values", description="Empty value vector",
                                 data=[], hed="Agent-action, Label/#")
         self.assertEqual(values.name, "empty_values")
         self.assertEqual(values.description, "Empty value vector")
@@ -269,7 +269,7 @@ class TestHedValueVectorConstructor(TestCase):
         """Test HedValueVector with different data types."""
         # Test boolean data
         bool_values = HedValueVector(
-            name="bool_data", description="Boolean values", data=[True, False, True], 
+            name="bool_data", description="Boolean values", data=[True, False, True],
             hed="(Parameter-name/Logical-value,Label/#)"
         )
         self.assertEqual(bool_values.data, [True, False, True])
@@ -290,12 +290,8 @@ class TestHedValueVectorConstructor(TestCase):
         self.assertEqual(values.hed, "Label/#")
 
         # Test modification (not allowed, should raise AttributeError)
-        with self.assertRaises(AttributeError) as cm:
+        with self.assertRaisesWith(AttributeError, "property 'getter' of 'HedValueVector' object has no setter"):
             values.hed = "Label/#, Red"
-        self.assertTrue(
-            "attribute" in str(cm.exception.args[0]) or "hed" in str(cm.exception.args[0]),
-            f"Expected 'attribute' or 'hed' in exception message, got: {cm.exception.args[0]}"
-        )
 
 
 class TestHedValueVectorRoundtrip(TestCase):
