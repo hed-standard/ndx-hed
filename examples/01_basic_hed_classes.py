@@ -32,6 +32,8 @@ def main():
 
     # 2. HedTags - For row-specific HED annotations
     print("\n2. Creating HedTags column...")
+
+    # Create HedTags table column with three rows of HED annotations
     hed_tags = HedTags(
         data=[
             "(Visual-presentation, Image, Building/House)",
