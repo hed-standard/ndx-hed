@@ -6,9 +6,9 @@ build-backend = "hatchling.build"
 name = "ndx-hed"
 dynamic = ["version"]
 authors = [
+    { name="Kay Robbins", email="kay.robbins@utsa.edu" },
     { name="Ryan Ly", email="rly@lbl.gov" },
     { name="Oliver Ruebel", email="oruebel@lbl.gov" },
-    { name="Kay Robbins", email="kay.robbins@utsa.edu" },
     { name="Ian Callanan", email="ianrcallanan@gmail.com"}
 ]
 description = "NWB extension for HED data"
@@ -45,7 +45,6 @@ source = "vcs"
 [tool.hatch.build.hooks.vcs]
 version-file = "_version.py"
 
-# TODO: add URLs before release
 [project.urls]
 "Homepage" = "https://github.com/hed-standard/ndx-hed"
 "Documentation" = "https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html"
@@ -115,6 +114,8 @@ line-length = 120
 
 [tool.ruff.lint.per-file-ignores]
 "src/spec/create_extension_spec.py" = ["T201"]
+"src/pynwb/ndx_hed/__init__.py" = ["E402"]
+"examples/*" = ["T201"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 17

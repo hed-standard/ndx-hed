@@ -13,8 +13,8 @@ sys.path.insert(0, os.path.abspath('../../src/pynwb'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'ndx-hed'
-copyright = '2025, Ryan Ly, Oliver Ruebel, Kay Robbins, Ian Callanan'
-author = 'Ryan Ly, Oliver Ruebel, Kay Robbins, Ian Callanan'
+copyright = '2025, Kay Robbins, Ryan Ly, Oliver Ruebel, Ian Callanan'
+author = 'Kay Robbins, Ryan Ly, Oliver Ruebel, Ian Callanan'
 
 version = '0.2.0'
 release = '0.2.0'
