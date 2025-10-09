@@ -26,7 +26,7 @@ def main():
 
     # 1. HedLabMetaData - Required for HED schema specification
     print("1. Creating HED Lab Metadata...")
-    hed_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")  # Must be "hed_schema" if given
+    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")  # Must be "hed_schema" if given
     nwbfile.add_lab_meta_data(hed_metadata)
     print(f"   Added HED schema version: {hed_metadata.hed_schema_version}")
 

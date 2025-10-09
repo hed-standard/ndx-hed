@@ -19,7 +19,7 @@ class TestHedNWBValidatorInit(unittest.TestCase):
     def setUp(self):
         """Set up test data."""
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
 
     def test_hed_validator_init(self):
         """Test HedNWBValidator initialization."""
@@ -51,7 +51,7 @@ class TestValidateHedTagsVector(unittest.TestCase):
     def setUp(self):
         """Set up test data."""
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
 
         # Create HedNWBValidator instance
         self.validator = HedNWBValidator(self.hed_metadata)
@@ -144,7 +144,7 @@ class TestValidateTable(unittest.TestCase):
     def setUp(self):
         """Set up test data."""
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
 
         # Create HedNWBValidator instance
         self.validator = HedNWBValidator(self.hed_metadata)
@@ -297,7 +297,7 @@ class TestValidateEventsTable(unittest.TestCase):
     def setUp(self):
         """Set up test data."""
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
 
         # Create HedNWBValidator instance
         self.validator = HedNWBValidator(self.hed_metadata)
@@ -396,7 +396,7 @@ class TestValidateHedValueVector(unittest.TestCase):
     def setUp(self):
         """Set up test data."""
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
 
         # Create HedNWBValidator instance
         self.validator = HedNWBValidator(self.hed_metadata)
@@ -409,9 +409,9 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[0.5, 1.0, 1.5, 2.0, 2.5],
             hed="(Duration/# s, (Sensory-event))"
         )
-        
+
         issues = self.validator.validate_value_vector(valid_template_duration)
-        
+
         # Should have no issues for valid template and values
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0)
@@ -424,9 +424,9 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[100, 200, 300, 400, 'abc'],
             hed="(Delay/# ms, (Sensory-event))"
         )
-        
+
         issues = self.validator.validate_value_vector(valid_template_delay)
-        
+
         self.assertIsInstance(issues, list)
         self.assertGreater(len(issues), 0)  # Expect issues due to 'abc' value
 
@@ -438,9 +438,9 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[1.0, 2.0, 3.0],
             hed="InvalidTag123, (BadSyntax, # units)"
         )
-        
+
         issues = self.validator.validate_value_vector(invalid_template_bad_syntax)
-        
+
         # Should have issues for invalid template
         self.assertIsInstance(issues, list)
         self.assertGreater(len(issues), 0)
@@ -449,9 +449,9 @@ class TestValidateHedValueVector(unittest.TestCase):
         """Test validate_value_vector with template missing # placeholder."""
         # Should raise ValueError during construction since no # placeholder
         with self.assertRaises(ValueError) as cm:
-             HedValueVector(name="no_placeholder", description="Template without placeholder", 
+             HedValueVector(name="no_placeholder", description="Template without placeholder",
                             data=[1.0, 2.0, 3.0], hed="Red, Blue" )
-        
+
         # Verify the error message mentions the placeholder requirement
         self.assertIn("must contain exactly one '#' placeholder", str(cm.exception))
         self.assertIn("found 0", str(cm.exception))
@@ -465,10 +465,10 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[0.5, 1.0, 1.5, 2.0, 2.5],
             hed="(Duration/# s, (Sensory-event))"
         )
-        
+
         # All values should create valid HED strings when substituted
         issues = self.validator.validate_value_vector(valid_template_duration)
-        
+
         self.assertIsInstance(issues, list)
 
     def test_validate_value_vector_invalid_units(self):
@@ -479,10 +479,10 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[1.0, 2.0, 3.0],
             hed="(Duration/# invalidUnit, (Green))"  # invalidUnit is not a valid unit
         )
-        
+
         # Template is valid but substituted values create invalid HED
         issues = self.validator.validate_value_vector(valid_template_invalid_units)
-        
+
         self.assertIsInstance(issues, list)
         self.assertGreater(len(issues), 0)
 
@@ -494,9 +494,9 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[1.0, None, 2.0, "", 3.0],
             hed="(Duration/# s, (Green))"
         )
-        
+
         issues = self.validator.validate_value_vector(mixed_values)
-        
+
         # Should only validate non-skippable values
         self.assertIsInstance(issues, list)
 
@@ -508,13 +508,13 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[0.5, 1.0, 1.5, 2.0, 2.5],
             hed="(Duration/# s, (Sensory-event, Item/Extension))"
         )
-        
+
         error_handler = ErrorHandler(check_for_warnings=True)
         issues = self.validator.validate_value_vector(
-            valid_template_duration, 
+            valid_template_duration,
             error_handler
         )
-        
+
         self.assertIsInstance(issues, list)
         self.assertGreater(len(issues), 0)
 
@@ -536,7 +536,7 @@ class TestValidateHedValueVector(unittest.TestCase):
         # Should raise TypeError during construction when hed=None
         with self.assertRaises(TypeError) as cm:
             HedValueVector(name="no_hed", description="Vector without HED template", data=[1.0, 2.0, 3.0], hed=None)
-        
+
         # Verify the error message mentions that None is not allowed
         self.assertIn("None is not allowed", cm.exception.args[0])
 
@@ -548,9 +548,9 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[],
             hed="(Duration/# s, (Sensory-event))"
         )
-        
+
         issues = self.validator.validate_value_vector(empty_data)
-        
+
         # Should validate template but no data to substitute
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0)
@@ -563,9 +563,9 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[None, "", "n/a", float('nan')],
             hed="(Duration/# s, (Green))"
         )
-        
+
         issues = self.validator.validate_value_vector(skippable_values)
-        
+
         # Should skip all values and only validate template
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0)
@@ -579,7 +579,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[1.5, 2.5],
             hed="(Duration/# s, (Green))"
         )
-        
+
         issues = self.validator.validate_value_vector(test_vector)
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0)  # Expect no issues if substitution works correctly
@@ -592,9 +592,9 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[-1.0, -2.0, -3.0],
             hed="(Duration/# s, (Sensory-event))"
         )
-        
+
         issues = self.validator.validate_value_vector(negative_vector)
-        
+
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0)  # HED doesn't check value ranges
 
@@ -606,9 +606,9 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[0.0, 0.0, 0.0],
             hed="(Duration/# s, (Sensory-event))"
         )
-        
+
         issues = self.validator.validate_value_vector(zero_vector)
-        
+
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0)  # Zero is a valid numeric value
 
@@ -620,9 +620,9 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[1000000.0, 2000000.0, 3000000.0],
             hed="(Duration/# s, (Sensory-event))"
         )
-        
+
         issues = self.validator.validate_value_vector(large_vector)
-        
+
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0)  # Large values should be valid
 
@@ -634,7 +634,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[0.5, 1.0, 1.5, 2.0, 2.5],
             hed="(Duration/# s, (Sensory-event))"
         )
-        
+
         # Create a table with HedValueVector column
         table = DynamicTable(
             name="test_table",
@@ -644,10 +644,10 @@ class TestValidateHedValueVector(unittest.TestCase):
                 valid_template_duration,
             ],
         )
-        
+
         # Validate the table (which should call validate_value_vector internally)
         issues = self.validator.validate_table(table)
-        
+
         self.assertIsInstance(issues, list)
 
     def test_validate_table_with_multiple_value_vectors(self):
@@ -659,14 +659,14 @@ class TestValidateHedValueVector(unittest.TestCase):
             data=[0.5, 'abc', 1.5, 2.0],
             hed="(Duration/# s, (Sensory-event))"
         )
-        
+
         delay_vector = HedValueVector(
             name="delay",
             description="Delay values with HED template",
             data=[100, 200, 300, 'gef'],
             hed="(Delay/# ms, (Sensory-event))"
         )
-        
+
         # Create a table with both HedValueVector columns
         table = DynamicTable(
             name="multi_value_vector_table",
@@ -678,10 +678,10 @@ class TestValidateHedValueVector(unittest.TestCase):
                 VectorData(name="response", description="Response data", data=["A", "B", "C", "D"]),
             ],
         )
-        
+
         # Validate the table - should validate both HedValueVector columns
         issues = self.validator.validate_table(table)
-        
+
         # Should return a list (both columns should be validated)
         self.assertIsInstance(issues, list)
         self.assertGreaterEqual(len(issues), 2)
@@ -692,9 +692,9 @@ class TestValidateHedValueVector(unittest.TestCase):
         """Test validate_value_vector with multiple # placeholders in template."""
         # Should raise ValueError during construction since there are multiple # placeholders
         with self.assertRaises(ValueError) as cm:
-            HedValueVector(name="multi", description="Multiple placeholders", 
+            HedValueVector(name="multi", description="Multiple placeholders",
                            data=[1.0, 2.0, 3.0], hed="(Delay/# ms, Duration/# s)" )
-        
+
         # Verify the error message mentions the placeholder requirement
         self.assertIn("must contain exactly one '#' placeholder", str(cm.exception))
         self.assertIn("found 2", str(cm.exception))
