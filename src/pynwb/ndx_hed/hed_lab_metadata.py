@@ -12,7 +12,7 @@ from pynwb.file import LabMetaData
 @register_class("HedLabMetaData", "ndx-hed")
 class HedLabMetaData(LabMetaData):
     """
-    Stores the HED schema version for the NWBFile.
+    Stores the HED schema version for the NWBFile. The object name is fixed to "hed_schema".
 
     """
 
