@@ -201,7 +201,7 @@ def save_and_reload_file(nwbfile):
         # Reload and validate while file is open, then return just basic info
         with NWBHDF5IO(temp_filename, "r", load_namespaces=True) as io:
             reloaded_nwbfile = io.read()
-            print(f"   - Reloaded NWB file successfully")
+            print("   - Reloaded NWB file successfully")
 
             # Check that HED metadata is preserved
             original_schema = nwbfile.lab_meta_data["hed_schema"].hed_schema_version
@@ -278,7 +278,7 @@ def display_summary(nwbfile):
                     col_obj = getattr(obj, col, None)
                     if col_obj and hasattr(col_obj, "hed"):
                         value_vector_columns.append(col)
-                except:
+                except Exception:
                     pass  # Skip if column access fails
 
             print(
@@ -300,7 +300,7 @@ def display_summary(nwbfile):
                     col_obj = getattr(events_table, col, None)
                     if col_obj and hasattr(col_obj, "hed"):
                         value_vector_columns.append(col)
-                except:
+                except Exception:
                     pass
 
             print(
@@ -329,7 +329,7 @@ def main():
     # Step 5: Display summary
     display_summary(nwbfile)
 
-    print(f"\n✓ Complete HED workflow demonstration finished!")
+    print("\n✓ Complete HED workflow demonstration finished!")
     print("This example shows the full cycle of creating, validating, and")
     print("persisting NWB files with comprehensive HED annotations.")
 

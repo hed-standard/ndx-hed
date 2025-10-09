@@ -31,7 +31,13 @@ def create_file_with_definitions():
 
     # Define custom HED definitions using valid HED tags
     # Note: For demonstration purposes, these are simplified definitions
-    definitions = "(Definition/Go-stimulus, (Sensory-event, Visual-presentation)), (Definition/Stop-stimulus, (Sensory-event, Auditory-presentation)), (Definition/Correct-response, (Agent-action, Participant-response)), (Definition/Incorrect-response, (Agent-action, Participant-response)), (Definition/Response-time/#, (Time-interval/# s))"
+    definitions = (
+        "(Definition/Go-stimulus, (Sensory-event, Visual-presentation)), "
+        "(Definition/Stop-stimulus, (Sensory-event, Auditory-presentation)), "
+        "(Definition/Correct-response, (Agent-action, Participant-response)), "
+        "(Definition/Incorrect-response, (Agent-action, Participant-response)), "
+        "(Definition/Response-time/#, (Time-interval/# s))"
+    )
 
     # Add HED schema metadata with definitions
     hed_metadata = HedLabMetaData(hed_schema_version="8.4.0", definitions=definitions)
@@ -168,11 +174,11 @@ def main():
 
     # Validate everything
     issues = validate_definitions(hed_metadata, nwbfile)
-    print(f"")
+    print("")
     # Show definition expansion
     demonstrate_definition_expansion(hed_metadata)
 
-    print(f"\n✓ Successfully demonstrated HED definitions!")
+    print("\n✓ Successfully demonstrated HED definitions!")
     print(f"  - Definitions created: {len(hed_metadata.get_definition_dict().defs)}")
     print(f"  - Trials with definitions: {len(trials_data)}")
     print(f"  - Events with definitions: {len(events_table)}")

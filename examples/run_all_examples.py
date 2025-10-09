@@ -76,10 +76,10 @@ def main():
         print(f"  {status} {example_name}")
 
     if successful == total:
-        print(f"\n🎉 All examples completed successfully!")
+        print("\n🎉 All examples completed successfully!")
         return 0
     else:
-        print(f"\n⚠️  Some examples failed. Check the output above for details.")
+        print("\n⚠️  Some examples failed. Check the output above for details.")
         return 1
 
 

@@ -87,7 +87,7 @@ def demonstrate_bids_conversion():
         meanings=meanings,
     )
 
-    print(f"\n✓ Successfully converted to EventsTable:")
+    print("\n✓ Successfully converted to EventsTable:")
     print(f"  - Number of events: {len(events_table)}")
     print(f"  - Columns: {events_table.colnames}")
 
@@ -168,7 +168,7 @@ def main():
     nwbfile.add_acquisition(events_table1)
     nwbfile.add_acquisition(events_table2)
 
-    print(f"\n✓ Successfully created NWB file with BIDS-converted events!")
+    print("\n✓ Successfully created NWB file with BIDS-converted events!")
     print(f"  - Memory-based conversion: {len(events_table1)} events")
     print(f"  - File-based conversion: {len(events_table2)} events")
 
