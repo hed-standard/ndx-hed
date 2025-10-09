@@ -289,4 +289,4 @@ nwbfile.add_lab_meta_data(hed_metadata)
 
 **Date:** January 2025
 **Version:** 0.2.0
-**Contributors:** Ryan Ly, Oliver Ruebel, Kay Robbins, Ian Callanan
+**Contributors:** Kay Robbins, Ryan Ly, Oliver Ruebel, Ian Callanan

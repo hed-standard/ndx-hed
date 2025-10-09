@@ -6,9 +6,9 @@ build-backend = "hatchling.build"
 name = "ndx-hed"
 dynamic = ["version"]
 authors = [
+    { name="Kay Robbins", email="kay.robbins@utsa.edu" },
     { name="Ryan Ly", email="rly@lbl.gov" },
     { name="Oliver Ruebel", email="oruebel@lbl.gov" },
-    { name="Kay Robbins", email="kay.robbins@utsa.edu" },
     { name="Ian Callanan", email="ianrcallanan@gmail.com"}
 ]
 description = "NWB extension for HED data"

@@ -11,15 +11,15 @@ def main():
         version="""0.2.0""",
         doc="""NWB extension for HED data""",
         author=[
+            "Kay Robbins",
             "Ryan Ly",
             "Oliver Ruebel",
-            "Kay Robbins",
             "Ian Callanan",
         ],
         contact=[
+            "kay.robbins@utsa.edu",
             "rly@lbl.gov",
             "oruebel@lbl.gov",
-            "kay.robbins@utsa.edu",
             "ianrcallanan@gmail.com",
         ],
     )
