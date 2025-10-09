@@ -26,18 +26,11 @@ class HedLabMetaData(LabMetaData):
             "doc": "A string containing one or more HED definitions.",
             "default": None,
         },
-        {
-            "name": "name",
-            "type": "str",
-            "doc": "The name of the hed lab metadata (must be hed_schema).",
-            "default": "hed_schema",
-        },
     )
     def __init__(self, **kwargs):
         hed_schema_version = popargs("hed_schema_version", kwargs)
         definitions = popargs("definitions", kwargs)
-        if "name" in kwargs and kwargs["name"] != "hed_schema":
-            raise ValueError(f"The 'name' for HedLabMetaData must be 'hed_schema', but '{kwargs['name']}' was given.")
+        kwargs["name"] = "hed_schema"
         super().__init__(**kwargs)
         self.hed_schema_version = hed_schema_version
         self._init_internal(definitions)

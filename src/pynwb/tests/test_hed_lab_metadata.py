@@ -21,13 +21,13 @@ class TestHedLabMetaDataConstructor(TestCase):
 
     def test_constructor(self):
         """Test setting HED values using the constructor."""
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        labdata = HedLabMetaData(hed_schema_version="8.4.0")
         self.assertIsInstance(labdata, HedLabMetaData)
 
     def test_constructor_with_definitions(self):
         """Test creating HedLabMetaData with definitions parameter."""
         definitions = "(Definition/TestEvent, (Sensory-event, Visual-presentation))"
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
+        labdata = HedLabMetaData(hed_schema_version="8.4.0", definitions=definitions)
         self.assertIsInstance(labdata, HedLabMetaData)
         self.assertIsInstance(labdata.definitions, str)
         self.assertEqual(len(labdata._definition_dict.defs), 1)
@@ -57,21 +57,16 @@ class TestHedLabMetaDataConstructor(TestCase):
 
     def test_bad_schema_version(self):
         with self.assertRaises(ValueError) as cm:
-            HedLabMetaData(name="hed_schema", hed_schema_version="xxxx")
+            HedLabMetaData(hed_schema_version="xxxx")
         self.assertIn("Failed to load HED schema version", str(cm.exception))
 
-    def test_bad_name(self):
-        with self.assertRaises(ValueError) as cm:
-            HedLabMetaData(name="blech", hed_schema_version="8.4.0")
-        self.assertIn("The 'name' for HedLabMetaData must be 'hed_schema'", str(cm.exception))
-
     def test_get_hed_version(self):
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        labdata = HedLabMetaData(hed_schema_version="8.4.0")
         version = labdata.get_hed_schema_version()
         self.assertEqual("8.4.0", version)
 
     def test_get_hed_schema_name(self):
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        labdata = HedLabMetaData(hed_schema_version="8.4.0")
         schema = labdata.get_hed_schema()
         self.assertIsInstance(schema, HedSchema)
 
@@ -154,7 +149,7 @@ class TestHedLabMetaDataRoundTrip(TestCase):
         )
 
         # Instantiate the class and add the lab_infor
-        hed_info = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        hed_info = HedLabMetaData(hed_schema_version="8.4.0")
         nwbfile.add_lab_meta_data(hed_info)
 
         # Write the NWB file
@@ -184,7 +179,7 @@ class TestHedLabMetaDataRoundTrip(TestCase):
 
         # Instantiate the class with definitions and add the lab_info
         test_definitions = "(Definition/apple,(Item)),(Definition/orange,(Item/Fruit))"
-        hed_info = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=test_definitions)
+        hed_info = HedLabMetaData(hed_schema_version="8.4.0", definitions=test_definitions)
         nwbfile.add_lab_meta_data(hed_info)
 
         # Write the NWB file
@@ -217,7 +212,7 @@ class TestHedLabMetaDataRoundTrip(TestCase):
 
         # Instantiate the class with library schemas
         library_schema_version = '["score_2.1.0","lang_1.1.0"]'
-        hed_info = HedLabMetaData(name="hed_schema", hed_schema_version=library_schema_version)
+        hed_info = HedLabMetaData(hed_schema_version=library_schema_version)
         nwbfile.add_lab_meta_data(hed_info)
 
         # Write the NWB file
@@ -250,7 +245,7 @@ class TestHedLabMetaDataRoundTrip(TestCase):
         library_schema_version = '["bc:8.4.0","score_2.1.0"]'
         test_definitions = "(Definition/apple,(Item/Fruit)),(Definition/orange,(Item/Fruit))"
         hed_info = HedLabMetaData(
-            name="hed_schema", hed_schema_version=library_schema_version, definitions=test_definitions
+            hed_schema_version=library_schema_version, definitions=test_definitions
         )
         nwbfile.add_lab_meta_data(hed_info)
 
@@ -300,7 +295,7 @@ class TestHedLabMetaDataDefinitions(TestCase):
 
     def test_definitions_none(self):
         """Test HedLabMetaData with no definitions."""
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        labdata = HedLabMetaData(hed_schema_version="8.4.0")
         self.assertIsNone(labdata.definitions)
         self.assertIsNone(labdata.definitions)
         # The DefinitionDict should exist but be empty
@@ -308,20 +303,20 @@ class TestHedLabMetaDataDefinitions(TestCase):
 
     def test_definitions_empty_string(self):
         """Test HedLabMetaData with empty definitions string."""
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions="")
+        labdata = HedLabMetaData(hed_schema_version="8.4.0", definitions="")
         self.assertIsNone(labdata.definitions)
         self.assertIsNone(labdata.definitions)
 
     def test_definitions_whitespace_string(self):
         """Test HedLabMetaData with whitespace-only definitions string."""
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions="   \n  \t  ")
+        labdata = HedLabMetaData(hed_schema_version="8.4.0", definitions="   \n  \t  ")
         self.assertIsNone(labdata.definitions)
         self.assertIsNone(labdata.definitions)
 
     def test_definitions_single_definition(self):
         """Test HedLabMetaData with a single definition."""
         definitions = "(Definition/testevent,(Sensory-event,Visual-presentation))"
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
+        labdata = HedLabMetaData(hed_schema_version="8.4.0", definitions=definitions)
 
         # Check that definitions field contains the normalized format
         self.assertEqual(labdata.definitions, definitions)
@@ -346,7 +341,7 @@ class TestHedLabMetaDataDefinitions(TestCase):
         """Test definitions with library schema versions."""
         library_schema_version = '["score_2.1.0","lang_1.1.0"]'
         definitions = "(Definition/mytask,(Task))"
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version=library_schema_version, definitions=definitions)
+        labdata = HedLabMetaData(hed_schema_version=library_schema_version, definitions=definitions)
 
         self.assertIsInstance(labdata.definitions, str)
         self.assertEqual(len(labdata._definition_dict.defs), 1)
@@ -363,7 +358,7 @@ class TestHedLabMetaDataDefinitions(TestCase):
     def test_multiple_definitions(self):
         """List of definitions."""
         definitions = "(Definition/event1,(Sensory-event)),(Definition/event2/#,(Parameter-value/#))"
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
+        labdata = HedLabMetaData(hed_schema_version="8.4.0", definitions=definitions)
 
         self.assertIsInstance(labdata.definitions, str)
         self.assertEqual(len(labdata._definition_dict.defs), 2)
@@ -379,7 +374,7 @@ class TestHedLabMetaDataDefinitions(TestCase):
     def test_definitions_add_method(self):
         """Test adding definitions using add_definitions method."""
         # Start with no definitions
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0")
+        labdata = HedLabMetaData(hed_schema_version="8.4.0")
         self.assertIsNone(labdata.definitions)
 
         # Add definitions
@@ -409,7 +404,7 @@ class TestHedLabMetaDataDefinitions(TestCase):
         )
 
         definitions = "(Definition/FileIOTest,(Sensory-event)),(Definition/ResponseEvent/#,(Parameter-value/#))"
-        hed_info = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
+        hed_info = HedLabMetaData(hed_schema_version="8.4.0", definitions=definitions)
         nwbfile.add_lab_meta_data(hed_info)
 
         # Write file
@@ -453,7 +448,7 @@ class TestHedLabMetaDataDefinitions(TestCase):
 
         library_schema_version = '["8.4.0","bc:score_2.1.0"]'
         definitions = "(Definition/librarytest,(Task-activity,Walk))"
-        hed_info = HedLabMetaData(name="hed_schema", hed_schema_version=library_schema_version, definitions=definitions)
+        hed_info = HedLabMetaData(hed_schema_version=library_schema_version, definitions=definitions)
         self.assertEqual(hed_info.definitions, definitions)
         nwbfile.add_lab_meta_data(hed_info)
 
@@ -486,14 +481,14 @@ class TestHedLabMetaDataDefinitions(TestCase):
         with self.assertRaises(Exception):
             # Invalid HED syntax - missing closing parenthesis
             invalid_definitions = "(Definition/BadEvent, (Sensory-event"
-            HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=invalid_definitions)
+            HedLabMetaData(hed_schema_version="8.4.0", definitions=invalid_definitions)
 
     def test_definitions_consistency_across_operations(self):
         """Test that definitions remain consistent across all operations."""
         definitions = "(Definition/consistencytest,(Sensory-event)),(Definition/valuetest/#,(Parameter-value/#))"
 
         # Test constructor
-        labdata = HedLabMetaData(name="hed_schema", hed_schema_version="8.4.0", definitions=definitions)
+        labdata = HedLabMetaData(hed_schema_version="8.4.0", definitions=definitions)
         initial_extracted = labdata.definitions
         self.assertIn("consistencytest", initial_extracted)
         # Test adding to existing definitions
