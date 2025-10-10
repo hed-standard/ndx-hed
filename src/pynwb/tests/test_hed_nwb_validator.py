@@ -26,12 +26,26 @@ class TestHedNWBValidatorInit(unittest.TestCase):
         # Test valid initialization
         validator = HedNWBValidator(self.hed_metadata)
         self.assertIsInstance(validator, HedNWBValidator)
-        self.assertEqual(validator.hed_metadata, self.hed_metadata)
+        self.assertEqual(validator.def_dict, self.hed_metadata.get_definition_dict())
+        self.assertIsNotNone(validator.hed_schema)
+        # Note: definitions can be None if no definitions were provided
 
-        # Test invalid initialization
+        # Test invalid initialization - not HedLabMetaData instance
         with self.assertRaises(ValueError) as cm:
             HedNWBValidator("invalid_metadata")
         self.assertIn("must be an instance of HedLabMetaData", str(cm.exception))
+
+        # Test with None
+        with self.assertRaises(ValueError) as cm:
+            HedNWBValidator(None)
+        self.assertIn("must be an instance of HedLabMetaData", str(cm.exception))
+
+    def test_hed_validator_init_invalid_schema_version(self):
+        """Test that HedLabMetaData raises ValueError for invalid schema version."""
+        # This tests that HedLabMetaData itself validates the schema during construction
+        with self.assertRaises(ValueError) as cm:
+            HedLabMetaData(hed_schema_version="99.99.99")
+        self.assertIn("Failed to load HED schema version", str(cm.exception))
 
     def test_hed_schema_property(self):
         """Test hed_schema property."""
@@ -407,7 +421,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             name="duration",
             description="Duration values with HED template",
             data=[0.5, 1.0, 1.5, 2.0, 2.5],
-            hed="(Duration/# s, (Sensory-event))"
+            hed="(Duration/# s, (Sensory-event))",
         )
 
         issues = self.validator.validate_value_vector(valid_template_duration)
@@ -421,8 +435,8 @@ class TestValidateHedValueVector(unittest.TestCase):
         valid_template_delay = HedValueVector(
             name="delay",
             description="Delay values with HED template",
-            data=[100, 200, 300, 400, 'abc'],
-            hed="(Delay/# ms, (Sensory-event))"
+            data=[100, 200, 300, 400, "abc"],
+            hed="(Delay/# ms, (Sensory-event))",
         )
 
         issues = self.validator.validate_value_vector(valid_template_delay)
@@ -436,7 +450,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             name="bad_syntax",
             description="Template with bad HED syntax",
             data=[1.0, 2.0, 3.0],
-            hed="InvalidTag123, (BadSyntax, # units)"
+            hed="InvalidTag123, (BadSyntax, # units)",
         )
 
         issues = self.validator.validate_value_vector(invalid_template_bad_syntax)
@@ -449,8 +463,9 @@ class TestValidateHedValueVector(unittest.TestCase):
         """Test validate_value_vector with template missing # placeholder."""
         # Should raise ValueError during construction since no # placeholder
         with self.assertRaises(ValueError) as cm:
-             HedValueVector(name="no_placeholder", description="Template without placeholder",
-                            data=[1.0, 2.0, 3.0], hed="Red, Blue" )
+            HedValueVector(
+                name="no_placeholder", description="Template without placeholder", data=[1.0, 2.0, 3.0], hed="Red, Blue"
+            )
 
         # Verify the error message mentions the placeholder requirement
         self.assertIn("must contain exactly one '#' placeholder", str(cm.exception))
@@ -463,7 +478,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             name="duration",
             description="Duration values with HED template",
             data=[0.5, 1.0, 1.5, 2.0, 2.5],
-            hed="(Duration/# s, (Sensory-event))"
+            hed="(Duration/# s, (Sensory-event))",
         )
 
         # All values should create valid HED strings when substituted
@@ -477,7 +492,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             name="invalid_units",
             description="Valid template but invalid unit values",
             data=[1.0, 2.0, 3.0],
-            hed="(Duration/# invalidUnit, (Green))"  # invalidUnit is not a valid unit
+            hed="(Duration/# invalidUnit, (Green))",  # invalidUnit is not a valid unit
         )
 
         # Template is valid but substituted values create invalid HED
@@ -492,7 +507,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             name="mixed",
             description="Mixed valid and skippable values",
             data=[1.0, None, 2.0, "", 3.0],
-            hed="(Duration/# s, (Green))"
+            hed="(Duration/# s, (Green))",
         )
 
         issues = self.validator.validate_value_vector(mixed_values)
@@ -506,14 +521,11 @@ class TestValidateHedValueVector(unittest.TestCase):
             name="duration",
             description="Duration values with HED template",
             data=[0.5, 1.0, 1.5, 2.0, 2.5],
-            hed="(Duration/# s, (Sensory-event, Item/Extension))"
+            hed="(Duration/# s, (Sensory-event, Item/Extension))",
         )
 
         error_handler = ErrorHandler(check_for_warnings=True)
-        issues = self.validator.validate_value_vector(
-            valid_template_duration,
-            error_handler
-        )
+        issues = self.validator.validate_value_vector(valid_template_duration, error_handler)
 
         self.assertIsInstance(issues, list)
         self.assertGreater(len(issues), 0)
@@ -543,10 +555,7 @@ class TestValidateHedValueVector(unittest.TestCase):
     def test_validate_value_vector_empty_data(self):
         """Test validate_value_vector with empty data."""
         empty_data = HedValueVector(
-            name="empty",
-            description="Empty data array",
-            data=[],
-            hed="(Duration/# s, (Sensory-event))"
+            name="empty", description="Empty data array", data=[], hed="(Duration/# s, (Sensory-event))"
         )
 
         issues = self.validator.validate_value_vector(empty_data)
@@ -560,8 +569,8 @@ class TestValidateHedValueVector(unittest.TestCase):
         skippable_values = HedValueVector(
             name="skippable",
             description="Only skippable values",
-            data=[None, "", "n/a", float('nan')],
-            hed="(Duration/# s, (Green))"
+            data=[None, "", "n/a", float("nan")],
+            hed="(Duration/# s, (Green))",
         )
 
         issues = self.validator.validate_value_vector(skippable_values)
@@ -574,10 +583,7 @@ class TestValidateHedValueVector(unittest.TestCase):
         """Test that # placeholder is correctly substituted with actual values."""
         # Create a simple template where we can verify substitution
         test_vector = HedValueVector(
-            name="test_sub",
-            description="Test substitution",
-            data=[1.5, 2.5],
-            hed="(Duration/# s, (Green))"
+            name="test_sub", description="Test substitution", data=[1.5, 2.5], hed="(Duration/# s, (Green))"
         )
 
         issues = self.validator.validate_value_vector(test_vector)
@@ -590,7 +596,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             name="negative",
             description="Negative values",
             data=[-1.0, -2.0, -3.0],
-            hed="(Duration/# s, (Sensory-event))"
+            hed="(Duration/# s, (Sensory-event))",
         )
 
         issues = self.validator.validate_value_vector(negative_vector)
@@ -601,10 +607,7 @@ class TestValidateHedValueVector(unittest.TestCase):
     def test_validate_value_vector_zero_values(self):
         """Test validate_value_vector with zero values."""
         zero_vector = HedValueVector(
-            name="zero",
-            description="Zero values",
-            data=[0.0, 0.0, 0.0],
-            hed="(Duration/# s, (Sensory-event))"
+            name="zero", description="Zero values", data=[0.0, 0.0, 0.0], hed="(Duration/# s, (Sensory-event))"
         )
 
         issues = self.validator.validate_value_vector(zero_vector)
@@ -618,7 +621,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             name="large",
             description="Large values",
             data=[1000000.0, 2000000.0, 3000000.0],
-            hed="(Duration/# s, (Sensory-event))"
+            hed="(Duration/# s, (Sensory-event))",
         )
 
         issues = self.validator.validate_value_vector(large_vector)
@@ -632,7 +635,7 @@ class TestValidateHedValueVector(unittest.TestCase):
             name="duration",
             description="Duration values with HED template",
             data=[0.5, 1.0, 1.5, 2.0, 2.5],
-            hed="(Duration/# s, (Sensory-event))"
+            hed="(Duration/# s, (Sensory-event))",
         )
 
         # Create a table with HedValueVector column
@@ -656,15 +659,15 @@ class TestValidateHedValueVector(unittest.TestCase):
         duration_vector = HedValueVector(
             name="duration",
             description="Duration values with HED template",
-            data=[0.5, 'abc', 1.5, 2.0],
-            hed="(Duration/# s, (Sensory-event))"
+            data=[0.5, "abc", 1.5, 2.0],
+            hed="(Duration/# s, (Sensory-event))",
         )
 
         delay_vector = HedValueVector(
             name="delay",
             description="Delay values with HED template",
-            data=[100, 200, 300, 'gef'],
-            hed="(Delay/# ms, (Sensory-event))"
+            data=[100, 200, 300, "gef"],
+            hed="(Delay/# ms, (Sensory-event))",
         )
 
         # Create a table with both HedValueVector columns
@@ -692,13 +695,795 @@ class TestValidateHedValueVector(unittest.TestCase):
         """Test validate_value_vector with multiple # placeholders in template."""
         # Should raise ValueError during construction since there are multiple # placeholders
         with self.assertRaises(ValueError) as cm:
-            HedValueVector(name="multi", description="Multiple placeholders",
-                           data=[1.0, 2.0, 3.0], hed="(Delay/# ms, Duration/# s)" )
+            HedValueVector(
+                name="multi",
+                description="Multiple placeholders",
+                data=[1.0, 2.0, 3.0],
+                hed="(Delay/# ms, Duration/# s)",
+            )
 
         # Verify the error message mentions the placeholder requirement
         self.assertIn("must contain exactly one '#' placeholder", str(cm.exception))
         self.assertIn("found 2", str(cm.exception))
         self.assertIn("multi", str(cm.exception))
+
+
+class TestValidateWithDefinitions(unittest.TestCase):
+    """Test class for validating HED tags that reference definitions.
+
+    All validation methods (validate_vector, validate_table, validate_value_vector,
+    and validate_events) now support external definition dictionaries by passing
+    def_dict parameter to HedString during validation. This allows HED tags to
+    reference definitions defined in HedLabMetaData.
+    """
+
+    def setUp(self):
+        """Set up test data with definitions."""
+        # Define custom HED definitions
+        self.test_definitions = (
+            "(Definition/Go-stimulus, (Sensory-event, Visual-presentation)), "
+            "(Definition/Stop-stimulus, (Sensory-event, Auditory-presentation)), "
+            "(Definition/Correct-response, (Agent-action, Correct-action)), "
+            "(Definition/Incorrect-response, (Agent-action, Incorrect-action)), "
+            "(Definition/Response-time/#, (Time-interval/# s))"
+        )
+
+        # Create HED lab metadata with definitions
+        self.hed_metadata_with_defs = HedLabMetaData(hed_schema_version="8.4.0", definitions=self.test_definitions)
+
+        # Create validator with definitions
+        self.validator_with_defs = HedNWBValidator(self.hed_metadata_with_defs)
+
+        # Create validator without definitions for comparison
+        self.hed_metadata_no_defs = HedLabMetaData(hed_schema_version="8.4.0")
+        self.validator_no_defs = HedNWBValidator(self.hed_metadata_no_defs)
+
+    def test_validator_has_definitions(self):
+        """Test that validator properly stores definitions from HedLabMetaData."""
+        # Validator with definitions should have non-None definitions (DefinitionDict)
+        self.assertIsNotNone(self.validator_with_defs.def_dict)
+
+        # Validator without definitions should have empty DefinitionDict
+        # (HedLabMetaData always creates a DefinitionDict, even if empty)
+        self.assertIsNotNone(self.validator_no_defs.def_dict)
+        self.assertEqual(len(self.validator_no_defs.def_dict.defs), 0)
+
+        # Check that definitions contains the expected definition names
+        def_dict = self.validator_with_defs.def_dict
+        self.assertEqual(len(def_dict.defs), 5)
+        # Note: Definition names are stored in lowercase
+        self.assertIn("go-stimulus", def_dict.defs)
+        self.assertIn("stop-stimulus", def_dict.defs)
+        self.assertIn("correct-response", def_dict.defs)
+        self.assertIn("incorrect-response", def_dict.defs)
+        self.assertIn("response-time", def_dict.defs)
+
+    def test_validate_vector_with_valid_definition_references(self):
+        """Test that validate_vector now supports external definitions.
+
+        Note: validate_vector now uses HedString with def_dict parameter,
+        which allows it to validate definition references against the
+        external definition dictionary.
+        """
+        # Create HedTags that reference definitions
+        def_tags = HedTags(
+            data=[
+                "Def/Go-stimulus",
+                "Def/Correct-response",
+            ]
+        )
+
+        # Validate with validator that has definitions - should pass
+        issues = self.validator_with_defs.validate_vector(def_tags)
+
+        # Should have NO issues because validate_vector now uses external definitions
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues with valid definitions, but got: {issues}")
+
+    def test_validate_vector_without_definitions_fails(self):
+        """Test that validate_vector fails when definitions are not provided."""
+        # Create HedTags that reference definitions
+        def_tags = HedTags(
+            data=[
+                "Def/Go-stimulus",
+                "Def/Correct-response",
+            ]
+        )
+
+        # Validate with validator that has NO definitions - should fail
+        issues = self.validator_no_defs.validate_vector(def_tags)
+
+        # Should have issues because definitions are not available
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues when definitions are not provided")
+
+        # Error should be DEF_INVALID
+        self.assertTrue(any(issue.get("code") == "DEF_INVALID" for issue in issues))
+
+    def test_validate_vector_with_invalid_definition_references(self):
+        """Test validate_vector with references to non-existent definitions."""
+        # Create HedTags that reference definitions that don't exist
+        invalid_def_tags = HedTags(
+            data=[
+                "Def/NonExistent-definition",
+                "Def/Another-missing-def",
+            ]
+        )
+
+        issues = self.validator_with_defs.validate_vector(invalid_def_tags)
+
+        # Should have issues for non-existent definition references
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues for non-existent definitions")
+
+        # Check that the error messages mention the definitions
+        self.assertTrue(any(issue.get("code") == "DEF_INVALID" for issue in issues))
+
+    def test_definitions_property_access(self):
+        """Test that definitions property correctly returns definition string or None."""
+        # Validator with definitions should have non-None definitions property
+        self.assertIsNotNone(self.hed_metadata_with_defs.definitions)
+
+        # Validator without definitions should have None
+        self.assertIsNone(self.hed_metadata_no_defs.definitions)
+
+        # The definitions string should contain our definition names (lowercase)
+        defs_string = self.hed_metadata_with_defs.definitions
+        self.assertIn("go-stimulus", defs_string.lower())
+        self.assertIn("response-time", defs_string.lower())
+
+    def test_validate_events_with_definition_references(self):
+        """Test validate_events with EventsTable containing definition references."""
+        # Create EventsTable with definition references
+        events_df = pd.DataFrame(
+            {
+                "onset": [1.0, 2.0, 3.0, 4.0],
+                "duration": [0.5, 0.5, 0.5, 0.5],
+                "HED": [
+                    "Def/Go-stimulus",
+                    "Def/Stop-stimulus",
+                    "Def/Go-stimulus, Def/Correct-response",
+                    "Def/Go-stimulus, Def/Response-time/0.45",
+                ],
+            }
+        )
+
+        events_table = get_events_table(
+            name="events_with_defs",
+            description="Events using HED definitions",
+            df=events_df,
+            meanings={"categorical": {}, "value": {}},
+        )
+
+        issues = self.validator_with_defs.validate_events(events_table)
+
+        # Should have no issues since all definitions exist
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_events_with_invalid_definition_references(self):
+        """Test validate_events with invalid definition references."""
+        # Create EventsTable with invalid definition references
+        events_df = pd.DataFrame(
+            {
+                "onset": [1.0, 2.0],
+                "duration": [0.5, 0.5],
+                "HED": [
+                    "Def/NonExistent-def",
+                    "Def/Another-missing-def",
+                ],
+            }
+        )
+
+        events_table = get_events_table(
+            name="events_invalid_defs",
+            description="Events with invalid definitions",
+            df=events_df,
+            meanings={"categorical": {}, "value": {}},
+        )
+
+        issues = self.validator_with_defs.validate_events(events_table)
+
+        # Should have issues for non-existent definitions
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues for non-existent definitions")
+
+    def test_validate_vector_mixed_definitions_and_regular_tags(self):
+        """Test validate_vector with a mix of definition references and regular HED tags.
+
+        NOTE: validate_vector now DOES support external definitions.
+        """
+        mixed_tags = HedTags(
+            data=[
+                "Def/Go-stimulus, Red, Visual-presentation",
+                "Sensory-event, Def/Correct-response",
+                "Def/Response-time/0.5, Agent-action",
+                "Blue, Green, Def/Stop-stimulus",
+            ]
+        )
+
+        issues = self.validator_with_defs.validate_vector(mixed_tags)
+
+        # Should have no issues - all definitions exist and regular tags are valid
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_events_mixed_definitions_and_regular_tags(self):
+        """Test validate_events with a mix of definition references and regular HED tags.
+
+        NOTE: This is the original test using validate_events.
+        """
+        events_df = pd.DataFrame(
+            {
+                "onset": [1.0, 2.0, 3.0, 4.0],
+                "duration": [0.5, 0.5, 0.5, 0.5],
+                "HED": [
+                    "Def/Go-stimulus, Red, Visual-presentation",
+                    "Sensory-event, Def/Correct-response",
+                    "Def/Response-time/0.5, Agent-action",
+                    "Blue, Green, Def/Stop-stimulus",
+                ],
+            }
+        )
+
+        events_table = get_events_table(
+            name="events_mixed",
+            description="Events with mixed tags",
+            df=events_df,
+            meanings={"categorical": {}, "value": {}},
+        )
+
+        issues = self.validator_with_defs.validate_events(events_table)
+
+        # Should have no issues - all definitions exist and regular tags are valid
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_vector_definition_with_invalid_regular_tags(self):
+        """Test that invalid regular HED tags are caught even when definitions are valid.
+
+        Uses validate_vector which now supports definitions.
+        """
+        mixed_tags = HedTags(
+            data=[
+                "Def/Go-stimulus, InvalidTag123",
+                "NonExistentTag, Def/Correct-response",
+            ]
+        )
+
+        issues = self.validator_with_defs.validate_vector(mixed_tags)
+
+        # Should have issues for invalid regular tags
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues for invalid regular tags")
+
+    def test_validate_events_definition_with_invalid_regular_tags(self):
+        """Test that invalid regular HED tags are caught even when definitions are valid.
+
+        Uses validate_events to properly support definitions.
+        """
+        events_df = pd.DataFrame(
+            {
+                "onset": [1.0, 2.0],
+                "duration": [0.5, 0.5],
+                "HED": [
+                    "Def/Go-stimulus, InvalidTag123",
+                    "NonExistentTag, Def/Correct-response",
+                ],
+            }
+        )
+
+        events_table = get_events_table(
+            name="events_mixed_invalid",
+            description="Events with invalid regular tags",
+            df=events_df,
+            meanings={"categorical": {}, "value": {}},
+        )
+
+        issues = self.validator_with_defs.validate_events(events_table)
+
+        # Should have issues for invalid regular tags
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues for invalid regular tags")
+
+    def test_validate_events_uses_definitions(self):
+        """Test that validate_events actually uses the definitions when validating."""
+        # This test verifies that definitions are passed to the underlying validation
+        # Create an EventsTable that would fail without definitions but passes with them
+        events_df = pd.DataFrame(
+            {
+                "onset": [1.0, 2.0],
+                "duration": [0.5, 0.5],
+                "HED": [
+                    "Def/Go-stimulus",
+                    "Def/Response-time/0.5",
+                ],
+            }
+        )
+
+        events_table = get_events_table(
+            name="events_def_test",
+            description="Events to test definition usage",
+            df=events_df,
+            meanings={"categorical": {}, "value": {}},
+        )
+
+        # Validate with definitions - should pass
+        issues_with_defs = self.validator_with_defs.validate_events(events_table)
+        self.assertEqual(
+            len(issues_with_defs), 0, f"Should have no issues with definitions, but got: {issues_with_defs}"
+        )
+
+        # Validate without definitions - should fail
+        issues_no_defs = self.validator_no_defs.validate_events(events_table)
+        self.assertGreater(len(issues_no_defs), 0, "Should have issues without definitions")
+
+    def test_validate_table_with_definition_references(self):
+        """Test validate_table with DynamicTable containing definition references."""
+        # Create HedTags with definition references
+        def_tags = HedTags(
+            data=[
+                "Def/Go-stimulus",
+                "Def/Stop-stimulus",
+                "Def/Correct-response",
+                "Def/Go-stimulus, Def/Response-time/0.45",
+            ]
+        )
+
+        # Create table with definition-based HedTags
+        table_with_defs = DynamicTable(
+            name="table_with_defs",
+            description="Table using HED definitions",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2, 3, 4]),
+                def_tags,
+            ],
+        )
+
+        issues = self.validator_with_defs.validate_table(table_with_defs)
+
+        # Should have no issues since all definitions exist
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_table_with_invalid_definition_references(self):
+        """Test validate_table with invalid definition references."""
+        # Create HedTags with invalid definition references
+        invalid_def_tags = HedTags(
+            data=[
+                "Def/NonExistent-def",
+                "Def/Another-missing-def",
+            ]
+        )
+
+        table_invalid_defs = DynamicTable(
+            name="table_invalid_defs",
+            description="Table with invalid definitions",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2]),
+                invalid_def_tags,
+            ],
+        )
+
+        issues = self.validator_with_defs.validate_table(table_invalid_defs)
+
+        # Should have issues for non-existent definitions
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues for non-existent definitions")
+
+    def test_validate_table_mixed_definitions_and_regular_tags(self):
+        """Test validate_table with mix of definition references and regular HED tags."""
+        mixed_tags = HedTags(
+            data=[
+                "Def/Go-stimulus, Red, Visual-presentation",
+                "Sensory-event, Def/Correct-response",
+                "Blue, Def/Stop-stimulus",
+            ]
+        )
+
+        table_mixed = DynamicTable(
+            name="table_mixed",
+            description="Table with mixed tags",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2, 3]),
+                mixed_tags,
+            ],
+        )
+
+        issues = self.validator_with_defs.validate_table(table_mixed)
+
+        # Should have no issues
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_table_without_definitions_fails(self):
+        """Test that validate_table fails when definitions are not provided."""
+        def_tags = HedTags(
+            data=[
+                "Def/Go-stimulus",
+                "Def/Correct-response",
+            ]
+        )
+
+        table_with_defs = DynamicTable(
+            name="table_needs_defs",
+            description="Table needing definitions",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2]),
+                def_tags,
+            ],
+        )
+
+        # Validate without definitions - should fail
+        issues = self.validator_no_defs.validate_table(table_with_defs)
+
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues when definitions are not provided")
+
+    def test_validate_value_vector_with_definitions(self):
+        """Test validate_value_vector with HED template containing definition references.
+
+        Note: Uses a simple (non-placeholder) definition since HedValueVector
+        already has its own placeholder mechanism.
+        """
+        # Create HedValueVector with simple definition in template
+        value_vector_with_def = HedValueVector(
+            name="stimulus_size",
+            description="Stimulus sizes with definition template",
+            data=[0.5, 0.6, 0.7, 0.8],
+            hed="Def/Go-stimulus, (Size/# cm^2)",
+        )
+
+        issues = self.validator_with_defs.validate_value_vector(value_vector_with_def)
+
+        # Should have no issues - definition exists
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_value_vector_with_invalid_definition(self):
+        """Test validate_value_vector with invalid definition in template."""
+        # Create HedValueVector with non-existent definition
+        value_vector_invalid_def = HedValueVector(
+            name="invalid_def",
+            description="Template with invalid definition",
+            data=[1.0, 2.0],
+            hed="Def/NonExistent-definition/#",
+        )
+
+        issues = self.validator_with_defs.validate_value_vector(value_vector_invalid_def)
+
+        # Should have issues for non-existent definition
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues for non-existent definition")
+
+    def test_validate_value_vector_mixed_definitions_and_regular_tags(self):
+        """Test validate_value_vector with both definitions and regular tags in template."""
+        # Create HedValueVector mixing definition and regular tags
+        value_vector_mixed = HedValueVector(
+            name="mixed_template",
+            description="Template with definition and regular tags",
+            data=[100, 200, 300],
+            hed="Def/Response-time/#, Red",
+        )
+
+        issues = self.validator_with_defs.validate_value_vector(value_vector_mixed)
+
+        # Should have no issues
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_value_vector_without_definitions_fails(self):
+        """Test that validate_value_vector fails when definitions are not provided."""
+        value_vector_needs_def = HedValueVector(
+            name="needs_def",
+            description="Template needing definition",
+            data=[0.5, 0.6],
+            hed="Def/Go-stimulus, (Time-value/# s)",
+        )
+
+        # Validate without definitions - should fail
+        issues = self.validator_no_defs.validate_value_vector(value_vector_needs_def)
+
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues when definitions are not provided")
+
+    def test_validate_table_with_value_vector_and_definitions(self):
+        """Test validate_table with both HedTags and HedValueVector using definitions."""
+        # Create HedTags with definitions
+        hed_tags = HedTags(
+            data=[
+                "Def/Go-stimulus",
+                "Def/Stop-stimulus",
+                "Def/Correct-response",
+            ]
+        )
+
+        # Create HedValueVector with definitions
+        hed_values = HedValueVector(
+            name="stimulus_sizes",
+            description="Stimulus sizes",
+            data=[0.5, 0.6, 0.7],
+            hed="Def/Go-stimulus, Size/# cm^2",
+        )
+
+        # Create table with both
+        table_combined = DynamicTable(
+            name="table_combined",
+            description="Table with HedTags and HedValueVector using definitions",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2, 3]),
+                hed_tags,
+                hed_values,
+            ],
+        )
+
+        issues = self.validator_with_defs.validate_table(table_combined)
+
+        # Should have no issues
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+
+class TestValidateFile(unittest.TestCase):
+    """Test class for validating entire NWB files with validate_file method."""
+
+    def setUp(self):
+        """Set up test data."""
+        from pynwb import NWBFile
+        from datetime import datetime
+        from pytz import timezone
+
+        # Create HED lab metadata with definitions
+        self.test_definitions = (
+            "(Definition/Go-stimulus, (Sensory-event, Visual-presentation)), "
+            "(Definition/Stop-stimulus, (Sensory-event, Auditory-presentation))"
+        )
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0", definitions=self.test_definitions)
+
+        # Create validator
+        self.validator = HedNWBValidator(self.hed_metadata)
+
+        # Create a test NWB file
+        self.nwbfile = NWBFile(
+            session_description="Test session for HED validation",
+            identifier="test_file_001",
+            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone("US/Pacific")),
+        )
+
+        # Add HED metadata to the file
+        self.nwbfile.add_lab_meta_data(self.hed_metadata)
+
+    def test_validate_file_with_valid_tables(self):
+        """Test validate_file with NWB file containing valid HED tags."""
+        # Add a table with valid HED tags
+        valid_tags = HedTags(data=["Sensory-event", "Visual-presentation", "Def/Go-stimulus"])
+        trials_table = DynamicTable(
+            name="trials",
+            description="Trial data with HED tags",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2, 3]),
+                valid_tags,
+            ],
+        )
+        # Add as acquisition instead of time_intervals
+        self.nwbfile.add_acquisition(trials_table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+
+        # Should have no issues for valid file
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_file_with_invalid_tags(self):
+        """Test validate_file with NWB file containing invalid HED tags."""
+        # Add a table with invalid HED tags
+        invalid_tags = HedTags(data=["InvalidTag123", "NonExistentEvent", "BadTag"])
+        trials_table = DynamicTable(
+            name="trials",
+            description="Trial data with invalid HED tags",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2, 3]),
+                invalid_tags,
+            ],
+        )
+        self.nwbfile.add_acquisition(trials_table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+
+        # Should have issues for invalid tags
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues for invalid tags")
+
+    def test_validate_file_with_multiple_tables(self):
+        """Test validate_file with multiple DynamicTable objects."""
+        # Add first table with valid tags
+        valid_tags1 = HedTags(data=["Sensory-event", "Def/Go-stimulus"])
+        table1 = DynamicTable(
+            name="trials",
+            description="Trial data",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2]),
+                valid_tags1,
+            ],
+        )
+        self.nwbfile.add_acquisition(table1)
+
+        # Add second table with valid tags
+        valid_tags2 = HedTags(data=["Agent-action", "Def/Stop-stimulus"])
+        table2 = DynamicTable(
+            name="responses",
+            description="Response data",
+            columns=[
+                VectorData(name="response_id", description="Response IDs", data=[1, 2]),
+                valid_tags2,
+            ],
+        )
+        # Add as acquisition
+        self.nwbfile.add_acquisition(table2)
+
+        issues = self.validator.validate_file(self.nwbfile)
+
+        # Should validate both tables with no issues
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_file_with_events_table(self):
+        """Test validate_file with EventsTable object."""
+        # Create EventsTable
+        events_df = pd.DataFrame(
+            {
+                "onset": [1.0, 2.0, 3.0],
+                "duration": [0.5, 0.5, 0.5],
+                "HED": ["Def/Go-stimulus", "Sensory-event", "Def/Stop-stimulus"],
+            }
+        )
+
+        events_table = get_events_table(
+            name="events",
+            description="Event data with HED tags",
+            df=events_df,
+            meanings={"categorical": {}, "value": {}},
+        )
+        self.nwbfile.add_acquisition(events_table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+
+        # Should validate EventsTable with no issues
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_file_with_value_vectors(self):
+        """Test validate_file with HedValueVector columns."""
+        # Create table with HedValueVector
+        hed_values = HedValueVector(
+            name="intensity",
+            description="Stimulus intensities",
+            data=[0.5, 0.6, 0.7],
+            hed="Def/Go-stimulus, Red-color/# m-0",
+        )
+
+        table = DynamicTable(
+            name="trials",
+            description="Trial data with HedValueVector",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2, 3]),
+                hed_values,
+            ],
+        )
+        self.nwbfile.add_acquisition(table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+
+        # Should validate HedValueVector with no issues
+        self.assertIsInstance(issues, list)
+        self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_file_no_hed_metadata(self):
+        """Test validate_file raises error when HedLabMetaData is missing."""
+        from pynwb import NWBFile
+        from datetime import datetime
+        from pytz import timezone
+        from hed.errors import HedFileError
+
+        # Create NWB file without HED metadata
+        nwbfile_no_hed = NWBFile(
+            session_description="Test session without HED",
+            identifier="test_file_002",
+            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone("US/Pacific")),
+        )
+
+        with self.assertRaises(HedFileError) as cm:
+            self.validator.validate_file(nwbfile_no_hed)
+        self.assertIn("does not have a valid HED schema", str(cm.exception))
+
+    def test_validate_file_schema_version_mismatch(self):
+        """Test validate_file raises error when schema versions don't match."""
+        from pynwb import NWBFile
+        from datetime import datetime
+        from pytz import timezone
+        from hed.errors import HedFileError
+
+        # Create NWB file with different schema version
+        nwbfile_different = NWBFile(
+            session_description="Test session with different schema",
+            identifier="test_file_003",
+            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone("US/Pacific")),
+        )
+
+        # Add HED metadata with different schema version
+        different_metadata = HedLabMetaData(hed_schema_version="8.3.0")
+        nwbfile_different.add_lab_meta_data(different_metadata)
+
+        with self.assertRaises(HedFileError) as cm:
+            self.validator.validate_file(nwbfile_different)
+        self.assertIn("does not match validator schema version", str(cm.exception))
+
+    def test_validate_file_none_input(self):
+        """Test validate_file with None input."""
+        with self.assertRaises(ValueError) as cm:
+            self.validator.validate_file(None)
+        self.assertIn("not a valid NWBFile instance", str(cm.exception))
+
+    def test_validate_file_invalid_type(self):
+        """Test validate_file with invalid type input."""
+        with self.assertRaises(ValueError) as cm:
+            self.validator.validate_file("not an nwb file")
+        self.assertIn("not a valid NWBFile instance", str(cm.exception))
+
+    def test_validate_file_mixed_valid_invalid_tables(self):
+        """Test validate_file with mix of valid and invalid tables."""
+        # Add valid table
+        valid_tags = HedTags(data=["Sensory-event", "Def/Go-stimulus"])
+        valid_table = DynamicTable(
+            name="valid_trials",
+            description="Valid trial data",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2]),
+                valid_tags,
+            ],
+        )
+        self.nwbfile.add_acquisition(valid_table)
+
+        # Add invalid table
+        invalid_tags = HedTags(data=["InvalidTag123", "BadTag456"])
+        invalid_table = DynamicTable(
+            name="invalid_responses",
+            description="Invalid response data",
+            columns=[
+                VectorData(name="response_id", description="Response IDs", data=[1, 2]),
+                invalid_tags,
+            ],
+        )
+        self.nwbfile.add_acquisition(invalid_table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+
+        # Should have issues only from the invalid table
+        self.assertIsInstance(issues, list)
+        self.assertGreater(len(issues), 0, "Expected validation issues from invalid table")
+
+        # Check that issues are from the invalid table
+        self.assertTrue(any("invalid_responses" in str(issue) for issue in issues))
+
+    def test_validate_file_with_custom_error_handler(self):
+        """Test validate_file with custom error handler."""
+        # Add table with some issues
+        tags = HedTags(data=["Sensory-event"])  # Simple valid tag
+        table = DynamicTable(
+            name="trials",
+            description="Trial data",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1]),
+                tags,
+            ],
+        )
+        self.nwbfile.add_acquisition(table)
+
+        # Use error handler that checks for warnings
+        error_handler = ErrorHandler(check_for_warnings=True)
+        issues = self.validator.validate_file(self.nwbfile, error_handler)
+
+        self.assertIsInstance(issues, list)
 
 
 if __name__ == "__main__":

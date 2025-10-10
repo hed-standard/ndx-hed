@@ -30,13 +30,24 @@ class HedNWBValidator:
         Initialize the HedNWBValidator with HED metadata.
 
         Parameters:
-            hed_metadata (HedLabMetaData): The HED lab metadata containing schema information
+            hed_metadata (HedLabMetaData): The HED lab metadata containing schema information.
+                                          Must be a valid HedLabMetaData instance with a loaded
+                                          HED schema. If the HedLabMetaData was constructed successfully,
+                                          it is guaranteed to have a valid schema.
+
+        Raises:
+            ValueError: If hed_metadata is not an instance of HedLabMetaData
+
+        Notes:
+            HedLabMetaData validates the schema during its own construction, so if a
+            HedLabMetaData instance exists, it is guaranteed to have a valid HED schema
+            and version. No additional validation is needed here.
         """
         if not isinstance(hed_metadata, HedLabMetaData):
             raise ValueError("hed_metadata must be an instance of HedLabMetaData")
 
-        self.hed_metadata = hed_metadata
         self.hed_schema = hed_metadata.get_hed_schema()
+        self.def_dict = hed_metadata.get_definition_dict()
 
     def validate_table(self, table: DynamicTable, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
         """
@@ -68,7 +79,7 @@ class HedNWBValidator:
                 col_issues = self.validate_value_vector(col, error_handler)
                 issues += col_issues
                 error_handler.pop_error_context()
-                
+
         error_handler.pop_error_context()
         return issues
 
@@ -95,15 +106,16 @@ class HedNWBValidator:
                 continue
 
             error_handler.push_error_context(ErrorContext.ROW, index)
-            hed_obj = HedString(tag, self.hed_schema)
+            hed_obj = HedString(tag, self.hed_schema, def_dict=self.def_dict)
             row_issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
             issues += row_issues
             error_handler.pop_error_context()
 
         return issues
 
-    def validate_value_vector(self, hed_values: HedValueVector, 
-                              error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
+    def validate_value_vector(
+        self, hed_values: HedValueVector, error_handler: Optional[ErrorHandler] = None
+    ) -> List[Dict[str, Any]]:
         """
         Validates a HedValueVector column using the provided HED schema metadata.
 
@@ -119,31 +131,30 @@ class HedNWBValidator:
             raise ValueError("The provided hed_values is not a valid HedValueVector instance.")
         if error_handler is None:
             error_handler = ErrorHandler(check_for_warnings=False)
-        
+
         issues = []
         # Validate the HED template first
-        hed_template = HedString(hed_values.hed, self.hed_schema)
+        hed_template = HedString(hed_values.hed, self.hed_schema, def_dict=self.def_dict)
         issues += hed_template.validate(allow_placeholders=True, error_handler=error_handler)
         if check_for_any_errors(issues):
             return issues
-        
-        
-        
+
         for index, tag in enumerate(hed_values.data):
             if tag is None or tag == "" or tag == "n/a" or (isinstance(tag, float) and math.isnan(tag)):
                 continue
 
             error_handler.push_error_context(ErrorContext.ROW, index)
             # Substitute the tag value into the template in place of #
-            eval_tag = hed_values.hed.replace('#', str(tag))
-            hed_obj = HedString(eval_tag, self.hed_schema)
+            eval_tag = hed_values.hed.replace("#", str(tag))
+            hed_obj = HedString(eval_tag, self.hed_schema, def_dict=self.def_dict)
             row_issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
             issues += row_issues
             error_handler.pop_error_context()
         return issues
 
-    def validate_events(self, events: EventsTable, 
-                        error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
+    def validate_events(
+        self, events: EventsTable, error_handler: Optional[ErrorHandler] = None
+    ) -> List[Dict[str, Any]]:
         """
         Validates HED tags in an EventsTable by converting it to BIDS format and validating the events.
 
@@ -186,7 +197,7 @@ class HedNWBValidator:
             sidecar = None
 
         tab_input = TabularInput(file=df, sidecar=sidecar, name=events.name)
-        issues = tab_input.validate(self.hed_schema, error_handler=error_handler)
+        issues = tab_input.validate(self.hed_schema, extra_def_dicts=self.def_dict, error_handler=error_handler)
         return issues
 
     def validate_file(self, nwbfile: NWBFile, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
@@ -221,12 +232,12 @@ class HedNWBValidator:
                 HedExceptions.SCHEMA_INVALID, f"NWB file {nwbfile.identifier} does not have a valid HED schema", ""
             )
 
-        if hed_metadata.get_hed_schema_version() != self.hed_metadata.get_hed_schema_version():
+        if hed_metadata.get_hed_schema_version() != self.hed_schema.version:
             raise HedFileError(
                 HedExceptions.SCHEMA_VERSION_INVALID,
                 f"HED schema version in NWB file ({hed_metadata.get_hed_schema_version()})"
                 + " does not match validator schema version"
-                + f"({self.hed_metadata.get_hed_schema_version()})",
+                + f"({self.hed_schema.version})",
                 "",
             )
 
@@ -247,5 +258,3 @@ class HedNWBValidator:
             issues.extend(table_issues)
         error_handler.pop_error_context()
         return issues
-
-   

@@ -79,7 +79,7 @@ class HedValueVector(VectorData):
         hed_annotation = kwargs.pop("hed", None)
         super().__init__(**kwargs)
         # Check that the template contains exactly one # placeholder
-        placeholder_count = hed_annotation.count('#')
+        placeholder_count = hed_annotation.count("#")
         if placeholder_count != 1:
             raise ValueError(
                 f"HedValueVector '{self.name}' template must contain exactly one '#' placeholder, "
