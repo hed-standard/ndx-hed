@@ -26,12 +26,14 @@ def main():
 
     # 1. HedLabMetaData - Required for HED schema specification
     print("1. Creating HED Lab Metadata...")
-    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")  # Must be "hed_schema" if given
+    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")  # Object name will automatically be "hed_schema"
     nwbfile.add_lab_meta_data(hed_metadata)
     print(f"   Added HED schema version: {hed_metadata.hed_schema_version}")
 
     # 2. HedTags - For row-specific HED annotations
     print("\n2. Creating HedTags column...")
+
+    # Create HedTags table column with three rows of HED annotations
     hed_tags = HedTags(
         data=[
             "(Visual-presentation, Image, Building/House)",

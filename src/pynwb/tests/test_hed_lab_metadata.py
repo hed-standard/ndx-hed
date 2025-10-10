@@ -45,7 +45,7 @@ class TestHedLabMetaDataConstructor(TestCase):
     def test_constructor_empty_version(self):
         """Test create HedLabMetaData with empty schema version."""
         with self.assertRaises(TypeError) as cm:
-            HedLabMetaData(name="hed_schema")
+            HedLabMetaData()
         self.assertIn("missing argument", str(cm.exception))
 
     def test_no_name(self):
