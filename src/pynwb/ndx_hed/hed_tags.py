@@ -69,7 +69,9 @@ class HedValueVector(VectorData):
 
     """
 
-    __nwbfields__ = ("_hed",)
+    __fields__ = (
+        {'name': 'hed', 'settable': False},
+    )
 
     @docval(
         *get_docval(VectorData.__init__, "name", "description", "data"),
@@ -85,9 +87,4 @@ class HedValueVector(VectorData):
                 f"HedValueVector '{self.name}' template must contain exactly one '#' placeholder, "
                 f"found {placeholder_count} in: {hed_annotation}"
             )
-        self._hed = hed_annotation
-
-    @property
-    def hed(self):
-        """Return the HED annotation template for this column."""
-        return self._hed
+        self.fields["hed"] = hed_annotation
