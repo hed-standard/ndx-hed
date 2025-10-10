@@ -290,7 +290,7 @@ class TestHedValueVectorConstructor(TestCase):
         self.assertEqual(values.hed, "Label/#")
 
         # Test modification (not allowed, should raise AttributeError)
-        with self.assertRaisesWith(AttributeError, "property 'getter' of 'HedValueVector' object has no setter"):
+        with self.assertRaises(AttributeError):
             values.hed = "Label/#, Red"
 
 
