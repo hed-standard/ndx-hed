@@ -3,7 +3,7 @@ import io
 import pandas as pd
 import numpy as np
 from typing import Union
-from hed.models import Sidecar, DefinitionDict
+from hed.models import Sidecar
 from hed.schema import HedSchema, HedSchemaGroup
 from pynwb.core import VectorData
 from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
@@ -135,14 +135,12 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
     return events_tab
 
 
-def get_bids_events(events_table: EventsTable, definition_dict: DefinitionDict = None) -> tuple:
+def get_bids_events(events_table: EventsTable) -> tuple:
     """
     Converts an EventsTable back to BIDS format (DataFrame and JSON sidecar).
 
     Parameters:
         events_table (EventsTable): The EventsTable to convert.
-        definition_dict (DefinitionDict, optional): A dictionary of HED definitions to include in the sidecar.
-
 
     Returns:
         tuple: A tuple containing:

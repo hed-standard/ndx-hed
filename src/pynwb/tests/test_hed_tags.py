@@ -215,8 +215,9 @@ class TestHedValueVectorConstructor(TestCase):
 
     def test_constructor_empty_data(self):
         """Test setting HED value vector with empty data."""
-        values = HedValueVector(name="empty_values", description="Empty value vector", 
-                                data=[], hed="Agent-action, Label/#")
+        values = HedValueVector(
+            name="empty_values", description="Empty value vector", data=[], hed="Agent-action, Label/#"
+        )
         self.assertEqual(values.name, "empty_values")
         self.assertEqual(values.description, "Empty value vector")
         self.assertFalse(values.data)
@@ -269,8 +270,10 @@ class TestHedValueVectorConstructor(TestCase):
         """Test HedValueVector with different data types."""
         # Test boolean data
         bool_values = HedValueVector(
-            name="bool_data", description="Boolean values", data=[True, False, True], 
-            hed="(Parameter-name/Logical-value,Label/#)"
+            name="bool_data",
+            description="Boolean values",
+            data=[True, False, True],
+            hed="(Parameter-name/Logical-value,Label/#)",
         )
         self.assertEqual(bool_values.data, [True, False, True])
 
@@ -282,9 +285,7 @@ class TestHedValueVectorConstructor(TestCase):
 
     def test_hed_attribute_access(self):
         """Test accessing and modifying the hed attribute."""
-        values = HedValueVector(
-            name="test_access", description="Test attribute access", data=[1, 2, 3], hed="Label/#"
-        )
+        values = HedValueVector(name="test_access", description="Test attribute access", data=[1, 2, 3], hed="Label/#")
 
         # Test initial value
         self.assertEqual(values.hed, "Label/#")
@@ -294,7 +295,7 @@ class TestHedValueVectorConstructor(TestCase):
             values.hed = "Label/#, Red"
         self.assertTrue(
             "attribute" in str(cm.exception.args[0]) or "hed" in str(cm.exception.args[0]),
-            f"Expected 'attribute' or 'hed' in exception message, got: {cm.exception.args[0]}"
+            f"Expected 'attribute' or 'hed' in exception message, got: {cm.exception.args[0]}",
         )
 
 
