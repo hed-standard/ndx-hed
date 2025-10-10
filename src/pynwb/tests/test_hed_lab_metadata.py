@@ -45,7 +45,7 @@ class TestHedLabMetaDataConstructor(TestCase):
     def test_constructor_empty_version(self):
         """Test create HedLabMetaData with empty schema version."""
         with self.assertRaises(TypeError) as cm:
-            HedLabMetaData(name="hed_schema")
+            HedLabMetaData()
         self.assertIn("missing argument", str(cm.exception))
 
     def test_no_name(self):
@@ -244,9 +244,7 @@ class TestHedLabMetaDataRoundTrip(TestCase):
         # Instantiate the class with library schemas and definitions
         library_schema_version = '["bc:8.4.0","score_2.1.0"]'
         test_definitions = "(Definition/apple,(Item/Fruit)),(Definition/orange,(Item/Fruit))"
-        hed_info = HedLabMetaData(
-            hed_schema_version=library_schema_version, definitions=test_definitions
-        )
+        hed_info = HedLabMetaData(hed_schema_version=library_schema_version, definitions=test_definitions)
         nwbfile.add_lab_meta_data(hed_info)
 
         # Write the NWB file

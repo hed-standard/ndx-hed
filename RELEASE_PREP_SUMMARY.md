@@ -22,7 +22,7 @@ Files updated:
 ### 2. Documentation Updates
 
 #### CHANGELOG.md
-Added comprehensive 0.2.0 release notes (October 3, 2025):
+Added comprehensive 0.2.0 release notes (October 10, 2025):
 - Core Classes section (HedLabMetaData, HedTags, HedValueVector)
 - Validation System features
 - BIDS Integration utilities
@@ -287,6 +287,6 @@ nwbfile.add_lab_meta_data(hed_metadata)
 
 ---
 
-**Date:** January 2025
+**Date:** October 2025
 **Version:** 0.2.0
 **Contributors:** Kay Robbins, Ryan Ly, Oliver Ruebel, Ian Callanan

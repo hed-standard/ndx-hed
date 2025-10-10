@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 0.2.0 (October 3, 2025)
+Version 0.2.0 (October 10, 2025)
 --------------------------------
 
 Major rewrite and expansion of the ndx-hed extension with three core classes and comprehensive tooling.

@@ -103,7 +103,7 @@ def create_categorical_events():
         name="stimulus_type_meanings", description="Meanings and HED annotations for stimulus types"
     )
 
-    # Add meaning definitions
+    # Add meaning definitions (value, meaning)
     categories = [
         ("circle", "Circular visual stimulus presented at screen center"),
         ("square", "Square visual stimulus presented at screen center"),
