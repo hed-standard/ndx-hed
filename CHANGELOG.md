@@ -1,6 +1,6 @@
 # Changelog for ndx-hed
 
-## Release 0.2.0 October 3, 2025
+## Release 0.2.0 October 10, 2025
 
 Major rewrite and expansion of the ndx-hed extension with three core classes and comprehensive tooling.
 
@@ -30,6 +30,8 @@ Major rewrite and expansion of the ndx-hed extension with three core classes and
   - `validate_hed_tags()`: Validates individual HedTags column
   - `validate_hed_value_vector()`: Validates HedValueVector columns
   - Supports both in-memory and file-based validation
+  - **Full definition support**: All validation methods now support external HED definitions from `HedLabMetaData`
+  - Validates definition references (e.g., `Def/Go-stimulus`) across all HED annotation types
 
 #### BIDS Integration
 - **Bidirectional BIDS ↔ NWB conversion utilities** in `utils/bids2nwb.py`:
@@ -63,12 +65,14 @@ Seven comprehensive runnable examples demonstrating all features:
 - Optional: `ndx-events>=0.4.0` for EventsTable support
 
 ### Testing
-- 116+ comprehensive test cases
+- 78 comprehensive test cases for HedNWBValidator
+- 116+ total test cases across all modules
 - Full coverage of all core classes and utilities
 - File I/O roundtrip testing
 - Validation testing with valid and invalid HED
 - BIDS conversion roundtrip testing
 - Definition handling and persistence testing
+- Definition reference validation across all validator methods
 
 ### Breaking Changes from 0.1.0
 - **HedTags constructor changes**: Removed `hed_version` parameter (now uses HedLabMetaData)
