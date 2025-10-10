@@ -290,7 +290,7 @@ class TestHedValueVectorConstructor(TestCase):
         self.assertEqual(values.hed, "Label/#")
 
         # Test modification (not allowed, should raise AttributeError)
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(AttributeError) as cm:
             values.hed = "Label/#, Red"
         self.assertTrue(
             "attribute" in str(cm.exception.args[0]) or "hed" in str(cm.exception.args[0]),
