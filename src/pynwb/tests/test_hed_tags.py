@@ -292,8 +292,8 @@ class TestHedValueVectorConstructor(TestCase):
         # Test modification (not allowed, should raise AttributeError)
         with self.assertRaises(AttributeError) as cm:
             values.hed = "Label/#, Red"
-        self.assertTrue(
-            "attribute" in str(cm.exception.args[0]) or "hed" in str(cm.exception.args[0]),
+        self.assertEqual(
+            "property 'getter' of 'HedValueVector' object has no setter", str(cm.exception.args[0]),
             f"Expected 'attribute' or 'hed' in exception message, got: {cm.exception.args[0]}",
         )
 
