@@ -84,8 +84,8 @@ Use Cases
 Compatibility
 -------------
 
-* **Python**: 3.9+
-* **Dependencies**: pynwb>=2.8.2, hdmf>=3.14.1, hedtools>=0.7.0
+* **Python**: 3.10+
+* **Dependencies**: pynwb>=2.8.2, hdmf>=3.14.1, hedtools>=0.7.1
 * **Optional**: ndx-events>=0.4.0 for EventsTable support
 * **MATLAB**: Under development (not yet available)
 

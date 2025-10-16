@@ -13,15 +13,14 @@ authors = [
 ]
 description = "NWB extension for HED data"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {text = "BSD-3"}
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
@@ -36,7 +35,7 @@ keywords = [
 dependencies = [
     "pynwb>=2.8.2",
     "hdmf>=3.14.1",
-    "hedtools>=0.7.0"
+    "hedtools>=0.7.1"
 ]
 
 [tool.hatch.version]

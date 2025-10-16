@@ -6,18 +6,18 @@ Comprehensive preparation for the ndx-hed 0.2.0 release, including dependency up
 ## Changes Completed
 
 ### 1. Dependency Upgrade
-**hedtools: Local → PyPI 0.7.0**
+**hedtools: Local → PyPI 0.7.1**
 
 Files updated:
-- `pyproject.toml`: Updated to `hedtools>=0.7.0`
-- `requirements-dev.txt`: Updated to `hedtools>=0.7.0`
-- `requirements-min.txt`: Updated to `hedtools>=0.7.0`
+- `pyproject.toml`: Updated to `hedtools>=0.7.1`
+- `requirements-dev.txt`: Updated to `hedtools>=0.7.1`
+- `requirements-min.txt`: Updated to `hedtools>=0.7.1`
 
 **Previous State:**
 - Local editable install: `hedtools @ file:///h:/HED/hed-python (0.6.0+17.g5c489d10)`
 
 **Current State:**
-- PyPI release: `hedtools==0.7.0`
+- PyPI release: `hedtools==0.7.1`
 
 ### 2. Documentation Updates
 
@@ -53,7 +53,7 @@ myst-parser>=0.18
 hdmf-docutils>=0.4.7
 pynwb>=2.8.2
 hdmf>=3.14.1
-hedtools>=0.7.0
+hedtools>=0.7.1
 ndx-events>=0.4.0
 ```
 
@@ -78,7 +78,7 @@ version: 2
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.9"
+    python: "3.14"
 python:
   install:
     - method: pip
@@ -117,7 +117,7 @@ sphinx:
 **.github/workflows/docs.yml**:
 - Created complete documentation deployment workflow
 - Build job:
-  - Uses Python 3.9
+  - Uses Python 3.14
   - Installs dependencies from `docs/requirements.txt`
   - Builds docs with: `cd docs && make html`
   - Uses correct build output path: `./docs/build/html`
@@ -169,7 +169,7 @@ make html
    - URL: Will be set in repository settings
 
 2. **ReadTheDocs**: Configuration via `.readthedocs.yaml`
-   - Python 3.9
+   - Python 3.14
    - Installs package + docs requirements
    - Sphinx HTML builder
 
@@ -226,7 +226,7 @@ nwbfile.add_lab_meta_data(hed_metadata)
 4. **Check hedtools version:**
    ```powershell
    pip show hedtools
-   # Should show: Version: 0.7.0
+   # Should show: Version: 0.7.1
    ```
 
 ### After GitHub Push
@@ -272,7 +272,7 @@ nwbfile.add_lab_meta_data(hed_metadata)
 - [ ] Test local documentation build
 - [ ] Run all examples
 - [ ] Run full test suite
-- [ ] Verify hedtools 0.7.0 installed
+- [ ] Verify hedtools 0.7.1 installed
 - [ ] Review CHANGELOG.md
 - [ ] Update version in `pyproject.toml` if needed (currently 0.2.0)
 - [ ] Create GitHub release tag
