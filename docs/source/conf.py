@@ -72,7 +72,6 @@ intersphinx_mapping = {
 #  CUSTOM CONFIGURATIONS ADDED BY THE NWB TOOL FOR GENERATING FORMAT DOCS
 ###########################################################################
 
-import sphinx_rtd_theme  # noqa: E402
 import textwrap  # noqa: E402
 
 # -- Options for intersphinx  ---------------------------------------------
