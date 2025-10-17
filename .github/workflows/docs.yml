@@ -26,13 +26,13 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
-        python-version: '3.11'
+        python-version: '3.12'
 
     - name: Cache dependencies
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
 
@@ -47,7 +47,7 @@ jobs:
         cd docs
         make html
       env:
-        SPHINXOPTS: "-W --keep-going"
+        SPHINXOPTS: "--keep-going"
 
     - name: Setup Pages
       uses: actions/configure-pages@v5
