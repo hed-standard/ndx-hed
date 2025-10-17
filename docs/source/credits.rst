@@ -3,6 +3,7 @@ Credits
 *******
 
 .. note::
+   The members of the HED Working Group and the NWB community provided valuable feedback during development.
 
 Acknowledgments
 ===============
