@@ -107,7 +107,7 @@ HedValueVector
    # Create template-based annotations
    duration_vector = HedValueVector(
        name="duration",
-       description="Trial duration with HED annotation for a sensory stimlus",
+       description="Trial duration with HED annotation for a sensory stimulus",
        data=[1.0, 1.5, 2.0],
        hed="((Sensory-event, Experiment-stimulus), Duration/# s)"
    )
