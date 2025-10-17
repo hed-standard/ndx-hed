@@ -113,11 +113,10 @@ numfig_format = {
 # Disable automatic section numbering for cleaner look on main pages
 html_use_smartypants = True
 
-# Configure warnings - suppress auto-generated cross-reference warnings
+# Configure warnings - suppress auto-generated cross-reference warnings that can't be easily fixed
 suppress_warnings = [
     'ref.ref',      # Suppress ref warnings for auto-generated content
     'ref.numref',   # Suppress numref warnings for auto-generated content
-    'autosectionlabel.*',  # Suppress autosectionlabel warnings
 ]
 
 # Keep going on warnings and don't halt build
