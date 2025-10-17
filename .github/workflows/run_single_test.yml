@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.9-minimum      , requirements: minimum    , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: linux-python3.10-minimum     , requirements: minimum    , python-ver: "3.10", os: ubuntu-latest }
 
     steps:
       - name: Cancel non-latest runs
@@ -95,7 +95,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: conda-linux-python3.9-minimum    , requirements: minimum    , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: conda-linux-python3.10-minimum   , requirements: minimum    , python-ver: "3.10", os: ubuntu-latest }
     steps:
       - name: Cancel any previous incomplete runs
         uses: styfle/cancel-workflow-action@0.12.1

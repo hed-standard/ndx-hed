@@ -6,5 +6,5 @@ myst-parser>=3.0.1
 hdmf-docutils>=0.4.7
 pynwb>=2.8.2
 hdmf>=3.14.1
-hedtools>=0.7.0
+hedtools>=0.7.1
 ndx-events>=0.4.0

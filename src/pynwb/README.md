@@ -15,7 +15,7 @@ pip install -U ndx-hed
 ```
 
 ## Developer installation
-In a Python 3.9-3.12 environment:
+In a Python 3.10-3.14 environment:
 ```bash
 pip install -r requirements-dev.txt
 pip install -e .

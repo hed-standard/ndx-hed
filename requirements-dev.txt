@@ -5,7 +5,7 @@ codespell==2.3.0
 coverage==7.5.4
 hdmf==3.14.4
 hdmf-docutils==0.4.7
-hedtools==0.7.0
+hedtools==0.7.1
 myst-parser==3.0.1
 ndx-events==0.4.0
 pre-commit==3.5.0

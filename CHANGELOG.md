@@ -59,7 +59,7 @@ Seven comprehensive runnable examples demonstrating all features:
 - `07_hed_definitions.py`: Custom HED definitions and expansion
 
 ### Dependencies
-- Updated to `hedtools>=0.7.0` (released to PyPI)
+- Updated to `hedtools>=0.7.1` (released to PyPI)
 - `pynwb>=2.8.2`
 - `hdmf>=3.14.1`
 - Optional: `ndx-events>=0.4.0` for EventsTable support
