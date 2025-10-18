@@ -14,6 +14,7 @@ standardized vocabularies and supporting tools that allows fine-grained annotati
 HED annotations can now be used in NWB to provide HED annotations for any NWB
 dynamic table. 
 
+The [**HED Integration for NWB**](https://www.hedtags.org/ndx-hed/) gives a quickstart, examples and th API reference.
 The [**HED annotation in NWB**](https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html)
 user guide explains in more detail how to use this extension for HED.
 
