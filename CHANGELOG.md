@@ -1,8 +1,8 @@
 # Changelog for ndx-hed
 
-## Release 0.2.0 October 10, 2025
+## Release 0.2.0 October 18, 2025
 
-Major rewrite and expansion of the ndx-hed extension with three core classes and comprehensive tooling.
+Major rewrite and expansion of the ndx-hed extension with three core classes and comprehensive tooling. Web pages with API docs hosted on Github.
 
 ### New Features
 
