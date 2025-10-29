@@ -14,7 +14,7 @@ human neuroimaging modalities such as IEEG. NWB organizes all of the data from o
 standardized vocabularies and supporting tools that allows fine-grained annotation of data.
 HED annotations can now be used in NWB to provide HED annotations for any NWB dynamic table.
 
-The `HED annotation in NWB user guide <https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html>`_
+The `HED annotation in NWB user guide <https://www.hedtags.org/hed-resources/HedAnnotationInNWB.html>`_
 explains in more detail how to use this extension for HED.
 
 .. note::
@@ -371,7 +371,7 @@ Additional Resources
 
 * `HED Standards Organization <https://www.hedtags.org>`_ - Official HED specification and resources
 * `HED python tools <https://github.com/hed-standard/hed-python>`_ - Core HED Python library
-* `HED annotation in NWB user guide <https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html>`_ - Detailed usage guide
+* `HED annotation in NWB user guide <https://www.hedtags.org/hed-resources/HedAnnotationInNWB.html>`_ - Detailed usage guide
 * `NWB documentation <https://pynwb.readthedocs.io/>`_ - PyNWB library documentation
 * `ndx-events extension <https://github.com/rly/ndx-events>`_ - Complementary events extension
 
