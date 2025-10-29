@@ -141,7 +141,7 @@ Resources
 ---------
 
 * `HED Standards Organization <https://www.hedtags.org>`_ - Official HED specification and resources
-* `HED Annotation in NWB Guide <https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html>`_ - Detailed usage guide
+* `HED Annotation in NWB Guide <https://www.hedtags.org/hed-resources/HedAnnotationInNWB.html>`_ - Detailed usage guide
 * `NWB Documentation <https://pynwb.readthedocs.io/>`_ - PyNWB library documentation
 * `ndx-events Extension <https://github.com/rly/ndx-events>`_ - Complementary events extension
 

@@ -15,7 +15,7 @@ HED annotations can now be used in NWB to provide HED annotations for any NWB
 dynamic table. 
 
 The [**HED Integration for NWB**](https://www.hedtags.org/ndx-hed/) gives a quickstart, examples and th API reference.
-The [**HED annotation in NWB**](https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html)
+The [**HED annotation in NWB**](https://www.hedtags.org/hed-resources/HedAnnotationInNWB.html)
 user guide explains in more detail how to use this extension for HED.
 
 ## Installation
@@ -159,7 +159,7 @@ See [examples/05_hed_validation.py](examples/05_hed_validation.py) for comprehen
 
 - [HED specification](https://www.hedtags.org/)
 - [HED python tools](https://github.com/hed-standard/hed-python)
-- [HED annotation in NWB user guide](https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html)
+- [HED annotation in NWB user guide](https://www.hedtags.org/hed-resources/HedAnnotationInNWB.html)
 - [NWB documentation](https://pynwb.readthedocs.io/)
 - [ndx-events extension](https://github.com/rly/ndx-events)
 

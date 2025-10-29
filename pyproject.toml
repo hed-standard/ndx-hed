@@ -47,7 +47,7 @@ version-file = "_version.py"
 
 [project.urls]
 "Homepage" = "https://github.com/hed-standard/ndx-hed"
-"Documentation" = "https://www.hed-resources.org/en/latest/HedAnnotationInNWB.html"
+"Documentation" = "https://www.hedtags.org/hed-resources/HedAnnotationInNWB.html"
 "Bug Tracker" = "https://github.com/hed-standard/ndx-hed/issues"
 "Discussions" = "https://github.com/hed-standard/ndx-hed/discussions"
 "Changelog" = "https://github.com/hed-standard/ndx-hed/CHANGELOG.md"
