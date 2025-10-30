@@ -30,7 +30,7 @@ machine-readable semantic tags.
       Complete API documentation for all classes and functions in the ndx-hed extension.
 
    .. grid-item-card:: 🔧 Examples
-      :link: https://github.com/VisLab/ndx-hed/tree/main/examples
+      :link: https://github.com/hed-standard/ndx-hed/tree/main/examples
       :link-type: url
 
       Comprehensive runnable examples showing real-world usage patterns and best practices.
@@ -56,7 +56,7 @@ Installation
 
       .. code-block:: bash
 
-         git clone https://github.com/VisLab/ndx-hed.git
+         git clone https://github.com/hed-standard/ndx-hed.git
          cd ndx-hed
          pip install -e .
 

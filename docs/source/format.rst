@@ -68,8 +68,8 @@ The complete technical specification is defined in YAML files:
 - **Namespace**: ``spec/ndx-hed.namespace.yaml`` - Extension namespace configuration
 
 **View the complete specification**:
-- `Schema on GitHub <https://github.com/VisLab/ndx-hed/blob/main/spec/ndx-hed.extensions.yaml>`_
-- `Namespace on GitHub <https://github.com/VisLab/ndx-hed/blob/main/spec/ndx-hed.namespace.yaml>`_
+- `Schema on GitHub <https://github.com/hed-standard/ndx-hed/blob/main/spec/ndx-hed.extensions.yaml>`_
+- `Namespace on GitHub <https://github.com/hed-standard/ndx-hed/blob/main/spec/ndx-hed.namespace.yaml>`_
 
 Example Usage Patterns
 -----------------------
@@ -107,7 +107,7 @@ Example Usage Patterns
        description="Trial durations with HED annotation"
    )
 
-For complete examples, see the `examples directory <https://github.com/VisLab/ndx-hed/tree/main/examples>`_.
+For complete examples, see the `examples directory <https://github.com/hed-standard/ndx-hed/tree/main/examples>`_.
 
 Extension Dependencies
 ----------------------
@@ -123,6 +123,6 @@ Extension Dependencies
 Development and Contribution
 -----------------------------
 
-The extension source code and issue tracking is available on `GitHub <https://github.com/VisLab/ndx-hed>`_.
+The extension source code and issue tracking is available on `GitHub <https://github.com/hed-standard/ndx-hed>`_.
 
 For questions about HED itself, see the `HED Standards Organization <https://www.hedtags.org>`_.
