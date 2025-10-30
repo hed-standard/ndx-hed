@@ -80,7 +80,7 @@ html_favicon = None  # Disable favicon to avoid 404 warnings
 
 # Modern theme configuration
 html_theme_options = {
-    'repository_url': 'https://github.com/VisLab/ndx-hed',
+    'repository_url': 'https://github.com/hed-standard/ndx-hed',
     'use_repository_button': True,
     'use_issues_button': True,
     'use_edit_page_button': True,

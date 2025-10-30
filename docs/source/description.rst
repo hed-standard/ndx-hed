@@ -18,7 +18,7 @@ The `HED annotation in NWB user guide <https://www.hedtags.org/hed-resources/Hed
 explains in more detail how to use this extension for HED.
 
 .. note::
-   All examples referenced in this documentation can be found in the `examples directory <https://github.com/VisLab/ndx-hed/tree/main/examples>`_ 
+   All examples referenced in this documentation can be found in the `examples directory <https://github.com/hed-standard/ndx-hed/tree/main/examples>`_ 
    and can be run directly from the ``examples/`` folder.
 
 Three Core Classes
@@ -117,7 +117,7 @@ HedValueVector
 Comprehensive Examples
 ----------------------
 
-The `examples directory <https://github.com/VisLab/ndx-hed/tree/main/examples>`_ contains comprehensive runnable examples:
+The `examples directory <https://github.com/hed-standard/ndx-hed/tree/main/examples>`_ contains comprehensive runnable examples:
 
 .. list-table::
    :header-rows: 1
@@ -125,19 +125,19 @@ The `examples directory <https://github.com/VisLab/ndx-hed/tree/main/examples>`_
 
    * - Example
      - Description
-   * - `01_basic_hed_classes.py <https://github.com/VisLab/ndx-hed/blob/main/examples/01_basic_hed_classes.py>`_
+   * - `01_basic_hed_classes.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/01_basic_hed_classes.py>`_
      - Introduction to the three main classes
-   * - `02_trials_with_hed.py <https://github.com/VisLab/ndx-hed/blob/main/examples/02_trials_with_hed.py>`_
+   * - `02_trials_with_hed.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/02_trials_with_hed.py>`_
      - Adding HED to trials table
-   * - `03_events_table_integration.py <https://github.com/VisLab/ndx-hed/blob/main/examples/03_events_table_integration.py>`_
+   * - `03_events_table_integration.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/03_events_table_integration.py>`_
      - Integration with ndx-events EventsTable
-   * - `04_bids_conversion.py <https://github.com/VisLab/ndx-hed/blob/main/examples/04_bids_conversion.py>`_
+   * - `04_bids_conversion.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/04_bids_conversion.py>`_
      - Converting BIDS events to NWB with HED
-   * - `05_hed_validation.py <https://github.com/VisLab/ndx-hed/blob/main/examples/05_hed_validation.py>`_
+   * - `05_hed_validation.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/05_hed_validation.py>`_
      - Comprehensive validation examples
-   * - `06_complete_workflow.py <https://github.com/VisLab/ndx-hed/blob/main/examples/06_complete_workflow.py>`_
+   * - `06_complete_workflow.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/06_complete_workflow.py>`_
      - End-to-end workflow demonstration
-   * - `07_hed_definitions.py <https://github.com/VisLab/ndx-hed/blob/main/examples/07_hed_definitions.py>`_
+   * - `07_hed_definitions.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/07_hed_definitions.py>`_
      - Custom HED definitions usage
 
 **Running Examples:**
@@ -269,7 +269,7 @@ to provide comprehensive event annotation capabilities. HED annotations can be i
        meanings=stimulus_meanings,
    )
 
-See `examples/03_events_table_integration.py <https://github.com/VisLab/ndx-hed/blob/main/examples/03_events_table_integration.py>`_ for detailed demonstrations.
+See `examples/03_events_table_integration.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/03_events_table_integration.py>`_ for detailed demonstrations.
 
 BIDS Compatibility
 ------------------
@@ -300,7 +300,7 @@ The ndx-hed extension provides utilities to convert between BIDS events files an
    # Convert EventsTable to BIDS
    bids_df, sidecar_dict = get_bids_events(events_table)
 
-See `examples/04_bids_conversion.py <https://github.com/VisLab/ndx-hed/blob/main/examples/04_bids_conversion.py>`_ for complete examples.
+See `examples/04_bids_conversion.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/04_bids_conversion.py>`_ for complete examples.
 
 HED Validation
 --------------
@@ -333,7 +333,7 @@ the annotations are valid. HED validation is performed to ensure they conform to
 * Validates custom definitions
 * Provides detailed error reporting
 
-See `examples/05_hed_validation.py <https://github.com/VisLab/ndx-hed/blob/main/examples/05_hed_validation.py>`_ for comprehensive validation examples.
+See `examples/05_hed_validation.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/05_hed_validation.py>`_ for comprehensive validation examples.
 
 Architecture
 ------------
@@ -379,4 +379,4 @@ Contributing
 ------------
 
 Contributions are welcome! Feel free to submit issues or pull requests to the 
-`GitHub repository <https://github.com/VisLab/ndx-hed>`_.
+`GitHub repository <https://github.com/hed-standard/ndx-hed>`_.
