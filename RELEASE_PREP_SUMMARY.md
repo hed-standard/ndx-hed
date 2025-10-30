@@ -105,7 +105,7 @@ sphinx:
 - Added intersphinx mappings:
   - pynwb: https://pynwb.readthedocs.io/en/stable/
   - hdmf: https://hdmf.readthedocs.io/en/stable/
-  - hed: https://hed-python.readthedocs.io/en/latest/
+  - hed: https://www.hedtags.org/hed-resources/
 - Set `autosummary_generate = True`
 
 **docs/source/index.rst**:
