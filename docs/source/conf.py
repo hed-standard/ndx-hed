@@ -147,7 +147,7 @@ intersphinx_mapping.update({
     'hdmf-common': ('https://hdmf-common-schema.readthedocs.io/en/latest/', None),
     'pynwb': ('https://pynwb.readthedocs.io/en/stable/', None),
     'hdmf': ('https://hdmf.readthedocs.io/en/stable/', None),
-    'hed': ('https://hed-python.readthedocs.io/en/latest/', None),
+    'hed': ('https://www.hedtags/hed-resources/', None),
 })
 
 # -- Generate sources from YAML---------------------------------------------------
