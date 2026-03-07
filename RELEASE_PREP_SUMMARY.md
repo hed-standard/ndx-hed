@@ -140,7 +140,6 @@ docs/
     ├── description.rst               # Overview (NEW)
     ├── api.rst                       # API reference (NEW)
     ├── release_notes.rst             # Release history (NEW)
-    ├── HedAnnotationInNWB.md         # User guide (UPDATED)
     ├── format.rst                    # Auto-generated from spec
     └── credits.rst                   # Existing
 ```

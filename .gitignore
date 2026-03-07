@@ -3,6 +3,7 @@
 
 # copilot instructions
 .github/copilot-instructions.md
+.status/
 
 # generated docs
 docs/source/_format_auto_docs
