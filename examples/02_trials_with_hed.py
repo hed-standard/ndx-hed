@@ -56,7 +56,7 @@ def main():
     print("\nTrial details:")
     for i, trial in enumerate(nwbfile.trials.to_dataframe().iterrows()):
         idx, row = trial
-        print(f"  Trial {i+1}: {row['start_time']:.1f}-{row['stop_time']:.1f}s, " f"HED: {row['HED']}")
+        print(f"  Trial {i + 1}: {row['start_time']:.1f}-{row['stop_time']:.1f}s, HED: {row['HED']}")
 
     return nwbfile
 

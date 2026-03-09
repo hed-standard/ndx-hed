@@ -15,10 +15,10 @@ import traceback
 
 def run_example(example_name, description):
     """Run a single example and report results"""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Running: {example_name}")
     print(f"Description: {description}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     try:
         # Import and run the example
@@ -59,9 +59,9 @@ def main():
         results.append((example_name, success))
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     successful = sum(1 for _, success in results if success)
     total = len(results)

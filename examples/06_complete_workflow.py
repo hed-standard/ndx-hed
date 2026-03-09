@@ -91,11 +91,17 @@ def create_comprehensive_nwb_file():
     )
 
     events_table.add_column(
-        name="duration", description="Event durations", data=[], col_cls=DurationVectorData  # Start empty
+        name="duration",
+        description="Event durations",
+        data=[],
+        col_cls=DurationVectorData,  # Start empty
     )
 
     events_table.add_column(
-        name="HED", description="Event-specific HED annotations", data=[], col_cls=HedTags  # Start empty
+        name="HED",
+        description="Event-specific HED annotations",
+        data=[],
+        col_cls=HedTags,  # Start empty
     )
 
     events_table.add_column(
@@ -179,7 +185,7 @@ def print_issues(title, issues):
             print("     Error examples:")
             for i, error in enumerate(errors[:3]):  # Show first 3 errors
                 message = error.get("message", "Unknown error")
-                print(f"       {i+1}. [{get_context(error)}] {message}")
+                print(f"       {i + 1}. [{get_context(error)}] {message}")
     else:
         print("   ✓ All HED annotations are valid!")
 
@@ -240,8 +246,8 @@ def verify_validation_consistency(original_issues, reloaded_issues):
 
         # Check issue details match
         if len(original_issues) > 0:
-            original_codes = set(issue.get("code", "") for issue in original_issues)
-            reloaded_codes = set(issue.get("code", "") for issue in reloaded_issues)
+            original_codes = {issue.get("code", "") for issue in original_issues}
+            reloaded_codes = {issue.get("code", "") for issue in reloaded_issues}
 
             if original_codes == reloaded_codes:
                 print("   ✓ Issue types are identical")

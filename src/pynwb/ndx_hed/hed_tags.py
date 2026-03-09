@@ -39,13 +39,11 @@ class HedTags(VectorData):
     #         issue_str = "\n".join(issues)
     #         raise ValueError(f"InvalidHEDData {issue_str}")
 
-    @docval(
-        {
-            "name": "val",
-            "type": str,
-            "doc": "the value to add to this column. Should be a valid HED string -- just forces string.",
-        }
-    )
+    @docval({
+        "name": "val",
+        "type": str,
+        "doc": "the value to add to this column. Should be a valid HED string -- just forces string.",
+    })
     def add_row(self, **kwargs):
         """Append a data value to this column."""
         val = getargs("val", kwargs)

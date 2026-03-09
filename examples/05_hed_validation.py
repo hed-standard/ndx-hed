@@ -123,7 +123,7 @@ def validate_individual_components(validator, nwbfile):
     if invalid_issues:
         print("     Sample issues:")
         for i, issue in enumerate(invalid_issues[:2]):  # Show first 2 issues
-            print(f"       {i+1}. {issue.get('message', 'Unknown error')}")
+            print(f"       {i + 1}. {issue.get('message', 'Unknown error')}")
 
     # Mixed column
     mixed_column = mixed_table["HED"]
@@ -179,7 +179,7 @@ def validate_events_table(validator):
 
     if issues:
         print("     Sample issues:")
-        for i, issue in enumerate(issues[:2]):
+        for _i, issue in enumerate(issues[:2]):
             row = issue.get("ec_row", "unknown")
             message = issue.get("message", "Unknown error")
             print(f"       Row {row}: {message}")

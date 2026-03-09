@@ -320,22 +320,18 @@ class TestValidateEventsTable(unittest.TestCase):
         # This is the proper way to create EventsTable for testing
 
         # Create valid test data for EventsTable
-        valid_df = pd.DataFrame(
-            {
-                "onset": [1.0, 2.0, 3.0, 4.0, 5.0],
-                "duration": [0.5, 0.5, 0.5, 0.5, 0.5],
-                "HED": ["Sensory-event", "Visual-presentation", "Auditory-event", "Sensory-event", "Auditory-event"],
-            }
-        )
+        valid_df = pd.DataFrame({
+            "onset": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "duration": [0.5, 0.5, 0.5, 0.5, 0.5],
+            "HED": ["Sensory-event", "Visual-presentation", "Auditory-event", "Sensory-event", "Auditory-event"],
+        })
 
         # Create invalid test data for EventsTable
-        invalid_df = pd.DataFrame(
-            {
-                "onset": [1.0, 2.0, 3.0],
-                "duration": [0.5, 0.5, 0.5],
-                "HED": ["InvalidTag123", "NonExistentEvent", "BadTag/WithSlash"],
-            }
-        )
+        invalid_df = pd.DataFrame({
+            "onset": [1.0, 2.0, 3.0],
+            "duration": [0.5, 0.5, 0.5],
+            "HED": ["InvalidTag123", "NonExistentEvent", "BadTag/WithSlash"],
+        })
 
         # Create EventsTables using get_events_table
         self.valid_events_table = get_events_table(
@@ -835,18 +831,16 @@ class TestValidateWithDefinitions(unittest.TestCase):
     def test_validate_events_with_definition_references(self):
         """Test validate_events with EventsTable containing definition references."""
         # Create EventsTable with definition references
-        events_df = pd.DataFrame(
-            {
-                "onset": [1.0, 2.0, 3.0, 4.0],
-                "duration": [0.5, 0.5, 0.5, 0.5],
-                "HED": [
-                    "Def/Go-stimulus",
-                    "Def/Stop-stimulus",
-                    "Def/Go-stimulus, Def/Correct-response",
-                    "Def/Go-stimulus, Def/Response-time/0.45",
-                ],
-            }
-        )
+        events_df = pd.DataFrame({
+            "onset": [1.0, 2.0, 3.0, 4.0],
+            "duration": [0.5, 0.5, 0.5, 0.5],
+            "HED": [
+                "Def/Go-stimulus",
+                "Def/Stop-stimulus",
+                "Def/Go-stimulus, Def/Correct-response",
+                "Def/Go-stimulus, Def/Response-time/0.45",
+            ],
+        })
 
         events_table = get_events_table(
             name="events_with_defs",
@@ -864,16 +858,14 @@ class TestValidateWithDefinitions(unittest.TestCase):
     def test_validate_events_with_invalid_definition_references(self):
         """Test validate_events with invalid definition references."""
         # Create EventsTable with invalid definition references
-        events_df = pd.DataFrame(
-            {
-                "onset": [1.0, 2.0],
-                "duration": [0.5, 0.5],
-                "HED": [
-                    "Def/NonExistent-def",
-                    "Def/Another-missing-def",
-                ],
-            }
-        )
+        events_df = pd.DataFrame({
+            "onset": [1.0, 2.0],
+            "duration": [0.5, 0.5],
+            "HED": [
+                "Def/NonExistent-def",
+                "Def/Another-missing-def",
+            ],
+        })
 
         events_table = get_events_table(
             name="events_invalid_defs",
@@ -913,18 +905,16 @@ class TestValidateWithDefinitions(unittest.TestCase):
 
         NOTE: This is the original test using validate_events.
         """
-        events_df = pd.DataFrame(
-            {
-                "onset": [1.0, 2.0, 3.0, 4.0],
-                "duration": [0.5, 0.5, 0.5, 0.5],
-                "HED": [
-                    "Def/Go-stimulus, Red, Visual-presentation",
-                    "Sensory-event, Def/Correct-response",
-                    "Def/Response-time/0.5, Agent-action",
-                    "Blue, Green, Def/Stop-stimulus",
-                ],
-            }
-        )
+        events_df = pd.DataFrame({
+            "onset": [1.0, 2.0, 3.0, 4.0],
+            "duration": [0.5, 0.5, 0.5, 0.5],
+            "HED": [
+                "Def/Go-stimulus, Red, Visual-presentation",
+                "Sensory-event, Def/Correct-response",
+                "Def/Response-time/0.5, Agent-action",
+                "Blue, Green, Def/Stop-stimulus",
+            ],
+        })
 
         events_table = get_events_table(
             name="events_mixed",
@@ -962,16 +952,14 @@ class TestValidateWithDefinitions(unittest.TestCase):
 
         Uses validate_events to properly support definitions.
         """
-        events_df = pd.DataFrame(
-            {
-                "onset": [1.0, 2.0],
-                "duration": [0.5, 0.5],
-                "HED": [
-                    "Def/Go-stimulus, InvalidTag123",
-                    "NonExistentTag, Def/Correct-response",
-                ],
-            }
-        )
+        events_df = pd.DataFrame({
+            "onset": [1.0, 2.0],
+            "duration": [0.5, 0.5],
+            "HED": [
+                "Def/Go-stimulus, InvalidTag123",
+                "NonExistentTag, Def/Correct-response",
+            ],
+        })
 
         events_table = get_events_table(
             name="events_mixed_invalid",
@@ -990,16 +978,14 @@ class TestValidateWithDefinitions(unittest.TestCase):
         """Test that validate_events actually uses the definitions when validating."""
         # This test verifies that definitions are passed to the underlying validation
         # Create an EventsTable that would fail without definitions but passes with them
-        events_df = pd.DataFrame(
-            {
-                "onset": [1.0, 2.0],
-                "duration": [0.5, 0.5],
-                "HED": [
-                    "Def/Go-stimulus",
-                    "Def/Response-time/0.5",
-                ],
-            }
-        )
+        events_df = pd.DataFrame({
+            "onset": [1.0, 2.0],
+            "duration": [0.5, 0.5],
+            "HED": [
+                "Def/Go-stimulus",
+                "Def/Response-time/0.5",
+            ],
+        })
 
         events_table = get_events_table(
             name="events_def_test",
@@ -1330,13 +1316,11 @@ class TestValidateFile(unittest.TestCase):
     def test_validate_file_with_events_table(self):
         """Test validate_file with EventsTable object."""
         # Create EventsTable
-        events_df = pd.DataFrame(
-            {
-                "onset": [1.0, 2.0, 3.0],
-                "duration": [0.5, 0.5, 0.5],
-                "HED": ["Def/Go-stimulus", "Sensory-event", "Def/Stop-stimulus"],
-            }
-        )
+        events_df = pd.DataFrame({
+            "onset": [1.0, 2.0, 3.0],
+            "duration": [0.5, 0.5, 0.5],
+            "HED": ["Def/Go-stimulus", "Sensory-event", "Def/Stop-stimulus"],
+        })
 
         events_table = get_events_table(
             name="events",

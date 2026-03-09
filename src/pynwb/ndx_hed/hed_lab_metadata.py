@@ -62,7 +62,7 @@ class HedLabMetaData(LabMetaData):
         try:
             self._hed_schema = load_schema_version(self.hed_schema_version)
         except Exception as e:
-            raise ValueError(f"Failed to load HED schema version {self.hed_schema_version}: {e}")
+            raise ValueError(f"Failed to load HED schema version {self.hed_schema_version}: {e}") from e
 
         try:
             self._definition_dict = DefinitionDict(original_definitions, self._hed_schema)
@@ -72,7 +72,7 @@ class HedLabMetaData(LabMetaData):
                     f"DefinitionDict has issues: {get_printable_issue_string(self._definition_dict.issues)}"
                 )
         except Exception as e:
-            raise ValueError(f"Failed to create DefinitionDict for HedLabMetaData: {e}")
+            raise ValueError(f"Failed to create DefinitionDict for HedLabMetaData: {e}") from e
 
     def add_definitions(self, defs: Union[str, list, dict, None]):
         """
