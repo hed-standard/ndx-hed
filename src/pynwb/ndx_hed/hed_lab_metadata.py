@@ -80,8 +80,8 @@ class HedLabMetaData(LabMetaData):
 
         Args:
             defs (str or list or dict or None): A string containing one or more HED definitions,
-                                                a list of such strings, a dict of DefinitionEntry objects, or None.
-                       If None or empty, no action is taken.
+                a list of such strings, a dict of DefinitionEntry objects, or None.
+                If None or empty, no action is taken.
         """
         if not defs:
             return
