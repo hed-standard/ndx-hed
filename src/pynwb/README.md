@@ -17,8 +17,7 @@ pip install -U ndx-hed
 ## Developer installation
 In a Python 3.10-3.14 environment:
 ```bash
-pip install -r requirements-dev.txt
-pip install -e .
+pip install -e ".[dev]" -c constraints/pinned.txt
 ```
 
 Run tests:

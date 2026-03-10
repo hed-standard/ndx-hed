@@ -9,6 +9,7 @@ This example demonstrates how to use HED definitions with ndx-hed:
 3. Validating definitions with the schema
 
 """
+
 import pandas as pd
 from hed.models.df_util import expand_defs
 from pynwb import NWBFile

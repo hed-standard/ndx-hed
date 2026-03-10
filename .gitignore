@@ -3,6 +3,7 @@
 
 # copilot instructions
 .github/copilot-instructions.md
+.status/
 
 # generated docs
 docs/source/_format_auto_docs
@@ -149,7 +150,7 @@ venv.bak/
 
 # mkdocs documentation
 /site
-/docs/build
+/docs/_build
 
 # mypy
 .mypy_cache/

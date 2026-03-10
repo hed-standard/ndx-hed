@@ -9,14 +9,13 @@ NWB is used extensively as the data representation for single cell and animal re
 human neuroimaging modalities such as IEEG.
 NWB organizes all of the data from one recording session into a single file.
 
-[**HED (Hierarchical Event Descriptors)**](https://www.hedtags.org) is a system of
+[HED (Hierarchical Event Descriptors)](https://www.hedtags.org) is a system of
 standardized vocabularies and supporting tools that allows fine-grained annotation of data.
 HED annotations can now be used in NWB to provide HED annotations for any NWB
 dynamic table. 
 
-The [**HED Integration for NWB**](https://www.hedtags.org/ndx-hed/) gives a quickstart, examples and th API reference.
-The [**HED annotation in NWB**](https://www.hedtags.org/hed-resources/HedAnnotationInNWB.html)
-user guide explains in more detail how to use this extension for HED.
+The [HED integration for NWB](https://www.hedtags.org/ndx-hed/) gives a quickstart, examples and the API reference.
+The [NWB annotation quickstart](https://www.hedtags.org/hed-resources/NWBAnnotationQuickstart.html) gives a brief overview of how to get started.
 
 ## Installation
 
@@ -159,7 +158,6 @@ See [examples/05_hed_validation.py](examples/05_hed_validation.py) for comprehen
 
 - [HED specification](https://www.hedtags.org/)
 - [HED python tools](https://github.com/hed-standard/hed-python)
-- [HED annotation in NWB user guide](https://www.hedtags.org/hed-resources/HedAnnotationInNWB.html)
 - [NWB documentation](https://pynwb.readthedocs.io/)
 - [ndx-events extension](https://github.com/rly/ndx-events)
 

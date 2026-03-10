@@ -423,17 +423,15 @@ class TestGetEventsTable(unittest.TestCase):
         )
 
         # Sample DataFrame with typical event data
-        self.sample_df = pd.DataFrame(
-            {
-                "onset": [0.0, 1.5, 3.0],
-                "duration": [0.5, 1.0, 0.8],
-                "event_type": ["show_cross", "left_click", "show_cross"],
-                "trial": [1, 1, 2],
-                "letter": ["A", "B", "C"],
-                "HED": ["Event-1", "Event-2", "Event-3"],
-                "other_column": ["data1", "data2", "data3"],
-            }
-        )
+        self.sample_df = pd.DataFrame({
+            "onset": [0.0, 1.5, 3.0],
+            "duration": [0.5, 1.0, 0.8],
+            "event_type": ["show_cross", "left_click", "show_cross"],
+            "trial": [1, 1, 2],
+            "letter": ["A", "B", "C"],
+            "HED": ["Event-1", "Event-2", "Event-3"],
+            "other_column": ["data1", "data2", "data3"],
+        })
 
     def test_get_events_table_basic(self):
         """Test get_events_table with basic data."""
@@ -469,9 +467,11 @@ class TestGetEventsTable(unittest.TestCase):
 
     def test_get_events_table_with_na_values(self):
         """Test get_events_table with 'n/a' values in onset and duration."""
-        df_with_na = pd.DataFrame(
-            {"onset": [0.0, "n/a", 3.0], "duration": ["N/A", 1.0, "na"], "event_type": ["A", "B", "C"]}
-        )
+        df_with_na = pd.DataFrame({
+            "onset": [0.0, "n/a", 3.0],
+            "duration": ["N/A", 1.0, "na"],
+            "event_type": ["A", "B", "C"],
+        })
 
         meanings = {"categorical": {}, "value": {}}
 
@@ -611,16 +611,14 @@ class TestGetBidsEvents(unittest.TestCase):
         event_meanings.add_row(value="left_click", meaning="Left button press")
 
         # Create sample DataFrame
-        sample_df = pd.DataFrame(
-            {
-                "onset": [0.0, 1.5, 3.0],
-                "duration": [0.5, 1.0, 0.8],
-                "event_type": ["show_cross", "left_click", "show_cross"],
-                "trial": [1, 2, 3],
-                "letter": ["A", "B", "C"],
-                "HED": ["Event-1", "Event-2", "Event-3"],
-            }
-        )
+        sample_df = pd.DataFrame({
+            "onset": [0.0, 1.5, 3.0],
+            "duration": [0.5, 1.0, 0.8],
+            "event_type": ["show_cross", "left_click", "show_cross"],
+            "trial": [1, 2, 3],
+            "letter": ["A", "B", "C"],
+            "HED": ["Event-1", "Event-2", "Event-3"],
+        })
 
         # Create meanings dictionary
         meanings = {
@@ -749,9 +747,12 @@ class TestGetBidsEvents(unittest.TestCase):
     def test_get_bids_events_roundtrip(self):
         """Test roundtrip conversion: DataFrame/JSON -> EventsTable -> DataFrame/JSON."""
         # Start with original data
-        original_df = pd.DataFrame(
-            {"onset": [0.0, 1.5, 3.0], "duration": [0.5, 1.0, 0.8], "event_type": ["A", "B", "A"], "trial": [1, 2, 3]}
-        )
+        original_df = pd.DataFrame({
+            "onset": [0.0, 1.5, 3.0],
+            "duration": [0.5, 1.0, 0.8],
+            "event_type": ["A", "B", "A"],
+            "trial": [1, 2, 3],
+        })
 
         original_json = {
             "event_type": {

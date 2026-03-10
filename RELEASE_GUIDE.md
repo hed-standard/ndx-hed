@@ -120,7 +120,7 @@ sphinx:
   - Uses Python 3.14
   - Installs dependencies from `docs/requirements.txt`
   - Builds docs with: `cd docs && make html`
-  - Uses correct build output path: `./docs/build/html`
+  - Uses correct build output path: `./docs/_build/html`
   - Sets SPHINXOPTS: "-W --keep-going"
 - Deploy job:
   - Only runs on push to main branch (not PRs)
@@ -140,7 +140,6 @@ docs/
     ├── description.rst               # Overview (NEW)
     ├── api.rst                       # API reference (NEW)
     ├── release_notes.rst             # Release history (NEW)
-    ├── HedAnnotationInNWB.md         # User guide (UPDATED)
     ├── format.rst                    # Auto-generated from spec
     └── credits.rst                   # Existing
 ```
@@ -153,7 +152,7 @@ cd docs
 make html
 ```
 
-**Output:** `docs/build/html/`
+**Output:** `docs/_build/html/`
 
 **Clean build:**
 ```powershell

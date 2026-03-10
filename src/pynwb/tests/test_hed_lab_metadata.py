@@ -129,7 +129,6 @@ class TestHedLabMetaDataConstructor(TestCase):
 
 
 class TestHedLabMetaDataRoundTrip(TestCase):
-
     def setUp(self):
         import tempfile
 
@@ -476,7 +475,7 @@ class TestHedLabMetaDataDefinitions(TestCase):
 
     def test_definitions_invalid_hed_syntax(self):
         """Test handling of invalid HED syntax in definitions."""
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             # Invalid HED syntax - missing closing parenthesis
             invalid_definitions = "(Definition/BadEvent, (Sensory-event"
             HedLabMetaData(hed_schema_version="8.4.0", definitions=invalid_definitions)

@@ -433,7 +433,7 @@ class TestHedNWBFileValidator(unittest.TestCase):
         self.assertEqual(
             len(original_issues),
             len(read_issues),
-            f"Number of issues should be the same: original={len(original_issues)}, " f"read={len(read_issues)}",
+            f"Number of issues should be the same: original={len(original_issues)}, read={len(read_issues)}",
         )
 
         # Should have issues (since we included invalid HED tags)
