@@ -41,7 +41,7 @@ Ruff configuration is in `pyproject.toml`. Always ensure `pytest` and `ruff chec
 All workflows are in `.github/workflows/`:
 - `run_all_tests.yml` — runs pytest on Python 3.10–3.14 across Linux/Windows/macOS on every push
 - `ruff.yml` — runs ruff linter and format check on PRs/pushes to main
-- `codespell.yml` — spell checking
+- `typos.yaml` — spell checking
 - `run_coverage.yml` — coverage reporting
 - `docs.yml` — builds Sphinx documentation
 

@@ -32,7 +32,6 @@ pre-commit install
 
 Style and other checks:
 ```bash
-black .
 ruff .
-codespell .
+typos .
 ```
