@@ -32,6 +32,6 @@ pre-commit install
 
 Style and other checks:
 ```bash
-ruff .
+ruff check .
 typos .
 ```

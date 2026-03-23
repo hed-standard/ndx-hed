@@ -134,6 +134,13 @@ extend-exclude = [
 
 [tool.typos.default.extend-words]
 assertIn = "assertIn"
+hed = "hed"
+parms = "parms"
+covert = "covert"
+recuse = "recuse"
+disjointness = "disjointness"
+assertIn = "assertIn"
+
 
 [tool.coverage.run]
 branch = true
