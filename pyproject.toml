@@ -139,8 +139,6 @@ parms = "parms"
 covert = "covert"
 recuse = "recuse"
 disjointness = "disjointness"
-assertIn = "assertIn"
-
 
 [tool.coverage.run]
 branch = true
