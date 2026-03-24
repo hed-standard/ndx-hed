@@ -1,8 +1,7 @@
 # output NWB files
 *.nwb
 
-# copilot instructions
-.github/copilot-instructions.md
+# Local status files
 .status/
 
 # generated docs

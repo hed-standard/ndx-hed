@@ -55,7 +55,7 @@ dev = [
     "coverage>=7.5.4",
     "python-dateutil>=2.8.2",
     "ruff>=0.8.0",
-    "codespell>=2.3.0",
+    "typos>=1.29.0",
     "pre-commit>=3.5.0",
     "mdformat-myst>=0.1.5",
 ]
@@ -113,9 +113,33 @@ exclude = []
 [tool.pytest.ini_options]
 # addopts = "--cov --cov-report html"
 
-[tool.codespell]
-skip = "htmlcov,.git,.mypy_cache,.pytest_cache,.coverage,*.pdf,*.svg,venvs,.tox,hdmf-common-schema,./docs/_build/*,*.ipynb,deprecated,*.xml,*.mediawiki,*.omn"
-ignore-words-list = "assertIn"
+[tool.typos.files]
+extend-exclude = [
+    "htmlcov",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".coverage",
+    "*.pdf",
+    "*.svg",
+    "venvs",
+    ".tox",
+    "hdmf-common-schema",
+    "docs/_build",
+    "*.ipynb",
+    "deprecated",
+    "*.xml",
+    "*.mediawiki",
+    "*.omn",
+]
+
+[tool.typos.default.extend-words]
+assertIn = "assertIn"
+hed = "hed"
+parms = "parms"
+covert = "covert"
+recuse = "recuse"
+disjointness = "disjointness"
+seperate = "seperate"
 
 [tool.coverage.run]
 branch = true
