@@ -147,7 +147,7 @@ class TestHedLabMetaDataRoundTrip(TestCase):
             session_start_time=session_start,
         )
 
-        # Instantiate the class and add the lab_infor
+        # Instantiate the class and add the lab meta data
         hed_info = HedLabMetaData(hed_schema_version="8.4.0")
         nwbfile.add_lab_meta_data(hed_info)
 
@@ -272,7 +272,7 @@ class TestHedLabMetaDataRoundTrip(TestCase):
             session_start_time=session_start,
         )
 
-        # Instantiate the class and add the lab_infor
+        # Instantiate the class and add the lab meta data
         hed_info1 = HedLabMetaData(hed_schema_version="8.4.0")
         nwbfile.add_lab_meta_data(hed_info1)
         hed_info2 = HedLabMetaData(hed_schema_version="8.3.0")

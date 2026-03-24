@@ -83,7 +83,7 @@ spec_resolve_type_inc = False
 import pynwb  # noqa: E402
 spec_default_type_map = pynwb.get_type_map()
 
-# Default specification classes for groups datasets and namespaces. In the case of NWB these are the NWB-specfic
+# Default specification classes for groups datasets and namespaces. In the case of NWB these are the NWB-specific
 # spec classes. In the general cases these are the spec classes from HDMF
 spec_group_spec_cls = pynwb.spec.NWBGroupSpec
 spec_dataset_spec_cls = pynwb.spec.NWBDatasetSpec

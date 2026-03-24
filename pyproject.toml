@@ -139,6 +139,7 @@ parms = "parms"
 covert = "covert"
 recuse = "recuse"
 disjointness = "disjointness"
+seperate = "seperate"
 
 [tool.coverage.run]
 branch = true

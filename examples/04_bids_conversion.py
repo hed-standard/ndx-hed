@@ -48,7 +48,7 @@ def create_sample_bids_data():
             },
         },
         "trial_number": {"Description": "Trial number in the experiment", "HED": "Experimental-trial/#"},
-        "stimulus_constrast": {
+        "stimulus_intensity": {
             "Description": "Contrast of the visual stimulus with the background",
             "HED": "Luminance-contrast/#",
         },
