@@ -3,6 +3,10 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   run-coverage:
     name: ${{ matrix.os }}

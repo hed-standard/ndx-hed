@@ -5,6 +5,10 @@ on:
     - cron: '0 5 * * *'  # once per day at midnight ET
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   check-external-links:
     name: Check for broken Sphinx external links

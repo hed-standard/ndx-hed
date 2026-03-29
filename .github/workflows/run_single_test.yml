@@ -5,6 +5,10 @@ on:
   pull_request:
     branches: ["*"]
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   run-all-tests:
     name: ${{ matrix.name }}
