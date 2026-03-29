@@ -5,6 +5,9 @@ on:
     - cron: '0 5 * * *'  # once per day at midnight ET
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   run-all-tests:
     name: ${{ matrix.name }}
