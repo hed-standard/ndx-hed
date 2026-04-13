@@ -5,12 +5,12 @@ typos==1.44.0
 coverage==7.13.5
 hdmf==3.14.4
 hdmf-docutils==0.4.7
-hedtools==0.7.1
+hedtools==1.0.0
 myst-parser==3.0.1
 ndx-events==0.4.0
 pre-commit==4.5.1
 pynwb==2.8.2
-pytest==9.0.2
+pytest==9.0.3
 pytest-cov==7.1.0
 python-dateutil==2.8.2
 pytest-subtests==0.15.0
