@@ -39,7 +39,7 @@ jobs:
           - { name: macos-python3.14-upgraded    , requirements: upgraded   , python-ver: "3.14", os: macos-latest }
     steps:
       - name: Cancel non-latest runs
-        uses: styfle/cancel-workflow-action@0.12.1
+        uses: styfle/cancel-workflow-action@0.13.1
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
@@ -127,7 +127,7 @@ jobs:
           - { name: conda-linux-python3.14-upgraded  , requirements: upgraded   , python-ver: "3.14", os: ubuntu-latest }
     steps:
       - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.12.1
+        uses: styfle/cancel-workflow-action@0.13.1
         with:
           access_token: ${{ github.token }}
 
