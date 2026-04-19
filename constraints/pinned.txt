@@ -1,7 +1,7 @@
 # Pinned dependencies to reproduce a known-good development/test environment.
 # Used by CI for the 'pinned' matrix variant.
 # Update these when doing a planned dependency bump.
-typos==1.44.0
+typos==1.45.1
 coverage==7.13.5
 hdmf==3.14.4
 hdmf-docutils==0.4.7
