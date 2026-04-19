@@ -3,7 +3,7 @@
 # Update these when doing a planned dependency bump.
 typos==1.44.0
 coverage==7.13.5
-hdmf==3.14.4
+hdmf==5.1.0
 hdmf-docutils==0.4.7
 hedtools==1.0.0
 myst-parser==4.0.1
