@@ -4,7 +4,7 @@
 typos==1.44.0
 coverage==7.13.5
 hdmf==3.14.4
-hdmf-docutils==0.4.7
+hdmf-docutils==0.4.9
 hedtools==1.0.0
 myst-parser==4.0.1
 ndx-events==0.4.0
