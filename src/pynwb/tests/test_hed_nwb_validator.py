@@ -1217,7 +1217,7 @@ class TestValidateFile(unittest.TestCase):
         """Set up test data."""
         from pynwb import NWBFile
         from datetime import datetime
-        from pytz import timezone
+        from zoneinfo import ZoneInfo
 
         # Create HED lab metadata with definitions
         self.test_definitions = (
@@ -1233,7 +1233,7 @@ class TestValidateFile(unittest.TestCase):
         self.nwbfile = NWBFile(
             session_description="Test session for HED validation",
             identifier="test_file_001",
-            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone("US/Pacific")),
+            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
         )
 
         # Add HED metadata to the file
@@ -1366,14 +1366,14 @@ class TestValidateFile(unittest.TestCase):
         """Test validate_file raises error when HedLabMetaData is missing."""
         from pynwb import NWBFile
         from datetime import datetime
-        from pytz import timezone
+        from zoneinfo import ZoneInfo
         from hed.errors import HedFileError
 
         # Create NWB file without HED metadata
         nwbfile_no_hed = NWBFile(
             session_description="Test session without HED",
             identifier="test_file_002",
-            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone("US/Pacific")),
+            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
         )
 
         with self.assertRaises(HedFileError) as cm:
@@ -1384,14 +1384,14 @@ class TestValidateFile(unittest.TestCase):
         """Test validate_file raises error when schema versions don't match."""
         from pynwb import NWBFile
         from datetime import datetime
-        from pytz import timezone
+        from zoneinfo import ZoneInfo
         from hed.errors import HedFileError
 
         # Create NWB file with different schema version
         nwbfile_different = NWBFile(
             session_description="Test session with different schema",
             identifier="test_file_003",
-            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone("US/Pacific")),
+            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
         )
 
         # Add HED metadata with different schema version
