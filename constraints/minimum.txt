@@ -3,5 +3,5 @@
 # Used by CI for the 'minimum' matrix variant.
 pynwb==2.8.2
 hdmf==3.14.4
-hedtools==1.0.0
+hedtools==1.1.0
 ndx-events==0.4.0
