@@ -29,7 +29,7 @@ jobs:
         python-version: '3.12'
 
     - name: Cache dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-docs-v2-${{ hashFiles('pyproject.toml') }}
@@ -55,7 +55,7 @@ jobs:
         SPHINXOPTS: "--keep-going"
 
     - name: Setup Pages
-      uses: actions/configure-pages@v5
+      uses: actions/configure-pages@v6
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v4
@@ -85,4 +85,4 @@ jobs:
       - name: Deploy to GitHub Pages
         # This is the official action for deploying the artifact to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

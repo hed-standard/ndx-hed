@@ -22,7 +22,7 @@ jobs:
       PYTHON: '3.11'
     steps:
       - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.12.1
+        uses: styfle/cancel-workflow-action@0.13.1
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
@@ -50,7 +50,7 @@ jobs:
           python -m coverage report -m
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
