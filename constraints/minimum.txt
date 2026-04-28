@@ -1,7 +1,7 @@
 # Minimum versions of core package dependencies for installation.
 # These must match the minimum versions specified in pyproject.toml.
 # Used by CI for the 'minimum' matrix variant.
-pynwb==2.8.2
+pynwb==3.1.3
 hdmf==3.14.4
 hedtools==1.1.0
 ndx-events==0.4.0
