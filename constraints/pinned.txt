@@ -2,7 +2,7 @@
 # Used by CI for the 'pinned' matrix variant.
 # Update these when doing a planned dependency bump.
 typos==1.46.1
-coverage==7.13.5
+coverage==7.14.0
 hdmf==3.14.4
 hdmf-docutils==0.4.7
 hedtools==1.1.0
