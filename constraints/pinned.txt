@@ -1,8 +1,8 @@
 # Pinned dependencies to reproduce a known-good development/test environment.
 # Used by CI for the 'pinned' matrix variant.
 # Update these when doing a planned dependency bump.
-typos==1.47.0
-coverage==7.14.0
+typos==1.46.3
+coverage==7.14.1
 hdmf==3.14.4
 hdmf-docutils==0.4.7
 hedtools==1.1.0
@@ -14,7 +14,7 @@ pytest==9.0.3
 pytest-cov==7.1.0
 python-dateutil==2.9.0.post0
 pytest-subtests==0.15.0
-ruff==0.15.14
+ruff==0.15.15
 sphinx==8.1.3
 sphinx-book-theme==1.1.4
 sphinx-design==0.6.1
