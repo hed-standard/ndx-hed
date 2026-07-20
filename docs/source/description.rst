@@ -130,7 +130,7 @@ The `examples directory <https://github.com/hed-standard/ndx-hed/tree/main/examp
    * - `02_trials_with_hed.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/02_trials_with_hed.py>`_
      - Adding HED to trials table
    * - `03_events_table_integration.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/03_events_table_integration.py>`_
-     - Integration with ndx-events EventsTable
+     - Integration with the PyNWB core EventsTable
    * - `04_bids_conversion.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/04_bids_conversion.py>`_
      - Converting BIDS events to NWB with HED
    * - `05_hed_validation.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/05_hed_validation.py>`_
@@ -155,7 +155,7 @@ The `examples directory <https://github.com/hed-standard/ndx-hed/tree/main/examp
 Integration with NWB Events
 ---------------------------
 
-The ndx-hed extension works seamlessly with the `ndx-events extension <https://github.com/rly/ndx-events>`_ 
+The ndx-hed extension works seamlessly with the PyNWB core ``EventsTable`` (NWBEP001, PyNWB >= 4.0.0)
 to provide comprehensive event annotation capabilities. HED annotations can be incorporated in three ways:
 
 1. **Direct HED column** - Event-specific annotations
@@ -166,11 +166,11 @@ to provide comprehensive event annotation capabilities. HED annotations can be i
 
 .. code-block:: python
 
-   from ndx_events import EventsTable, DurationVectorData
+   from pynwb.event import EventsTable, DurationVectorData
    from ndx_hed import HedTags
-   
+
    events_table = EventsTable(
-       name="stimulus_events", 
+       name="stimulus_events",
        description="Stimulus events with direct HED annotations"
    )
    
@@ -232,23 +232,35 @@ to provide comprehensive event annotation capabilities. HED annotations can be i
 
 .. code-block:: python
 
-   from ndx_events import CategoricalVectorData, MeaningsTable
-   
-   # Create MeaningsTable with HED annotations
-   stimulus_meanings = MeaningsTable(
-       name="stimulus_type_meanings", 
-       description="Meanings and HED annotations for stimulus types"
+   from hdmf.common import MeaningsTable
+   from ndx_hed import HedTags
+
+   # A categorical column is a plain column annotated by a MeaningsTable. A MeaningsTable is bound
+   # to the column it annotates via its ``target`` and its name is auto-derived as
+   # "{column_name}_meanings".
+
+   # Add a plain categorical column and its data first (the target column must exist)
+   events_table.add_column(
+       name="stimulus_type",
+       description="Type of visual stimulus presented",
+       data=["circle", "square"],
    )
-   
+
+   # Create a MeaningsTable targeting the stimulus_type column
+   stimulus_meanings = MeaningsTable(
+       target=events_table["stimulus_type"],
+       description="Meanings and HED annotations for stimulus types",
+   )
+
    # Add meaning definitions
    categories = [
        ("circle", "Circular visual stimulus presented at screen center"),
        ("square", "Square visual stimulus presented at screen center"),
    ]
-   
+
    for value, meaning in categories:
        stimulus_meanings.add_row(value=value, meaning=meaning)
-   
+
    # Add HED annotations as a column in the MeaningsTable
    stimulus_meanings.add_column(
        name="HED",
@@ -259,15 +271,12 @@ to provide comprehensive event annotation capabilities. HED annotations can be i
        ],
        col_cls=HedTags,
    )
-   
-   # Add categorical column that references the meanings table
-   events_table.add_column(
-       name="stimulus_type",
-       description="Type of visual stimulus presented",
-       data=[],
-       col_cls=CategoricalVectorData,
-       meanings=stimulus_meanings,
-   )
+
+   # Attach the MeaningsTable to the EventsTable
+   events_table.add_meanings_table(stimulus_meanings)
+
+   # Later, retrieve the meanings for a column with:
+   #   events_table.get_meanings_for_column("stimulus_type")
 
 See `examples/03_events_table_integration.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/03_events_table_integration.py>`_ for detailed demonstrations.
 
@@ -362,8 +371,8 @@ Compatibility
 -------------
 
 * **Python**: 3.10+
-* **Dependencies**: pynwb>=2.8.2, hdmf>=3.14.1, hedtools>=0.7.1
-* **Optional**: ndx-events>=0.4.0 for EventsTable support
+* **Dependencies**: pynwb>=4.0.0, hdmf>=6.1.0, hedtools>=1.2.0
+* **EventsTable**: Provided by PyNWB core (NWBEP001) as of PyNWB 4.0.0
 * **MATLAB**: Under development (not yet available)
 
 Additional Resources
@@ -372,7 +381,6 @@ Additional Resources
 * `HED Standards Organization <https://www.hedtags.org>`_ - Official HED specification and resources
 * `HED python tools <https://github.com/hed-standard/hed-python>`_ - Core HED Python library
 * `NWB documentation <https://pynwb.readthedocs.io/>`_ - PyNWB library documentation
-* `ndx-events extension <https://github.com/rly/ndx-events>`_ - Complementary events extension
 
 Contributing
 ------------

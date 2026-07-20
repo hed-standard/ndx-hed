@@ -1,29 +1,50 @@
 # Changelog for ndx-hed
 
+## Release 1.0.0
+
+Migration to PyNWB 4.0.0. NWBEP001 (`EventsTable`, `MeaningsTable`, `TimestampVectorData`, `DurationVectorData`, etc.) has been merged into PyNWB core, so ndx-hed no longer depends on the standalone `ndx-events` extension.
+
+### Breaking changes
+
+- **Dependencies**: now requires `pynwb>=4.0.0` and `hdmf>=6.1.0`; the `ndx-events` dependency has been removed. `EventsTable`, `TimestampVectorData`, and `DurationVectorData` are now imported from `pynwb.event`; `MeaningsTable` from `hdmf.common`. Use the standard `pynwb.NWBFile` (the `NdxEventsNWBFile` type no longer exists).
+- **No `CategoricalVectorData`** (the categorical column type formerly provided by the `ndx-events` extension): PyNWB 4.0.0 did not introduce an equivalent. Any `DynamicTable` column (a plain `VectorData`) can now be annotated by a `MeaningsTable`.
+- **Reversed column ↔ meanings relationship**: a `MeaningsTable` is now bound to the column it annotates via a required `target` argument (`MeaningsTable(target=column, ...)`), and its name is auto-derived as `"{column_name}_meanings"`. Meanings are attached to a table with `table.add_meanings_table(...)` and retrieved with `table.get_meanings_for_column(col_name)`. A `MeaningsTable` can no longer be constructed standalone.
+
+### Changes
+
+- `bids2nwb`: `extract_meanings()` now returns the raw sidecar column-info dicts for categorical columns (the `MeaningsTable` is built later, once the target column exists); `get_categorical_meanings()` now takes the target `VectorData` column instead of a column name; `get_events_table()` builds categorical columns as plain `VectorData` and attaches a `MeaningsTable` to each; `get_bids_events()` looks up meanings via the table instead of the column.
+- `HedNWBValidator.validate_file()` skips `MeaningsTable` objects so categorical HED is validated once (via the parent `EventsTable`'s BIDS-sidecar path) rather than twice.
+- `HedLabMetaData`, `HedTags`, and `HedValueVector` and the extension schema are unchanged.
+
 ## Release 0.2.0 October 18, 2025
 
 Major rewrite and expansion of the ndx-hed extension with three core classes and comprehensive tooling. Web pages with API docs hosted on Github.
 
-### New Features
+### New features
 
-#### Core Classes
+#### Core classes
+
 - **HedLabMetaData**: Required metadata container for storing HED schema version and optional custom definitions
+
   - Must be added to `NWBFile` before using any HED annotations
   - Supports both standard and library schemas
   - Includes `DefinitionDict` for custom HED definitions
   - Methods: `get_hed_schema()`, `get_definition_dict()`, `add_definitions()`, `extract_definitions()`
 
 - **HedTags**: VectorData subclass for row-specific HED annotations in DynamicTables
+
   - Must be named "HED" (enforced by constructor)
   - Stores one HED string per row
   - Works with any NWB DynamicTable (trials, units, epochs, etc.)
-  
+
 - **HedValueVector**: VectorData subclass for column-wide HED templates with value placeholders
+
   - Stores numerical/categorical data with associated HED annotation template
   - Uses `#` placeholder for values (e.g., "Duration/# s")
   - HED annotation applies to entire column
 
-#### Validation System
+#### Validation system
+
 - **HedNWBValidator**: Comprehensive validation class for HED annotations in NWB files
   - `validate_file()`: Validates entire `NWBFile`
   - `validate_dynamic_table()`: Validates specific DynamicTable
@@ -33,7 +54,8 @@ Major rewrite and expansion of the ndx-hed extension with three core classes and
   - **Full definition support**: All validation methods now support external HED definitions from `HedLabMetaData`
   - Validates definition references (e.g., `Def/Go-stimulus`) across all HED annotation types
 
-#### BIDS Integration
+#### BIDS integration
+
 - **Bidirectional BIDS ↔ NWB conversion utilities** in `utils/bids2nwb.py`:
   - `extract_meanings()`: Converts BIDS JSON sidecars to meanings dictionary
   - `get_categorical_meanings()`: Creates MeaningsTable from BIDS categorical columns
@@ -41,7 +63,8 @@ Major rewrite and expansion of the ndx-hed extension with three core classes and
   - `get_bids_events()`: Converts EventsTable back to BIDS format (DataFrame + sidecar)
   - `extract_definitions()`: Extracts HED definitions from BIDS sidecars
 
-#### ndx-events Integration
+#### ndx-events integration
+
 - Full support for EventsTable, MeaningsTable, CategoricalVectorData
 - Three integration patterns:
   1. Direct HED column for event-specific annotations
@@ -49,7 +72,9 @@ Major rewrite and expansion of the ndx-hed extension with three core classes and
   3. Categorical columns with HED in MeaningsTable
 
 ### Examples
+
 Seven comprehensive runnable examples demonstrating all features:
+
 - `01_basic_hed_classes.py`: Introduction to HedLabMetaData, HedTags, and HedValueVector
 - `02_trials_with_hed.py`: Adding HED annotations to NWB trials table
 - `03_events_table_integration.py`: Three patterns for EventsTable integration
@@ -59,12 +84,14 @@ Seven comprehensive runnable examples demonstrating all features:
 - `07_hed_definitions.py`: Custom HED definitions and expansion
 
 ### Dependencies
+
 - Updated to `hedtools>=0.7.1` (released to PyPI)
 - `pynwb>=2.8.2`
 - `hdmf>=3.14.1`
 - Optional: `ndx-events>=0.4.0` for EventsTable support
 
 ### Testing
+
 - 78 comprehensive test cases for HedNWBValidator
 - 116+ total test cases across all modules
 - Full coverage of all core classes and utilities
@@ -74,12 +101,14 @@ Seven comprehensive runnable examples demonstrating all features:
 - Definition handling and persistence testing
 - Definition reference validation across all validator methods
 
-### Breaking Changes from 0.1.0
+### Breaking changes from 0.1.0
+
 - **HedTags constructor changes**: Removed `hed_version` parameter (now uses HedLabMetaData)
 - **New requirement**: HedLabMetaData must be added to `NWBFile` before using HED annotations
 - **Name enforcement**: HedTags must be named "HED", HedLabMetaData must be named "hed_schema"
 
 ### Documentation
+
 - Updated user guide for 0.2.0 architecture
 - Comprehensive example suite with runnable code
 - Updated README with Quick Start guide

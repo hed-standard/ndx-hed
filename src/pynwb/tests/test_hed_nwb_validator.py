@@ -5,8 +5,6 @@ Unit tests for HedNWBValidator class.
 import unittest
 import pandas as pd
 from pynwb.core import DynamicTable, VectorData
-
-# from ndx_events import EventsTable, MeaningsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
 from ndx_hed import HedTags, HedLabMetaData, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 from ndx_hed.utils.bids2nwb import get_events_table
@@ -1335,6 +1333,43 @@ class TestValidateFile(unittest.TestCase):
         # Should validate EventsTable with no issues
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_file_skips_meanings_table(self):
+        """A MeaningsTable is validated via its parent EventsTable only (not double-counted).
+
+        In PyNWB 4.0.0 a MeaningsTable is itself a DynamicTable child of the file. Its categorical
+        HED is validated through the parent EventsTable's BIDS-sidecar path, so validate_file must
+        skip the MeaningsTable to avoid reporting the same HED issue twice.
+        """
+        from hdmf.common import MeaningsTable
+
+        events_df = pd.DataFrame({"onset": [1.0, 2.0], "event_type": ["go", "stop"]})
+        meanings = {
+            "categorical": {
+                "event_type": {
+                    "Levels": {"go": "go trial", "stop": "stop trial"},
+                    # 'stop' has an invalid HED tag that should be reported exactly once
+                    "HED": {"go": "Sensory-event", "stop": "InvalidTagXYZ"},
+                }
+            },
+            "value": {},
+        }
+        events_table = get_events_table(
+            name="events", description="Events with categorical HED", df=events_df, meanings=meanings
+        )
+        self.nwbfile.add_acquisition(events_table)
+
+        # The MeaningsTable is a DynamicTable child of the file
+        meanings_children = [c for c in self.nwbfile.all_children() if isinstance(c, MeaningsTable)]
+        self.assertEqual(len(meanings_children), 1)
+
+        file_issues = self.validator.validate_file(self.nwbfile)
+        events_issues = self.validator.validate_events(events_table)
+
+        # The invalid categorical tag is reported via the sidecar path...
+        self.assertGreater(len(events_issues), 0)
+        # ...and validate_file reports it exactly once (the MeaningsTable child is skipped)
+        self.assertEqual(len(file_issues), len(events_issues))
 
     def test_validate_file_with_value_vectors(self):
         """Test validate_file with HedValueVector columns."""

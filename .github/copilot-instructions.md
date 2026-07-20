@@ -8,6 +8,23 @@ If the file `.status/local-environment.md` exists, read it before running any sh
 
 In markdown files, only capitalize the first letter of header text (sentence case).
 
+## Line endings
+
+All files in this repo MUST use LF (`\n`) line endings on every OS, including Windows. This is
+enforced by `.gitattributes` (`* text=auto eol=lf`) and local git config (`core.autocrlf=false`,
+`core.eol=lf`). Never introduce or commit CRLF (`\r\n`).
+
+- **Do not write files in a way that emits CRLF.** On Windows, Python's default text mode
+  translates `\n` to `\r\n` on write, so **never** use `open(path, "w")`, `Path.write_text(...)`,
+  or similar text-mode writes for generating or bulk-editing files. Instead:
+  - write **binary** mode with `bytes` — `open(path, "wb").write(text.encode())`, or
+  - pass an explicit newline — `open(path, "w", newline="\n")`.
+  The same applies to `sed -i` and other shell rewrites that may rewrite endings; prefer the
+  editor's in-place edit tooling, which preserves the file's existing LF endings.
+- To find CRLF files: `git ls-files --eol | grep w/crlf` (empty output means all LF).
+- To fix CRLF files: rewrite each replacing `\r\n` → `\n` in binary mode, then re-run the check
+  above and confirm it is empty.
+
 ## Environment setup
 
 ```bash
@@ -39,6 +56,7 @@ Ruff configuration is in `pyproject.toml`. Always ensure `pytest` and `ruff chec
 ## CI workflows
 
 All workflows are in `.github/workflows/`:
+
 - `run_all_tests.yml` — runs pytest on Python 3.10–3.14 across Linux/Windows/macOS on every push
 - `ruff.yml` — runs ruff linter and format check on PRs/pushes to main
 - `typos.yaml` — spell checking
@@ -48,11 +66,13 @@ All workflows are in `.github/workflows/`:
 ## Architecture overview
 
 **Core extension structure:**
+
 - **HedLabMetaData** (`hed_lab_metadata.py`): Required schema metadata container — must be named "hed_schema", stores HED schema version and optional definitions
 - **HedTags** (`hed_tags.py`): VectorData subclass for row-specific HED annotations — must be named "HED"
 - **HedValueVector** (`hed_tags.py`): Template-based HED annotations with `#` placeholders for values. The annotation applies to the entire column.
 
 **Key integration points:**
+
 - NWB extension spec in `spec/ndx-hed.extensions.yaml` — defines the formal data types
 - Namespace loading in `__init__.py` — handles both installed and development environments
 - BIDS conversion utilities in `utils/bids2nwb.py` — bidirectional BIDS ↔ NWB conversion
@@ -61,42 +81,64 @@ All workflows are in `.github/workflows/`:
 ## Development patterns
 
 **NWB extension conventions:**
+
 - All classes use `@register_class("ClassName", "ndx-hed")` decorator
 - Mandatory field names: `HedLabMetaData.name` must be "hed_schema", `HedTags.name` must be "HED"
 - Schema loading uses `load_namespaces()` with fallback path for git repo development
 
 **Example workflow:**
+
 ```python
-# Required pattern for any HED usage
-hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
-nwbfile.add_lab_meta_data(hed_metadata)
+from datetime import datetime, timezone
+from pynwb import NWBFile
+from pynwb.core import DynamicTable, VectorData
+from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 
-# Row-specific annotations
-hed_tags = HedTags(data=["Sensory-event, Visual-presentation"])
-table.add_column(hed_tags)
+# Required first step for any HED usage: create the file and add the HED schema metadata
+nwbfile = NWBFile(
+    session_description="HED example",
+    identifier="example_001",
+    session_start_time=datetime.now(timezone.utc),
+)
+nwbfile.add_lab_meta_data(HedLabMetaData(hed_schema_version="8.4.0"))
 
-# Template-based annotations
-hed_template = HedValueVector(hed="Sensory-event, (Duration, # s)")
+# Build a DynamicTable with a row-specific HedTags column (must be named "HED") and a
+# template-based HedValueVector column (one HED template with a "#" placeholder per value)
+table = DynamicTable(
+    name="events",
+    description="Events with HED annotations",
+    columns=[
+        VectorData(name="event_time", description="Event times", data=[1.0, 2.0]),
+        HedTags(data=["Sensory-event, Visual-presentation", "Agent-action"]),
+        HedValueVector(
+            name="duration",
+            description="Event durations",
+            data=[0.5, 1.0],
+            hed="(Duration, # s)",
+        ),
+    ],
+)
+nwbfile.add_acquisition(table)
 ```
 
 ## Critical dependencies
 
-- **hedtools >= 0.7.1**: Core HED validation and schema handling
-- **pynwb >= 2.8.2**: Base NWB framework
-- **hdmf >= 3.14.1**: Required by pynwb
-- **ndx-events >= 0.4.0**: EventsTable support
+- **hedtools >= 1.2.0**: Core HED validation and schema handling
+- **pynwb >= 4.0.0**: Base NWB framework; provides the core EventsTable/MeaningsTable (NWBEP001)
+- **hdmf >= 6.1.0**: Required by pynwb; provides MeaningsTable and DynamicTable.get_meanings_for_column
 
 ## Common development tasks
 
 **Running examples:**
+
 ```bash
 cd examples && python 01_basic_hed_classes.py
 ```
 
-**Schema validation:**
-Use `HedNWBValidator` class — validates all HedTags columns in DynamicTables against the schema version specified in HedLabMetaData.
+**Schema validation:** Use `HedNWBValidator` class — validates all HedTags columns in DynamicTables against the schema version specified in HedLabMetaData.
 
 **BIDS integration:**
+
 - `extract_meanings()`: Converts BIDS JSON sidecars to meanings dictionary
 - `get_events_table()`: Creates NWB EventsTable from BIDS events
 - `get_bids_events()`: Converts EventsTable back to BIDS format
@@ -111,4 +153,4 @@ Use `HedNWBValidator` class — validates all HedTags columns in DynamicTables a
 - `pytest.ini`: Test configuration
 - `constraints/`: Pinned and minimum dependency constraint files
 
-The extension works with both NWB core tables (trials, etc.) and ndx-events EventsTable for comprehensive event annotation.
+The extension works with both NWB core tables (trials, etc.) and the PyNWB core EventsTable (NWBEP001) for comprehensive event annotation.

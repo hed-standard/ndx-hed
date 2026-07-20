@@ -9,7 +9,7 @@ from datetime import datetime
 from dateutil.tz import tzlocal
 from pynwb import NWBFile, ProcessingModule, NWBHDF5IO
 from pynwb.core import DynamicTable, VectorData
-from ndx_events import EventsTable, TimestampVectorData
+from pynwb.event import EventsTable, TimestampVectorData
 from ndx_hed import HedTags, HedLabMetaData, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 from hed.errors import ErrorHandler

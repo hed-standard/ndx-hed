@@ -4,14 +4,16 @@ EventsTable Integration Example
 ===============================
 
 This example demonstrates the three ways to integrate HED annotations with
-the ndx-events EventsTable:
+the PyNWB core EventsTable (NWBEP001, PyNWB >= 4.0.0):
 1. Direct HED column for event-specific annotations
 2. HedValueVector columns for shared annotations with value placeholders
-3. Categorical columns with HED in MeaningsTable
+3. Categorical columns with HED in a MeaningsTable
 
 """
 
-from ndx_events import EventsTable, NdxEventsNWBFile, DurationVectorData, CategoricalVectorData, MeaningsTable
+from pynwb import NWBFile
+from pynwb.event import EventsTable, DurationVectorData
+from hdmf.common import MeaningsTable
 from ndx_hed import HedTags, HedValueVector, HedLabMetaData
 from datetime import datetime, timezone
 
@@ -98,9 +100,30 @@ def create_categorical_events():
 
     events_table = EventsTable(name="categorized_events", description="Events with categorical data and MeaningsTable")
 
-    # Create MeaningsTable with HED annotations
+    # A categorical column is a plain VectorData column; its category meanings live in a
+    # MeaningsTable attached to the table (added after the column exists, below).
+    events_table.add_column(
+        name="stimulus_type",
+        description="Type of visual stimulus presented",
+        data=[],  # Start empty
+    )
+
+    # Add rows of data
+    events = [
+        {"timestamp": 1.0, "stimulus_type": "circle"},
+        {"timestamp": 2.0, "stimulus_type": "square"},
+        {"timestamp": 3.0, "stimulus_type": "triangle"},
+        {"timestamp": 4.0, "stimulus_type": "circle"},
+    ]
+
+    for event in events:
+        events_table.add_row(event)
+
+    # Create a MeaningsTable that targets the stimulus_type column. In PyNWB 4.0.0 a MeaningsTable
+    # is bound to the column it annotates; its name is auto-derived as "stimulus_type_meanings".
     stimulus_meanings = MeaningsTable(
-        name="stimulus_type_meanings", description="Meanings and HED annotations for stimulus types"
+        target=events_table["stimulus_type"],
+        description="Meanings and HED annotations for stimulus types",
     )
 
     # Add meaning definitions (value, meaning)
@@ -125,25 +148,8 @@ def create_categorical_events():
         col_cls=HedTags,
     )
 
-    # Add categorical column that references the meanings table
-    events_table.add_column(
-        name="stimulus_type",
-        description="Type of visual stimulus presented",
-        data=[],  # Start empty
-        col_cls=CategoricalVectorData,
-        meanings=stimulus_meanings,
-    )
-
-    # Add rows of data
-    events = [
-        {"timestamp": 1.0, "stimulus_type": "circle"},
-        {"timestamp": 2.0, "stimulus_type": "square"},
-        {"timestamp": 3.0, "stimulus_type": "triangle"},
-        {"timestamp": 4.0, "stimulus_type": "circle"},
-    ]
-
-    for event in events:
-        events_table.add_row(event)
+    # Attach the MeaningsTable to the EventsTable (the target column must already exist)
+    events_table.add_meanings_table(stimulus_meanings)
 
     print(
         f"   Created table with {len(events_table)} events and MeaningsTable with {len(stimulus_meanings)} categories"
@@ -153,7 +159,7 @@ def create_categorical_events():
 
 def main():
     # Create NWB file with HED metadata
-    nwbfile = NdxEventsNWBFile(
+    nwbfile = NWBFile(
         session_description="EventsTable HED integration examples",
         identifier="events_hed_example",
         session_start_time=datetime.now(timezone.utc),

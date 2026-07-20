@@ -1,6 +1,32 @@
 Release Notes
 =============
 
+Version 1.0.0
+-------------
+
+Migration to PyNWB 4.0.0. NWBEP001 (``EventsTable``, ``MeaningsTable``, ``TimestampVectorData``,
+``DurationVectorData``, etc.) has been merged into PyNWB core, so ndx-hed no longer depends on the
+standalone ``ndx-events`` extension.
+
+**Breaking Changes**
+
+* Requires ``pynwb>=4.0.0`` and ``hdmf>=6.1.0``; the ``ndx-events`` dependency has been removed.
+  Import ``EventsTable``, ``TimestampVectorData``, and ``DurationVectorData`` from ``pynwb.event``,
+  and ``MeaningsTable`` from ``hdmf.common``. Use the standard ``pynwb.NWBFile``.
+* There is no ``CategoricalVectorData`` type (the categorical column type formerly provided by the
+  ``ndx-events`` extension); any ``DynamicTable`` column can be annotated by a ``MeaningsTable``.
+* A ``MeaningsTable`` is now bound to the column it annotates via a required ``target`` argument and
+  is named ``"{column_name}_meanings"`` automatically. Attach it with ``table.add_meanings_table()``
+  and retrieve it with ``table.get_meanings_for_column(col_name)``.
+
+**Changes**
+
+* ``bids2nwb`` utilities updated for the new API (categorical columns are plain ``VectorData``
+  annotated by an attached ``MeaningsTable``).
+* ``HedNWBValidator.validate_file()`` validates each ``MeaningsTable``'s HED once, via its parent
+  ``EventsTable``.
+* ``HedLabMetaData``, ``HedTags``, ``HedValueVector``, and the extension schema are unchanged.
+
 Version 0.2.0 (October 18, 2025)
 --------------------------------
 

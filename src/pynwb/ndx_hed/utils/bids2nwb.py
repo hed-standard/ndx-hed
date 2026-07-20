@@ -6,7 +6,8 @@ from typing import Union
 from hed.models import Sidecar
 from hed.schema import HedSchema, HedSchemaGroup
 from pynwb.core import VectorData
-from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
+from pynwb.event import EventsTable, TimestampVectorData, DurationVectorData
+from hdmf.common import MeaningsTable
 from ndx_hed import HedTags, HedValueVector
 
 
@@ -38,7 +39,10 @@ def extract_meanings(sidecar_data: dict) -> dict:
 
     Returns:
         dict: A meanings dictionary with keys "categorical" and "value"
-              - "categorical": dict mapping column names to a dict of {category: (description, HED string)}
+              - "categorical": dict mapping column names to their raw sidecar column-info dict
+                (Levels and/or HED). A MeaningsTable cannot be built here because, as of
+                PyNWB 4.0.0, a MeaningsTable requires the target VectorData column object; the
+                MeaningsTable is created later in get_events_table once the column exists.
               - "value": dict mapping column names to HED strings
     """
 
@@ -46,25 +50,30 @@ def extract_meanings(sidecar_data: dict) -> dict:
 
     for column_name, column_info in sidecar_data.items():
         if "Levels" in column_info or ("HED" in column_info and isinstance(column_info.get("HED", None), dict)):
-            meanings["categorical"][column_name] = get_categorical_meanings(column_name, column_info)
+            meanings["categorical"][column_name] = column_info
         elif "HED" in column_info:
             meanings["value"][column_name] = column_info["HED"]
     return meanings
 
 
-def get_categorical_meanings(column_name: str, column_info: dict) -> "MeaningsTable":
+def get_categorical_meanings(target_column: "VectorData", column_info: dict) -> "MeaningsTable":
     """
-    Converts a categorical column info dict to a MeaningsTable.
+    Converts a categorical column info dict to a MeaningsTable annotating a target column.
+
+    As of PyNWB 4.0.0, a MeaningsTable is bound to the VectorData column it annotates and its
+    name is derived automatically as "{target_column.name}_meanings".
 
     Args:
-        column_name (str): The name of the column.
-        column_info (dict): The column info dictionary from the sidecar.
+        target_column (VectorData): The column object this MeaningsTable annotates. Must already
+            be a column of the DynamicTable that the MeaningsTable will be added to.
+        column_info (dict): The column info dictionary from the sidecar (Levels and/or HED).
 
     Returns:
-        MeaningsTable: The constructed MeaningsTable object.
+        MeaningsTable: The constructed MeaningsTable object (name "{target_column.name}_meanings").
     """
+    column_name = target_column.name
     description = column_info.get("Description", f"Meanings for {column_name}")
-    meanings_tab = MeaningsTable(name=column_name + "_meanings", description=description)
+    meanings_tab = MeaningsTable(target=target_column, description=description)
     levels = column_info.get("Levels", {})  # Default to empty dict
     hed_info = column_info.get("HED", None)
     hed_data = []
@@ -88,10 +97,12 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
         name (str): The name of the EventsTable.
         description (str): The description of the EventsTable.
         df (pd.DataFrame): The DataFrame containing event data.
-        meanings (dict): The meanings dictionary with keys "categorical" and "value".
+        meanings (dict): The meanings dictionary with keys "categorical" and "value". The
+            "categorical" values are raw sidecar column-info dicts (see extract_meanings).
 
     Returns:
-        EventsTable: The constructed EventsTable object.
+        EventsTable: The constructed EventsTable object. Categorical columns are stored as plain
+        VectorData columns, each annotated by a MeaningsTable attached to the table.
     """
 
     columns = []
@@ -110,14 +121,9 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
         elif col_name == "duration":
             columns.append(DurationVectorData(name="duration", description="Duration of events", data=col_data))
         elif col_name in meanings["categorical"]:
-            columns.append(
-                CategoricalVectorData(
-                    name=col_name,
-                    description=f"Categorical column {col_name}",
-                    data=col_data,
-                    meanings=meanings["categorical"][col_name],
-                )
-            )
+            # A categorical column is a plain VectorData column; its MeaningsTable is attached to
+            # the table after it is built (see below).
+            columns.append(VectorData(name=col_name, description=f"Categorical column {col_name}", data=col_data))
         elif col_name in meanings["value"]:
             columns.append(
                 HedValueVector(
@@ -132,6 +138,11 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
         else:
             columns.append(VectorData(name=col_name, description=f"Value column {col_name}", data=col_data))
     events_tab = EventsTable(name=name, description=description, columns=columns)
+    # Attach a MeaningsTable to each categorical column now that the columns exist in the table.
+    for col_name, column_info in meanings["categorical"].items():
+        if col_name in events_tab:
+            meanings_tab = get_categorical_meanings(events_tab[col_name], column_info)
+            events_tab.add_meanings_table(meanings_tab)
     return events_tab
 
 
@@ -175,10 +186,18 @@ def get_bids_events(events_table: EventsTable) -> tuple:
             # TODO: Might need to extend this to include a HED field if needed.
             pass
 
-        elif isinstance(column, CategoricalVectorData):
-            # Extract levels and HED from MeaningsTable
-            if hasattr(column, "meanings") and column.meanings is not None:
-                meanings_table = column.meanings
+        elif isinstance(column, HedValueVector) and column.hed != "" and column.hed != "n/a":
+            column_info["HED"] = column.hed
+
+        elif isinstance(column, HedTags):
+            # The HED tags are stored as data in the column itself - no additional metadata
+            pass
+
+        else:
+            # A categorical column is a plain VectorData annotated by a MeaningsTable named
+            # "{col_name}_meanings" (PyNWB 4.0.0 reversed the column<->meanings relationship).
+            meanings_table = events_table.meanings_tables.get(f"{col_name}_meanings")
+            if meanings_table is not None:
                 meanings_df = meanings_table.to_dataframe()
 
                 # Build Levels dictionary
@@ -198,13 +217,6 @@ def get_bids_events(events_table: EventsTable) -> tuple:
                     column_info["Levels"] = levels
                 if hed_dict:
                     column_info["HED"] = hed_dict
-
-        elif isinstance(column, HedValueVector) and column.hed != "" and column.hed != "n/a":
-            column_info["HED"] = column.hed
-
-        elif isinstance(column, HedTags):
-            # The HED tags are stored as data in the column itself - no additional metadata
-            pass
 
         # Add column info to JSON if it has any metadata
         if column_info:

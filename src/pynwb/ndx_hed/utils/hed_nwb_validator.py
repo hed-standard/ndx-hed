@@ -8,7 +8,8 @@ import math
 from typing import List, Dict, Any, Optional
 from pynwb import NWBFile
 from pynwb.core import DynamicTable
-from ndx_events import EventsTable
+from pynwb.event import EventsTable
+from hdmf.common import MeaningsTable
 from hed.errors import ErrorHandler, ErrorContext, HedExceptions, HedFileError
 from hed.errors.error_reporter import check_for_any_errors
 from hed.models import HedString, TabularInput
@@ -250,6 +251,11 @@ class HedNWBValidator:
         # Validate DynamicTable objects in the NWB file
         for obj in nwbfile.all_children():
             if not isinstance(obj, DynamicTable):
+                continue
+            # A MeaningsTable is itself a DynamicTable, but its HED is validated in the context of
+            # the table/column it annotates (an EventsTable is validated via its BIDS sidecar path),
+            # so skip it here to avoid validating the same HED twice.
+            if isinstance(obj, MeaningsTable):
                 continue
             if not isinstance(obj, EventsTable):
                 table_issues = self.validate_table(obj, error_handler)

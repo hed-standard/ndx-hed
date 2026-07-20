@@ -135,14 +135,13 @@ Key Features
 
    .. grid-item-card:: 🧩 NWB Integration
       
-      Works with any NWB DynamicTable and integrates with ndx-events EventsTable for comprehensive event annotation.
+      Works with any NWB DynamicTable and integrates with the PyNWB core EventsTable for comprehensive event annotation.
 
 Resources
 ---------
 
 * `HED Standards Organization <https://www.hedtags.org>`_ - Official HED specification and resources
 * `NWB Documentation <https://pynwb.readthedocs.io/>`_ - PyNWB library documentation
-* `ndx-events Extension <https://github.com/rly/ndx-events>`_ - Complementary events extension
 
 .. toctree::
    :hidden:

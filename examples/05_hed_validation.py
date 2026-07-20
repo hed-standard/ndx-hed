@@ -8,10 +8,11 @@ the HedNWBValidator class.
 
 """
 
+from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
+from pynwb.event import EventsTable
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-from ndx_events import EventsTable, NdxEventsNWBFile
 from hed.errors import ErrorHandler
 from datetime import datetime, timezone
 
@@ -20,7 +21,7 @@ def create_test_data():
     """Create NWB file with both valid and invalid HED annotations for testing"""
     print("Creating test data with valid and invalid HED annotations...")
 
-    nwbfile = NdxEventsNWBFile(
+    nwbfile = NWBFile(
         session_description="HED validation test data",
         identifier="hed_validation_example",
         session_start_time=datetime.now(timezone.utc),
@@ -240,7 +241,7 @@ def main():
     # Create validator
     print("Creating HED validator...")
     validator = HedNWBValidator(hed_metadata)
-    print(f"Validator schema version: {validator.hed_metadata.hed_schema_version}")
+    print(f"Validator schema version: {hed_metadata.hed_schema_version}")
 
     # Demonstrate different validation approaches
     validate_individual_components(validator, nwbfile)
