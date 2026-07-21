@@ -9,7 +9,6 @@ from typing import List, Dict, Any, Optional
 from pynwb import NWBFile
 from pynwb.core import DynamicTable
 from pynwb.event import EventsTable
-from hdmf.common import MeaningsTable
 from hed.errors import ErrorHandler, ErrorContext, HedExceptions, HedFileError
 from hed.errors.error_reporter import check_for_any_errors
 from hed.models import HedString, TabularInput
@@ -248,19 +247,15 @@ class HedNWBValidator:
         issues = []
 
         error_handler.push_error_context(ErrorContext.FILE_NAME, nwbfile.identifier)
-        # Validate DynamicTable objects in the NWB file
+        # Validate every DynamicTable uniformly with validate_table. This treats EventsTable,
+        # MeaningsTable, and any other DynamicTable identically: validate_table checks each table's
+        # own HedTags and HedValueVector columns. Categorical HED lives in a MeaningsTable's HED
+        # column, and a MeaningsTable is itself a DynamicTable, so it is validated in this same loop.
+        # Every HED string is therefore validated exactly once, no matter which table (or table
+        # type) it belongs to. (validate_events remains available for BIDS-context validation of a
+        # single EventsTable, but is not needed here.)
         for obj in nwbfile.all_children():
-            if not isinstance(obj, DynamicTable):
-                continue
-            # A MeaningsTable is itself a DynamicTable, but its HED is validated in the context of
-            # the table/column it annotates (an EventsTable is validated via its BIDS sidecar path),
-            # so skip it here to avoid validating the same HED twice.
-            if isinstance(obj, MeaningsTable):
-                continue
-            if not isinstance(obj, EventsTable):
-                table_issues = self.validate_table(obj, error_handler)
-            else:
-                table_issues = self.validate_events(obj, error_handler)
-            issues.extend(table_issues)
+            if isinstance(obj, DynamicTable):
+                issues.extend(self.validate_table(obj, error_handler))
         error_handler.pop_error_context()
         return issues

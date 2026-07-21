@@ -23,8 +23,9 @@ standalone ``ndx-events`` extension.
 
 * ``bids2nwb`` utilities updated for the new API (categorical columns are plain ``VectorData``
   annotated by an attached ``MeaningsTable``).
-* ``HedNWBValidator.validate_file()`` validates each ``MeaningsTable``'s HED once, via its parent
-  ``EventsTable``.
+* ``HedNWBValidator.validate_file()`` validates every ``DynamicTable`` uniformly (including
+  ``EventsTable`` and ``MeaningsTable``), so categorical HED -- stored in a ``MeaningsTable`` -- is
+  validated exactly once regardless of the table type it annotates.
 * ``HedLabMetaData``, ``HedTags``, ``HedValueVector``, and the extension schema are unchanged.
 
 Version 0.2.0 (October 18, 2025)

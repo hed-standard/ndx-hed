@@ -10,20 +10,13 @@ In markdown files, only capitalize the first letter of header text (sentence cas
 
 ## Line endings
 
-All files in this repo MUST use LF (`\n`) line endings on every OS, including Windows. This is
-enforced by `.gitattributes` (`* text=auto eol=lf`) and local git config (`core.autocrlf=false`,
-`core.eol=lf`). Never introduce or commit CRLF (`\r\n`).
+All files in this repo MUST use LF (`\n`) line endings on every OS, including Windows. This is enforced by `.gitattributes` (`* text=auto eol=lf`) and local git config (`core.autocrlf=false`, `core.eol=lf`). Never introduce or commit CRLF (`\r\n`).
 
-- **Do not write files in a way that emits CRLF.** On Windows, Python's default text mode
-  translates `\n` to `\r\n` on write, so **never** use `open(path, "w")`, `Path.write_text(...)`,
-  or similar text-mode writes for generating or bulk-editing files. Instead:
+- **Do not write files in a way that emits CRLF.** On Windows, Python's default text mode translates `\n` to `\r\n` on write, so **never** use `open(path, "w")`, `Path.write_text(...)`, or similar text-mode writes for generating or bulk-editing files. Instead:
   - write **binary** mode with `bytes` — `open(path, "wb").write(text.encode())`, or
-  - pass an explicit newline — `open(path, "w", newline="\n")`.
-  The same applies to `sed -i` and other shell rewrites that may rewrite endings; prefer the
-  editor's in-place edit tooling, which preserves the file's existing LF endings.
+  - pass an explicit newline — `open(path, "w", newline="\n")`. The same applies to `sed -i` and other shell rewrites that may rewrite endings; prefer the editor's in-place edit tooling, which preserves the file's existing LF endings.
 - To find CRLF files: `git ls-files --eol | grep w/crlf` (empty output means all LF).
-- To fix CRLF files: rewrite each replacing `\r\n` → `\n` in binary mode, then re-run the check
-  above and confirm it is empty.
+- To fix CRLF files: rewrite each replacing `\r\n` → `\n` in binary mode, then re-run the check above and confirm it is empty.
 
 ## Environment setup
 

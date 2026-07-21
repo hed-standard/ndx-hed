@@ -13,7 +13,7 @@ Migration to PyNWB 4.0.0. NWBEP001 (`EventsTable`, `MeaningsTable`, `TimestampVe
 ### Changes
 
 - `bids2nwb`: `extract_meanings()` now returns the raw sidecar column-info dicts for categorical columns (the `MeaningsTable` is built later, once the target column exists); `get_categorical_meanings()` now takes the target `VectorData` column instead of a column name; `get_events_table()` builds categorical columns as plain `VectorData` and attaches a `MeaningsTable` to each; `get_bids_events()` looks up meanings via the table instead of the column.
-- `HedNWBValidator.validate_file()` skips `MeaningsTable` objects so categorical HED is validated once (via the parent `EventsTable`'s BIDS-sidecar path) rather than twice.
+- `HedNWBValidator.validate_file()` validates every `DynamicTable` uniformly (including `EventsTable` and `MeaningsTable`). Categorical HED is stored in a `MeaningsTable`, which is itself a `DynamicTable`, so it is validated exactly once regardless of the type of table it annotates. (`validate_events()` remains available for BIDS-context validation of a single `EventsTable`.)
 - `HedLabMetaData`, `HedTags`, and `HedValueVector` and the extension schema are unchanged.
 
 ## Release 0.2.0 October 18, 2025
