@@ -75,10 +75,24 @@ def get_categorical_meanings(target_column: "VectorData", column_info: dict) -> 
     description = column_info.get("Description", f"Meanings for {column_name}")
     meanings_tab = MeaningsTable(target=target_column, description=description)
     levels = column_info.get("Levels", {})  # Default to empty dict
-    hed_info = column_info.get("HED", None)
-    hed_data = []
 
-    for value in list(levels.keys()):
+    # Only a dict-valued HED provides per-category annotations. A string HED is a column-wide value
+    # annotation (handled elsewhere as a HedValueVector), not categorical, so ignore it here.
+    hed_info = column_info.get("HED", None)
+    if not isinstance(hed_info, dict):
+        hed_info = None
+
+    # Determine the set of categories: prefer the Levels keys; otherwise fall back to the HED dict
+    # keys so per-category HED is not dropped when Levels is absent.
+    if levels:
+        values = list(levels.keys())
+    elif hed_info is not None:
+        values = list(hed_info.keys())
+    else:
+        values = []
+
+    hed_data = []
+    for value in values:
         meanings_tab.add_row(value=value, meaning=levels.get(value, f"Description for {value}"))
         if hed_info is not None:
             hed_data.append(hed_info.get(value, "n/a"))
@@ -194,9 +208,17 @@ def get_bids_events(events_table: EventsTable) -> tuple:
             pass
 
         else:
-            # A categorical column is a plain VectorData annotated by a MeaningsTable named
-            # "{col_name}_meanings" (PyNWB 4.0.0 reversed the column<->meanings relationship).
-            meanings_table = events_table.meanings_tables.get(f"{col_name}_meanings")
+            # A categorical column is a plain VectorData annotated by a MeaningsTable. Prefer the
+            # public DynamicTable.get_meanings_for_column() API (it raises KeyError when the column
+            # has no MeaningsTable); fall back to the meanings_tables dict if the API is unavailable.
+            getter = getattr(events_table, "get_meanings_for_column", None)
+            if getter is not None:
+                try:
+                    meanings_table = getter(col_name)
+                except KeyError:
+                    meanings_table = None
+            else:
+                meanings_table = events_table.meanings_tables.get(f"{col_name}_meanings")
             if meanings_table is not None:
                 meanings_df = meanings_table.to_dataframe()
 

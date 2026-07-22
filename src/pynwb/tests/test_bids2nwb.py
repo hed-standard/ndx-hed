@@ -395,6 +395,40 @@ class TestGetCategoricalMeanings(unittest.TestCase):
         df = result.to_dataframe()
         self.assertEqual(len(df), 0)
 
+    def test_get_categorical_meanings_hed_dict_without_levels(self):
+        """HED provided as a dict but no Levels: categories come from the HED dict keys."""
+        column_info = {
+            "HED": {"a": "Sensory-event", "b": "Agent-action"},
+        }
+        target_column = VectorData(name="cat", description="cat", data=[])
+
+        result = get_categorical_meanings(target_column, column_info)
+
+        # Rows are built from the HED keys (not dropped just because Levels is absent)
+        df = result.to_dataframe()
+        self.assertEqual(sorted(df["value"].tolist()), ["a", "b"])
+        self.assertIn("HED", result.colnames)
+        self.assertIsInstance(result["HED"], HedTags)
+        hed_by_value = dict(zip(df["value"].tolist(), df["HED"].tolist(), strict=True))
+        self.assertEqual(hed_by_value["a"], "Sensory-event")
+        self.assertEqual(hed_by_value["b"], "Agent-action")
+
+    def test_get_categorical_meanings_levels_with_string_hed(self):
+        """Levels present but HED is a string (a value annotation, not categorical): no HED column,
+        and no AttributeError from treating the string as a dict."""
+        column_info = {
+            "Levels": {"a": "Level A", "b": "Level B"},
+            "HED": "Sensory-event, Label/#",  # string, not a per-category dict
+        }
+        target_column = VectorData(name="cat", description="cat", data=[])
+
+        result = get_categorical_meanings(target_column, column_info)
+
+        df = result.to_dataframe()
+        self.assertEqual(sorted(df["value"].tolist()), ["a", "b"])
+        # The string HED must not be treated as categorical -> no HED column
+        self.assertNotIn("HED", result.colnames)
+
 
 class TestGetEventsTable(unittest.TestCase):
     """Test class for get_events_table function."""

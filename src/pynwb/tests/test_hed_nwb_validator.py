@@ -1358,8 +1358,14 @@ class TestValidateFile(unittest.TestCase):
         self.nwbfile.add_acquisition(events_table)
 
         issues = self.validator.validate_file(self.nwbfile)
-        bad = [i for i in issues if "InvalidTagXYZ" in i.get("message", "")]
-        self.assertEqual(len(bad), 1, f"expected the invalid categorical tag reported once, got {len(bad)}: {issues}")
+        # Assert on structured fields (code + context), not the free-form message, which is not a
+        # stable API across hedtools versions. The invalid tag is 'stop' (row 1) of the HED column
+        # in the auto-named "event_type_meanings" table, and must be reported exactly once.
+        bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
+        self.assertEqual(len(bad), 1, f"expected one TAG_INVALID issue, got {len(bad)}: {issues}")
+        self.assertEqual(bad[0].get("ec_filename"), "event_type_meanings")
+        self.assertEqual(bad[0].get("ec_column"), "HED")
+        self.assertEqual(bad[0].get("ec_row"), 1)
 
     def test_validate_file_validates_plain_table_categorical(self):
         """Categorical HED on a non-EventsTable DynamicTable is validated the same way.
@@ -1384,8 +1390,13 @@ class TestValidateFile(unittest.TestCase):
         self.nwbfile.add_acquisition(table)
 
         issues = self.validator.validate_file(self.nwbfile)
-        bad = [i for i in issues if "InvalidTagXYZ" in i.get("message", "")]
-        self.assertEqual(len(bad), 1, f"expected the invalid categorical tag reported once, got {len(bad)}: {issues}")
+        # Assert on structured fields (code + context) rather than the free-form message. The invalid
+        # tag is row 1 of the HED column in the auto-named "condition_meanings" table, reported once.
+        bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
+        self.assertEqual(len(bad), 1, f"expected one TAG_INVALID issue, got {len(bad)}: {issues}")
+        self.assertEqual(bad[0].get("ec_filename"), "condition_meanings")
+        self.assertEqual(bad[0].get("ec_column"), "HED")
+        self.assertEqual(bad[0].get("ec_row"), 1)
 
     def test_validate_file_with_value_vectors(self):
         """Test validate_file with HedValueVector columns."""
