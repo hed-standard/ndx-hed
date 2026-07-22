@@ -12,11 +12,11 @@ This example demonstrates a complete workflow using the ndx-hed extension:
 
 """
 
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.core import DynamicTable, VectorData
+from pynwb.event import EventsTable, DurationVectorData
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-from ndx_events import EventsTable, NdxEventsNWBFile, DurationVectorData
 from datetime import datetime, timezone
 import tempfile
 import os
@@ -28,7 +28,7 @@ def create_comprehensive_nwb_file():
     print("1. Creating comprehensive NWB file with HED annotations...")
 
     # Create NWB file with HED metadata
-    nwbfile = NdxEventsNWBFile(
+    nwbfile = NWBFile(
         session_description="Complete HED workflow demonstration",
         identifier="complete_hed_workflow",
         session_start_time=datetime.now(timezone.utc),

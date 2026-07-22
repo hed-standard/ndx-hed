@@ -1,28 +1,39 @@
-# ndx-hed 0.2.0 Release Preparation Summary
+# ndx-hed 0.2.0 release preparation summary
+
+> **Status — historical (0.2.0).** This document records the release-preparation process for **ndx-hed 0.2.0** (October 2025). The dependency versions and steps below reflect *that* release and are **out of date** for the current 1.0.0 / PyNWB 4 migration, which requires `pynwb>=4.0.0`, `hdmf>=6.1.0`, `hedtools>=1.2.0` and removes the `ndx-events` dependency. Treat it as a reference for the general release mechanics only — not for current versions or as an active 1.0.0 checklist.
+>
+> **1.0.0 may never be published as a standalone extension.** HED support is expected to be incorporated into NWB core, which would make a separate `ndx-hed` release unnecessary. Before using these steps to cut a 1.0.0 release, first confirm that a standalone release is still intended.
 
 ## Overview
+
 Comprehensive preparation for the ndx-hed 0.2.0 release, including dependency upgrades, documentation enhancements, and complete Sphinx documentation infrastructure setup.
 
-## Changes Completed
+## Changes completed
 
-### 1. Dependency Upgrade
+### 1. Dependency upgrade
+
 **hedtools: Local → PyPI 0.7.1**
 
 Files updated:
+
 - `pyproject.toml`: Updated to `hedtools>=0.7.1`
 - `requirements-dev.txt`: Updated to `hedtools>=0.7.1`
 - `requirements-min.txt`: Updated to `hedtools>=0.7.1`
 
 **Previous State:**
+
 - Local editable install: `hedtools @ file:///h:/HED/hed-python (0.6.0+17.g5c489d10)`
 
 **Current State:**
+
 - PyPI release: `hedtools==0.7.1`
 
-### 2. Documentation Updates
+### 2. Documentation updates
 
 #### CHANGELOG.md
+
 Added comprehensive 0.2.0 release notes (October 10, 2025):
+
 - Core Classes section (HedLabMetaData, HedTags, HedValueVector)
 - Validation System features
 - BIDS Integration utilities
@@ -30,7 +41,9 @@ Added comprehensive 0.2.0 release notes (October 10, 2025):
 - Breaking Changes documented
 
 #### HedAnnotationInNWB.md
+
 Updated for 0.2.0 architecture:
+
 - Added HedLabMetaData requirement section
 - Enhanced HedValueVector usage documentation
 - Added Validation section with `HedNWBValidator`
@@ -38,13 +51,15 @@ Updated for 0.2.0 architecture:
 - Fixed all class name formatting (e.g., `NWBFile`, `NdxEventsNWBFile`)
 
 #### README.md
+
 - Fixed class name formatting throughout
 
-### 3. Sphinx Documentation Infrastructure
+### 3. Sphinx documentation infrastructure
 
-#### Created Files
+#### Created files
 
 **docs/requirements.txt** - Sphinx build dependencies:
+
 ```
 sphinx>=5.0
 sphinx-rtd-theme>=1.0
@@ -58,21 +73,25 @@ ndx-events>=0.4.0
 ```
 
 **docs/source/description.rst** - Extension overview:
+
 - Core classes documentation
 - Validation and BIDS integration overview
 - References to README for quickstart
 - References to examples folder
 
 **docs/source/release_notes.rst** - Release history:
+
 - Detailed 0.2.0 release notes with breaking changes
 - 0.1.0 initial release notes
 
 **docs/source/api.rst** - API reference documentation:
+
 - Core Classes: HedLabMetaData, HedTags, HedValueVector
 - Validation Utilities: HedNWBValidator
 - BIDS Conversion Utilities: bids2nwb module
 
 **.readthedocs.yaml** - ReadTheDocs configuration:
+
 ```yaml
 version: 2
 build:
@@ -90,9 +109,10 @@ sphinx:
   fail_on_warning: false
 ```
 
-#### Enhanced Files
+#### Enhanced files
 
 **docs/source/conf.py**:
+
 - Added Python path setup: `sys.path.insert(0, os.path.abspath('../../src/pynwb'))`
 - Updated project metadata (copyright 2025, added Ian Callanan)
 - Updated version and release to '0.2.0'
@@ -109,12 +129,14 @@ sphinx:
 - Set `autosummary_generate = True`
 
 **docs/source/index.rst**:
+
 - Added "API Documentation" section to table of contents
 - Included `api.rst` with maxdepth: 3
 
-### 4. GitHub Actions Workflow
+### 4. GitHub Actions workflow
 
 **.github/workflows/docs.yml**:
+
 - Created complete documentation deployment workflow
 - Build job:
   - Uses Python 3.14
@@ -127,9 +149,10 @@ sphinx:
   - Uses `actions/deploy-pages@v4`
   - Deploys to GitHub Pages
 
-## Documentation Build System
+## Documentation build system
 
 ### Structure
+
 ```
 docs/
 ├── Makefile                          # Build commands
@@ -144,9 +167,10 @@ docs/
     └── credits.rst                   # Existing
 ```
 
-### Build Commands
+### Build commands
 
 **Local build:**
+
 ```powershell
 cd docs
 make html
@@ -155,43 +179,50 @@ make html
 **Output:** `docs/_build/html/`
 
 **Clean build:**
+
 ```powershell
 cd docs
 make clean
 make html
 ```
 
-### Documentation Hosting
+### Documentation hosting
 
 1. **GitHub Pages**: Automatic deployment via `.github/workflows/docs.yml`
+
    - Triggers: Push to main, Pull requests
    - URL: Will be set in repository settings
 
 2. **ReadTheDocs**: Configuration via `.readthedocs.yaml`
+
    - Python 3.14
    - Installs package + docs requirements
    - Sphinx HTML builder
 
-## Architecture Reference
+## Architecture reference
 
-### Three Core Classes
+### Three core classes
 
 1. **HedLabMetaData** (`hed_lab_metadata.py`)
+
    - Required metadata container
    - Must be named "hed_schema"
    - Stores HED schema version and optional definitions
 
 2. **HedTags** (`hed_tags.py`)
+
    - VectorData subclass for row-specific annotations
    - Must be named "HED"
    - One annotation per row
 
 3. **HedValueVector** (`hed_tags.py`)
+
    - Template-based annotations
    - Uses `#` placeholders for values
    - Applies to entire column
 
-### Required Pattern for HED Usage
+### Required pattern for HED usage
+
 ```python
 # Always required first step
 hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
@@ -200,11 +231,12 @@ nwbfile.add_lab_meta_data(hed_metadata)
 # Then add HED annotations to tables
 ```
 
-## Testing Recommendations
+## Testing recommendations
 
-### Before Release
+### Before release
 
 1. **Test documentation build locally:**
+
    ```powershell
    cd docs
    make clean
@@ -212,51 +244,60 @@ nwbfile.add_lab_meta_data(hed_metadata)
    ```
 
 2. **Verify all examples run:**
+
    ```powershell
    cd examples
    python run_all_examples.py
    ```
 
 3. **Run test suite:**
+
    ```powershell
    pytest
    ```
 
 4. **Check hedtools version:**
+
    ```powershell
    pip show hedtools
    # Should show: Version: 0.7.1
    ```
 
-### After GitHub Push
+### After GitHub push
 
 1. **Verify GitHub Actions workflow:**
+
    - Check `.github/workflows/docs.yml` runs successfully
    - Verify documentation builds without errors
 
 2. **Check GitHub Pages deployment:**
+
    - Go to repository Settings → Pages
    - Verify site is published
 
 3. **Test ReadTheDocs build:**
+
    - If configured, check ReadTheDocs build status
    - Verify docs render correctly
 
-## Breaking Changes from 0.1.0
+## Breaking changes from 0.1.0
 
 1. **HedLabMetaData is now required:**
+
    - Must add to NWBFile before using any HED classes
    - Must be named "hed_schema"
 
 2. **HedValueVector introduced:**
+
    - New class for template-based annotations
    - Replaces some previous patterns
 
 3. **Validation system:**
+
    - New `HedNWBValidator` class
    - Validates all HedTags columns against schema
 
-## Next Steps
+## Next steps
 
 1. ✅ All dependency updates complete
 2. ✅ Documentation infrastructure complete
@@ -266,7 +307,7 @@ nwbfile.add_lab_meta_data(hed_metadata)
 
 **Ready for 0.2.0 release!**
 
-### Pre-Release Checklist
+### Pre-release checklist
 
 - [ ] Test local documentation build
 - [ ] Run all examples
@@ -277,15 +318,13 @@ nwbfile.add_lab_meta_data(hed_metadata)
 - [ ] Create GitHub release tag
 - [ ] Push to PyPI
 
-### Post-Release
+### Post-release
 
 - [ ] Verify GitHub Pages deployment
 - [ ] Verify ReadTheDocs build (if configured)
 - [ ] Update main README with documentation links
 - [ ] Announce release
 
----
+______________________________________________________________________
 
-**Date:** October 2025
-**Version:** 0.2.0
-**Contributors:** Kay Robbins, Ryan Ly, Oliver Ruebel, Ian Callanan
+**Date:** October 2025 **Version:** 0.2.0 **Contributors:** Kay Robbins, Ryan Ly, Oliver Ruebel, Ian Callanan

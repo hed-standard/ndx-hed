@@ -98,8 +98,8 @@ html_sidebars = {
     "**": ["navbar-logo", "search-field", "sbt-sidebar-nav.html"]
 }
 
-# Source file suffixes
-source_suffix = ['.rst', '.md']
+# Source file suffixes (.md is parsed by myst-parser as Markdown)
+source_suffix = {'.rst': 'restructuredtext', '.md': 'markdown'}
 
 # Configure numbering for auto-generated format docs but disable for main content
 numfig = True

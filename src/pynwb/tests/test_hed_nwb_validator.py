@@ -5,8 +5,6 @@ Unit tests for HedNWBValidator class.
 import unittest
 import pandas as pd
 from pynwb.core import DynamicTable, VectorData
-
-# from ndx_events import EventsTable, MeaningsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
 from ndx_hed import HedTags, HedLabMetaData, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 from ndx_hed.utils.bids2nwb import get_events_table
@@ -386,8 +384,8 @@ class TestValidateEventsTable(unittest.TestCase):
         self.assertIn("not a valid EventsTable instance", str(cm.exception))
 
     def test_validate_events_conversion_integration(self):
-        """Test that validate_events properly calls get_bids_events."""
-        # This test verifies the integration with get_bids_events
+        """Test that validate_events properly calls get_bids_tabular."""
+        # This test verifies the integration with get_bids_tabular
         # Even though validation logic is not implemented yet,
         # it should successfully convert to BIDS format
         issues = self.validator.validate_events(self.valid_events_table)
@@ -1335,6 +1333,186 @@ class TestValidateFile(unittest.TestCase):
         # Should validate EventsTable with no issues
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    def test_validate_file_validates_eventstable_categorical(self):
+        """Categorical HED in an EventsTable is validated via the table's assembled sidecar.
+
+        validate_file does assembled (BIDS-style) validation of the EventsTable: the categorical
+        column's per-level HED (from its MeaningsTable) is folded into the sidecar and validated, so
+        an invalid categorical tag is attributed to the parent table and its categorical column. The
+        MeaningsTable is not validated on its own.
+        """
+        events_df = pd.DataFrame({"onset": [1.0, 2.0], "event_type": ["go", "stop"]})
+        meanings = {
+            "categorical": {
+                "event_type": {
+                    "Levels": {"go": "go trial", "stop": "stop trial"},
+                    "HED": {"go": "Sensory-event", "stop": "InvalidTagXYZ"},  # 'stop' is invalid
+                }
+            },
+            "value": {},
+        }
+        events_table = get_events_table(
+            name="events", description="Events with categorical HED", df=events_df, meanings=meanings
+        )
+        self.nwbfile.add_acquisition(events_table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+        # The categorical value 'stop' occurs in the data, so the assembled-table step reports it with
+        # full context (table name and categorical column).
+        bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
+        self.assertEqual(len(bad), 1, f"expected one TAG_INVALID issue, got {len(bad)}: {issues}")
+        self.assertEqual(bad[0].get("ec_filename"), "events")
+        self.assertEqual(bad[0].get("ec_column"), "event_type")
+
+    def test_validate_file_validates_plain_table_categorical(self):
+        """Categorical HED on a non-EventsTable DynamicTable is validated the same (assembled) way.
+
+        A plain DynamicTable is also assembled and validated via TabularInput (non-timeline, since it
+        has no onset column), so its categorical HED is checked and attributed to the table and its
+        categorical column.
+        """
+        from hdmf.common import MeaningsTable
+
+        table = DynamicTable(
+            name="trials",
+            description="Trials with a categorical column",
+            columns=[VectorData(name="condition", description="Condition", data=["a", "b"])],
+        )
+        meanings = MeaningsTable(target=table["condition"], description="Condition meanings")
+        meanings.add_row(value="a", meaning="Condition A")
+        meanings.add_row(value="b", meaning="Condition B")
+        meanings.add_column(
+            name="HED", description="HED tags", col_cls=HedTags, data=["Sensory-event", "InvalidTagXYZ"]
+        )
+        table.add_meanings_table(meanings)
+        self.nwbfile.add_acquisition(table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+        bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
+        self.assertEqual(len(bad), 1, f"expected one TAG_INVALID issue, got {len(bad)}: {issues}")
+        self.assertEqual(bad[0].get("ec_filename"), "trials")
+        self.assertEqual(bad[0].get("ec_column"), "condition")
+
+    def test_validate_file_unused_categorical_level(self):
+        """A bad HED on a categorical level not present in the data is still caught.
+
+        TabularInput only validates values that occur in the data, so this error is recovered from
+        the explicit sidecar-metadata validation. It carries the table name and the sidecar
+        column/key context (column/row context is not available for a metadata-level error).
+        """
+        # Data uses only 'go'; the unused level 'stop' has an invalid HED tag.
+        events_df = pd.DataFrame({"onset": [1.0, 2.0], "event_type": ["go", "go"]})
+        meanings = {
+            "categorical": {
+                "event_type": {
+                    "Levels": {"go": "go trial", "stop": "stop trial"},
+                    "HED": {"go": "Sensory-event", "stop": "InvalidTagXYZ"},
+                }
+            },
+            "value": {},
+        }
+        events_table = get_events_table(
+            name="events", description="Events with an unused categorical level", df=events_df, meanings=meanings
+        )
+        self.nwbfile.add_acquisition(events_table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+        bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
+        self.assertEqual(len(bad), 1, f"expected the unused level's invalid tag to be caught: {issues}")
+        self.assertEqual(bad[0].get("ec_filename"), "events")
+        self.assertEqual(bad[0].get("ec_sidecarColumnName"), "event_type")
+        self.assertEqual(bad[0].get("ec_sidecarKeyName"), "stop")
+
+    def test_validate_file_structural_sidecar_error(self):
+        """A malformed brace in categorical HED is caught as a structural sidecar error.
+
+        These reference/brace errors are only detected by Sidecar.validate(); the assembled-table
+        step would otherwise miss them and surface misleading downstream errors.
+        """
+        from hdmf.common import MeaningsTable
+
+        table = DynamicTable(
+            name="trials",
+            description="Trials with a malformed categorical HED",
+            columns=[VectorData(name="condition", description="Condition", data=["a", "b"])],
+        )
+        meanings = MeaningsTable(target=table["condition"], description="Condition meanings")
+        meanings.add_row(value="a", meaning="Condition A")
+        meanings.add_row(value="b", meaning="Condition B")
+        meanings.add_column(
+            name="HED", description="HED tags", col_cls=HedTags, data=["Sensory-event", "Sensory-event {"]
+        )
+        table.add_meanings_table(meanings)
+        self.nwbfile.add_acquisition(table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+        codes = {i.get("code") for i in issues}
+        self.assertIn("SIDECAR_BRACES_INVALID", codes, f"expected a structural sidecar error, got: {issues}")
+
+    def test_validate_file_rejects_hedvaluevector_in_meanings(self):
+        """R5: a HedValueVector column in a MeaningsTable raises ValueError during validate_file."""
+        from hdmf.common import MeaningsTable
+
+        table = DynamicTable(
+            name="trials",
+            description="Trials with a categorical column",
+            columns=[VectorData(name="condition", description="Condition", data=["a", "b"])],
+        )
+        meanings = MeaningsTable(target=table["condition"], description="Condition meanings")
+        meanings.add_row(value="a", meaning="Condition A")
+        meanings.add_row(value="b", meaning="Condition B")
+        # Disallowed: a value template inside a MeaningsTable
+        meanings.add_column(
+            name="bad_template",
+            description="not allowed",
+            col_cls=HedValueVector,
+            data=[1, 2],
+            hed="Parameter-value/#",
+        )
+        table.add_meanings_table(meanings)
+        self.nwbfile.add_acquisition(table)
+
+        with self.assertRaises(ValueError) as cm:
+            self.validator.validate_file(self.nwbfile)
+        self.assertIn("HedValueVector", str(cm.exception))
+        self.assertIn("bad_template", str(cm.exception))
+
+    def test_validate_file_value_column_error_in_plain_table(self):
+        """A HedValueVector value column in a non-EventsTable table is validated (assembled)."""
+        table = DynamicTable(
+            name="trials",
+            description="Trials with a value column",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2]),
+                HedValueVector(
+                    name="reaction_time",
+                    description="Reaction times",
+                    data=[0.5, 0.6],
+                    hed="InvalidValueTag/#",  # invalid template
+                ),
+            ],
+        )
+        self.nwbfile.add_acquisition(table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+        bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
+        self.assertGreaterEqual(len(bad), 1, f"expected the invalid value template to be caught: {issues}")
+        self.assertEqual(bad[0].get("ec_filename"), "trials")
+
+    def test_validate_file_valid_eventstable_timeline(self):
+        """An EventsTable (time-anchored) with valid HED validates with no errors (assembled)."""
+        events_df = pd.DataFrame({"onset": [1.0, 2.0], "HED": ["Sensory-event", "Agent-action"]})
+        events_table = get_events_table(
+            name="events", description="Valid events", df=events_df, meanings={"categorical": {}, "value": {}}
+        )
+        # The assembled dataframe has an 'onset' column, so this is timeline (temporal) validation.
+        self.assertIn("timestamp", events_table.colnames)
+        self.nwbfile.add_acquisition(events_table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+        errors = [i for i in issues if i.get("severity", 0) == 1]
+        self.assertEqual(len(errors), 0, f"unexpected errors for valid EventsTable: {errors}")
 
     def test_validate_file_with_value_vectors(self):
         """Test validate_file with HedValueVector columns."""

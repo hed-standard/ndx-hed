@@ -8,14 +8,15 @@ import json
 import pandas as pd
 from hed.schema import load_schema_version
 from hed.models import DefinitionDict
-from ndx_events import MeaningsTable, EventsTable, TimestampVectorData, DurationVectorData, CategoricalVectorData
+from pynwb.event import EventsTable, TimestampVectorData, DurationVectorData
+from hdmf.common import MeaningsTable
 from ndx_hed import HedTags, HedValueVector
-from pynwb.core import VectorData
+from pynwb.core import DynamicTable, VectorData
 from ndx_hed.utils.bids2nwb import (
     extract_meanings,
     get_categorical_meanings,
     get_events_table,
-    get_bids_events,
+    get_bids_tabular,
     extract_definitions,
 )
 
@@ -59,10 +60,12 @@ class TestExtractMeanings(unittest.TestCase):
         self.assertIsInstance(result["categorical"], dict)
         self.assertIsInstance(result["value"], dict)
 
-        # Check categorical data
+        # Check categorical data (extract_meanings now keeps the raw sidecar column-info dict;
+        # the MeaningsTable is built later in get_events_table once the target column exists)
         self.assertIn("event_type", result["categorical"])
         self.assertIn("simple_categorical", result["categorical"])
-        self.assertIsInstance(result["categorical"]["event_type"], MeaningsTable)
+        self.assertIsInstance(result["categorical"]["event_type"], dict)
+        self.assertIn("Levels", result["categorical"]["event_type"])
 
         # Check value data
         self.assertIn("trial", result["value"])
@@ -85,18 +88,18 @@ class TestExtractMeanings(unittest.TestCase):
         self.assertIn("categorical", result)
         self.assertIn("value", result)
 
-        # Test specific categorical columns from the real data
+        # Test specific categorical columns from the real data (raw sidecar dicts now)
         expected_categorical = ["event_type", "task_role"]
         for col_name in expected_categorical:
             self.assertIn(col_name, result["categorical"])
-            self.assertIsInstance(result["categorical"][col_name], MeaningsTable)
+            self.assertIsInstance(result["categorical"][col_name], dict)
 
         # Test event_type categorical column in detail
-        event_type_table = result["categorical"]["event_type"]
-        self.assertEqual(event_type_table.name, "event_type_meanings")
+        event_type_info = result["categorical"]["event_type"]
+        self.assertIn("Levels", event_type_info)
+        self.assertIn("HED", event_type_info)
 
-        # Check event_type has the expected data
-        event_df = event_type_table.to_dataframe()
+        # Check event_type has the expected levels
         expected_events = [
             "left_click",
             "right_click",
@@ -106,17 +109,12 @@ class TestExtractMeanings(unittest.TestCase):
             "sound_beep",
             "sound_buzz",
         ]
-        actual_events = event_df["value"].tolist()
+        actual_events = list(event_type_info["Levels"].keys())
         for event in expected_events:
             self.assertIn(event, actual_events)
 
-        # Check that HED column exists and is correct type
-        self.assertIn("HED", event_type_table.colnames)
-        self.assertIsInstance(event_type_table["HED"], HedTags)
-
         # Test task_role categorical column
-        task_role_table = result["categorical"]["task_role"]
-        task_df = task_role_table.to_dataframe()
+        task_role_info = result["categorical"]["task_role"]
         expected_task_roles = [
             "bad_trial",
             "feedback_correct",
@@ -126,7 +124,7 @@ class TestExtractMeanings(unittest.TestCase):
             "to_remember",
             "work_memory",
         ]
-        actual_task_roles = task_df["value"].tolist()
+        actual_task_roles = list(task_role_info["Levels"].keys())
         for role in expected_task_roles:
             self.assertIn(role, actual_task_roles)
 
@@ -152,8 +150,8 @@ class TestExtractMeanings(unittest.TestCase):
         self.assertEqual(len(result["categorical"]), 2)  # event_type, task_role
         self.assertEqual(len(result["value"]), 3)  # trial, letter, memory_cond
 
-        # Test HED strings in categorical data
-        event_hed_data = event_type_table["HED"].data
+        # Test HED strings in categorical data (from the raw sidecar HED dict)
+        event_hed_data = list(event_type_info["HED"].values())
         self.assertIn("Agent-action, Participant-response, (Press, (Push-button, (Left-side-of)))", event_hed_data)
         self.assertIn("Sensory-event, Visual-presentation, (Cross, (Center-of, Computer-screen))", event_hed_data)
         self.assertIn("Sensory-event, Auditory-presentation, Beep", event_hed_data)
@@ -323,10 +321,10 @@ class TestGetCategoricalMeanings(unittest.TestCase):
 
     def test_get_categorical_meanings_with_hed(self):
         """Test get_categorical_meanings with HED data."""
-        column_name = "event_type"
         column_info = self.sample_sidecar_data["event_type"]
+        target_column = VectorData(name="event_type", description="event type", data=[])
 
-        result = get_categorical_meanings(column_name, column_info)
+        result = get_categorical_meanings(target_column, column_info)
 
         # Check result type
         self.assertIsInstance(result, MeaningsTable)
@@ -355,10 +353,10 @@ class TestGetCategoricalMeanings(unittest.TestCase):
 
     def test_get_categorical_meanings_without_hed(self):
         """Test get_categorical_meanings without HED data."""
-        column_name = "simple_categorical"
         column_info = self.sample_sidecar_data["simple_categorical"]
+        target_column = VectorData(name="simple_categorical", description="simple", data=[])
 
-        result = get_categorical_meanings(column_name, column_info)
+        result = get_categorical_meanings(target_column, column_info)
 
         # Check result type
         self.assertIsInstance(result, MeaningsTable)
@@ -379,21 +377,57 @@ class TestGetCategoricalMeanings(unittest.TestCase):
             "Description": "Custom description for testing",
             "Levels": {"test1": "Test value 1", "test2": "Test value 2"},
         }
+        target_column = VectorData(name="test_column", description="test", data=[])
 
-        result = get_categorical_meanings("test_column", column_info)
+        result = get_categorical_meanings(target_column, column_info)
 
         self.assertEqual(result.description, "Custom description for testing")
 
     def test_get_categorical_meanings_empty_levels(self):
         """Test get_categorical_meanings with empty levels."""
         column_info = {"Description": "Empty levels test"}
+        target_column = VectorData(name="empty_column", description="empty", data=[])
 
-        result = get_categorical_meanings("empty_column", column_info)
+        result = get_categorical_meanings(target_column, column_info)
 
         # Should create empty table
         self.assertIsInstance(result, MeaningsTable)
         df = result.to_dataframe()
         self.assertEqual(len(df), 0)
+
+    def test_get_categorical_meanings_hed_dict_without_levels(self):
+        """HED provided as a dict but no Levels: categories come from the HED dict keys."""
+        column_info = {
+            "HED": {"a": "Sensory-event", "b": "Agent-action"},
+        }
+        target_column = VectorData(name="cat", description="cat", data=[])
+
+        result = get_categorical_meanings(target_column, column_info)
+
+        # Rows are built from the HED keys (not dropped just because Levels is absent)
+        df = result.to_dataframe()
+        self.assertEqual(sorted(df["value"].tolist()), ["a", "b"])
+        self.assertIn("HED", result.colnames)
+        self.assertIsInstance(result["HED"], HedTags)
+        hed_by_value = dict(zip(df["value"].tolist(), df["HED"].tolist(), strict=True))
+        self.assertEqual(hed_by_value["a"], "Sensory-event")
+        self.assertEqual(hed_by_value["b"], "Agent-action")
+
+    def test_get_categorical_meanings_levels_with_string_hed(self):
+        """Levels present but HED is a string (a value annotation, not categorical): no HED column,
+        and no AttributeError from treating the string as a dict."""
+        column_info = {
+            "Levels": {"a": "Level A", "b": "Level B"},
+            "HED": "Sensory-event, Label/#",  # string, not a per-category dict
+        }
+        target_column = VectorData(name="cat", description="cat", data=[])
+
+        result = get_categorical_meanings(target_column, column_info)
+
+        df = result.to_dataframe()
+        self.assertEqual(sorted(df["value"].tolist()), ["a", "b"])
+        # The string HED must not be treated as categorical -> no HED column
+        self.assertNotIn("HED", result.colnames)
 
 
 class TestGetEventsTable(unittest.TestCase):
@@ -401,26 +435,16 @@ class TestGetEventsTable(unittest.TestCase):
 
     def setUp(self):
         """Set up test data."""
-        # Sample meanings data
-        event_meanings_table = MeaningsTable(
-            name="event_type_meanings",
-            description="Meanings for event_type",
-        )
-        # Add HED column first
-        event_meanings_table.add_column(name="HED", description="HED tags", col_cls=HedTags, data=[])
-
+        # Sample meanings data (raw sidecar column-info dicts, as produced by extract_meanings)
         self.sample_meanings = {
-            "categorical": {"event_type": event_meanings_table},
+            "categorical": {
+                "event_type": {
+                    "Levels": {"show_cross": "Display a cross", "left_click": "Left button press"},
+                    "HED": {"show_cross": "Visual-event", "left_click": "Agent-action"},
+                }
+            },
             "value": {"trial": "Experimental-trial/#", "letter": "(Character, Parameter-value/#)"},
         }
-
-        # Add data to the categorical meanings table
-        self.sample_meanings["categorical"]["event_type"].add_row(
-            value="show_cross", meaning="Display a cross", HED="Visual-event"
-        )
-        self.sample_meanings["categorical"]["event_type"].add_row(
-            value="left_click", meaning="Left button press", HED="Agent-action"
-        )
 
         # Sample DataFrame with typical event data
         self.sample_df = pd.DataFrame({
@@ -454,7 +478,9 @@ class TestGetEventsTable(unittest.TestCase):
         # Check column types
         self.assertIsInstance(result["timestamp"], TimestampVectorData)
         self.assertIsInstance(result["duration"], DurationVectorData)
-        self.assertIsInstance(result["event_type"], CategoricalVectorData)
+        # Categorical columns are now plain VectorData annotated by a MeaningsTable on the table
+        self.assertIsInstance(result["event_type"], VectorData)
+        self.assertIsInstance(result.meanings_tables.get("event_type_meanings"), MeaningsTable)
         self.assertIsInstance(result["trial"], HedValueVector)
         self.assertIsInstance(result["letter"], HedValueVector)
         self.assertIsInstance(result["HED"], HedTags)
@@ -506,29 +532,37 @@ class TestGetEventsTable(unittest.TestCase):
         """Test get_events_table with only categorical columns."""
         cat_df = pd.DataFrame({"onset": [1.0, 2.0], "event_type": ["A", "B"], "condition": ["cond1", "cond2"]})
 
-        # Create meanings with categorical data
-        event_meanings = MeaningsTable(name="event_type_meanings", description="Event meanings")
-        event_meanings.add_column(name="HED", description="HED tags", col_cls=HedTags, data=[])
-        event_meanings.add_row(value="A", meaning="Event A", HED="EventA-tag")
-        event_meanings.add_row(value="B", meaning="Event B", HED="EventB-tag")
-
-        cond_meanings = MeaningsTable(name="condition_meanings", description="Condition meanings")
-        cond_meanings.add_row(value="cond1", meaning="Condition 1")
-        cond_meanings.add_row(value="cond2", meaning="Condition 2")
-
-        meanings = {"categorical": {"event_type": event_meanings, "condition": cond_meanings}, "value": {}}
+        # Create meanings with categorical data (raw sidecar dicts)
+        meanings = {
+            "categorical": {
+                "event_type": {
+                    "Levels": {"A": "Event A", "B": "Event B"},
+                    "HED": {"A": "EventA-tag", "B": "EventB-tag"},
+                },
+                "condition": {"Levels": {"cond1": "Condition 1", "cond2": "Condition 2"}},
+            },
+            "value": {},
+        }
 
         result = get_events_table(
             name="categorical_test", description="Test categorical columns", df=cat_df, meanings=meanings
         )
 
-        # Check categorical columns
-        self.assertIsInstance(result["event_type"], CategoricalVectorData)
-        self.assertIsInstance(result["condition"], CategoricalVectorData)
+        # Categorical columns are plain VectorData
+        self.assertIsInstance(result["event_type"], VectorData)
+        self.assertIsInstance(result["condition"], VectorData)
 
-        # Check that meanings are properly attached
-        self.assertEqual(result["event_type"].meanings, event_meanings)
-        self.assertEqual(result["condition"].meanings, cond_meanings)
+        # Check that MeaningsTables are properly attached to the table
+        event_meanings = result.meanings_tables.get("event_type_meanings")
+        cond_meanings = result.meanings_tables.get("condition_meanings")
+        self.assertIsInstance(event_meanings, MeaningsTable)
+        self.assertIsInstance(cond_meanings, MeaningsTable)
+        # event_type has HED, condition does not
+        self.assertIn("HED", event_meanings.colnames)
+        self.assertNotIn("HED", cond_meanings.colnames)
+        # Each MeaningsTable targets its column
+        self.assertIs(event_meanings.target, result["event_type"])
+        self.assertIs(cond_meanings.target, result["condition"])
 
     def test_get_events_table_only_value_columns(self):
         """Test get_events_table with only value columns."""
@@ -599,17 +633,11 @@ class TestGetEventsTable(unittest.TestCase):
             self.assertEqual(len(result[col_name].data), len(df))
 
 
-class TestGetBidsEvents(unittest.TestCase):
-    """Test class for get_bids_events function."""
+class TestGetBidsTabular(unittest.TestCase):
+    """Test class for get_bids_tabular function."""
 
     def setUp(self):
         """Set up test data."""
-        # Create a sample EventsTable for testing
-        # First create meanings
-        event_meanings = MeaningsTable(name="event_type_meanings", description="Event type meanings")
-        event_meanings.add_row(value="show_cross", meaning="Display a cross")
-        event_meanings.add_row(value="left_click", meaning="Left button press")
-
         # Create sample DataFrame
         sample_df = pd.DataFrame({
             "onset": [0.0, 1.5, 3.0],
@@ -620,9 +648,11 @@ class TestGetBidsEvents(unittest.TestCase):
             "HED": ["Event-1", "Event-2", "Event-3"],
         })
 
-        # Create meanings dictionary
+        # Create meanings dictionary (raw sidecar dicts; event_type has Levels but no HED)
         meanings = {
-            "categorical": {"event_type": event_meanings},
+            "categorical": {
+                "event_type": {"Levels": {"show_cross": "Display a cross", "left_click": "Left button press"}},
+            },
             "value": {"trial": "Experimental-trial/#", "letter": "(Character, Parameter-value/#)"},
         }
 
@@ -631,9 +661,9 @@ class TestGetBidsEvents(unittest.TestCase):
             name="test_events", description="Test events for conversion", df=sample_df, meanings=meanings
         )
 
-    def test_get_bids_events_basic(self):
+    def test_get_bids_tabular_basic(self):
         """Test basic conversion from EventsTable to BIDS format."""
-        df, json_data = get_bids_events(self.events_table)
+        df, json_data = get_bids_tabular(self.events_table)
 
         # Check DataFrame structure
         self.assertIsInstance(df, pd.DataFrame)
@@ -668,7 +698,7 @@ class TestGetBidsEvents(unittest.TestCase):
         self.assertEqual(json_data["trial"]["HED"], "Experimental-trial/#")
         self.assertEqual(json_data["letter"]["HED"], "(Character, Parameter-value/#)")
 
-    def test_get_bids_events_minimal(self):
+    def test_get_bids_tabular_minimal(self):
         """Test conversion with minimal EventsTable (only timestamp and duration)."""
         # Create minimal DataFrame
         minimal_df = pd.DataFrame({"onset": [1.0, 2.0], "duration": [0.5, 0.7]})
@@ -679,7 +709,7 @@ class TestGetBidsEvents(unittest.TestCase):
             name="minimal_events", description="Minimal test events", df=minimal_df, meanings=minimal_meanings
         )
 
-        df, json_data = get_bids_events(minimal_events)
+        df, json_data = get_bids_tabular(minimal_events)
 
         # Check DataFrame
         self.assertEqual(list(df.columns), ["onset", "duration"])
@@ -689,25 +719,25 @@ class TestGetBidsEvents(unittest.TestCase):
         # JSON should be empty or minimal since no HED metadata
         self.assertIsInstance(json_data, dict)
 
-    def test_get_bids_events_only_categorical(self):
+    def test_get_bids_tabular_only_categorical(self):
         """Test conversion with only categorical columns."""
         # Create categorical-only data
         cat_df = pd.DataFrame({"onset": [1.0, 2.0], "condition": ["A", "B"], "response": ["correct", "incorrect"]})
 
-        # Create meanings for both categorical columns
-        cond_meanings = MeaningsTable(name="condition_meanings", description="Condition meanings")
-        cond_meanings.add_column(name="HED", description="HED tags", col_cls=HedTags, data=[])
-        cond_meanings.add_row(value="A", meaning="Condition A", HED="Experimental-condition, CondA")
-        cond_meanings.add_row(value="B", meaning="Condition B", HED="Experimental-condition, CondB")
-
-        resp_meanings = MeaningsTable(name="response_meanings", description="Response meanings")
-        resp_meanings.add_row(value="correct", meaning="Correct response")
-        resp_meanings.add_row(value="incorrect", meaning="Incorrect response")
-
-        meanings = {"categorical": {"condition": cond_meanings, "response": resp_meanings}, "value": {}}
+        # Create meanings for both categorical columns (raw sidecar dicts)
+        meanings = {
+            "categorical": {
+                "condition": {
+                    "Levels": {"A": "Condition A", "B": "Condition B"},
+                    "HED": {"A": "Experimental-condition, CondA", "B": "Experimental-condition, CondB"},
+                },
+                "response": {"Levels": {"correct": "Correct response", "incorrect": "Incorrect response"}},
+            },
+            "value": {},
+        }
 
         events = get_events_table("cat_events", "Categorical events", cat_df, meanings)
-        df, json_data = get_bids_events(events)
+        df, json_data = get_bids_tabular(events)
 
         # Check that both categorical columns are in JSON
         self.assertIn("condition", json_data)
@@ -723,7 +753,7 @@ class TestGetBidsEvents(unittest.TestCase):
         self.assertIn("Levels", json_data["response"])
         self.assertNotIn("HED", json_data["response"])
 
-    def test_get_bids_events_only_value_columns(self):
+    def test_get_bids_tabular_only_value_columns(self):
         """Test conversion with only value columns (HedValueVector)."""
         value_df = pd.DataFrame({"onset": [1.0, 2.0], "trial_num": [1, 2], "response_time": [0.5, 0.8]})
 
@@ -736,7 +766,7 @@ class TestGetBidsEvents(unittest.TestCase):
         }
 
         events = get_events_table("value_events", "Value events", value_df, meanings)
-        df, json_data = get_bids_events(events)
+        df, json_data = get_bids_tabular(events)
 
         # Check JSON has HED for value columns
         self.assertIn("trial_num", json_data)
@@ -744,7 +774,7 @@ class TestGetBidsEvents(unittest.TestCase):
         self.assertEqual(json_data["trial_num"]["HED"], "Experimental-trial/#")
         self.assertEqual(json_data["response_time"]["HED"], "Agent-action, Response-time, Parameter-value/#")
 
-    def test_get_bids_events_roundtrip(self):
+    def test_get_bids_tabular_roundtrip(self):
         """Test roundtrip conversion: DataFrame/JSON -> EventsTable -> DataFrame/JSON."""
         # Start with original data
         original_df = pd.DataFrame({
@@ -768,7 +798,7 @@ class TestGetBidsEvents(unittest.TestCase):
         events_table = get_events_table("roundtrip_test", "Roundtrip test", original_df, meanings)
 
         # Convert back to DataFrame/JSON
-        converted_df, converted_json = get_bids_events(events_table)
+        converted_df, converted_json = get_bids_tabular(events_table)
 
         # Check DataFrame roundtrip (with adjustments for expected differences)
         # The converted DataFrame should have "onset" column (renamed from "timestamp")
@@ -794,6 +824,29 @@ class TestGetBidsEvents(unittest.TestCase):
         self.assertEqual(converted_json["trial"]["HED"], "Experimental-trial/#")
         self.assertIn("Levels", converted_json["event_type"])
         self.assertIn("HED", converted_json["event_type"])
+
+    def test_get_bids_tabular_plain_dynamic_table(self):
+        """get_bids_tabular works on a plain (non-EventsTable) DynamicTable.
+
+        With no timestamp/onset column the result is a non-timeline table: the HED column carries
+        row HED and a HedValueVector column contributes a value template to the sidecar.
+        """
+        table = DynamicTable(
+            name="trials",
+            description="A plain table with HED",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2]),
+                HedTags(data=["Sensory-event", "Agent-action"]),
+                HedValueVector(name="reaction_time", description="RTs", data=[0.5, 0.6], hed="(Duration, # s)"),
+            ],
+        )
+        df, json_data = get_bids_tabular(table)
+        # No onset column (not time-anchored)
+        self.assertNotIn("onset", df.columns)
+        self.assertIn("HED", df.columns)
+        self.assertIn("reaction_time", df.columns)
+        # The value column's template is exported in the sidecar; the HED column is self-describing
+        self.assertEqual(json_data["reaction_time"]["HED"], "(Duration, # s)")
 
 
 if __name__ == "__main__":

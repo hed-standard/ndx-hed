@@ -8,7 +8,7 @@ def main():
     # these arguments were auto-generated from your cookiecutter inputs
     ns_builder = NWBNamespaceBuilder(
         name="""ndx-hed""",
-        version="""0.2.0""",
+        version="""1.0.0""",
         doc="""NWB extension for HED data""",
         author=[
             "Kay Robbins",
@@ -31,14 +31,17 @@ def main():
     hed_tags = NWBDatasetSpec(
         neurodata_type_def="HedTags",
         neurodata_type_inc="VectorData",
-        doc="An extension of VectorData for Hierarchical Event Descriptor (HED) tags. Always has the name HED",
+        doc="An extension of VectorData for a column of per-row Hierarchical Event Descriptor (HED) "
+        "annotations. Must be named 'HED'; at most one per DynamicTable.",
         dtype="text",
     )
 
     hed_value_vector = NWBDatasetSpec(
         neurodata_type_def="HedValueVector",
         neurodata_type_inc="VectorData",
-        doc="An extension of VectorData for Hierarchical Event Descriptor (HED) tags. Always has the name HED",
+        doc="An extension of VectorData for a column with a single Hierarchical Event Descriptor (HED) "
+        "annotation template that applies to all values in the column. May have any name; identified "
+        "by its neurodata type, not by name.",
         attributes=[
             NWBAttributeSpec(
                 name="hed", dtype="text", doc="The HED annotation applicable to the column (expects #).", required=True

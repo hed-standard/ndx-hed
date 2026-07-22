@@ -9,7 +9,7 @@ from datetime import datetime
 from dateutil.tz import tzlocal
 from pynwb import NWBFile, ProcessingModule, NWBHDF5IO
 from pynwb.core import DynamicTable, VectorData
-from ndx_events import EventsTable, TimestampVectorData
+from pynwb.event import EventsTable, TimestampVectorData
 from ndx_hed import HedTags, HedLabMetaData, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 from hed.errors import ErrorHandler
@@ -268,8 +268,8 @@ class TestHedNWBFileValidator(unittest.TestCase):
 
     def test_validate_file_schema_version_mismatch(self):
         """Test that validate_file handles schema version mismatch correctly."""
-        # Create file with different HED metadata
-        different_hed_metadata = HedLabMetaData(hed_schema_version="8.2.0")  # Different from validator's 8.3.0
+        # Create file with different HED metadata (validator uses 8.4.0 from setUp)
+        different_hed_metadata = HedLabMetaData(hed_schema_version="8.3.0")  # Different from validator's 8.4.0
 
         nwbfile = NWBFile(
             session_description="Test with different HED version",
