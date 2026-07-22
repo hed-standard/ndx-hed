@@ -10,12 +10,20 @@ class HedTags(VectorData):
     and possibly parenthesized list of HED tags selected from a valid HED vocabulary as specified by the
     NWBFile field HedVersion.
 
+    A HedTags column must be named "HED" (enforced by the constructor). There is at most one HedTags
+    column per DynamicTable (a consequence of the fixed name). HED-aware code also identifies HED
+    columns by their neurodata type (``isinstance(col, HedTags)``).
     """
 
     #  __nwbfields__ = ('_hed_schema', 'hed_version')
 
     @docval(
-        {"name": "name", "type": str, "doc": "The name of this VectorData", "default": "HED"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "The name of this column. Must be 'HED' (the default).",
+            "default": "HED",
+        },
         {
             "name": "description",
             "type": str,
@@ -25,7 +33,7 @@ class HedTags(VectorData):
         *get_docval(VectorData.__init__, "data"),
     )
     def __init__(self, **kwargs):
-        if "name" in kwargs and kwargs["name"] != "HED":
+        if kwargs.get("name", "HED") != "HED":
             raise ValueError(f"The 'name' for HedTags must be 'HED', but '{kwargs['name']}' was given.")
         super().__init__(**kwargs)
 
@@ -65,6 +73,8 @@ class HedValueVector(VectorData):
     A HED string is a comma-separated, and possibly parenthesized list of HED tags selected
     from a valid HED vocabulary as specified by the NWBFile field HedVersion.
 
+    A HedValueVector column may have any name. HED-aware code identifies these columns by their
+    neurodata type (``isinstance(col, HedValueVector)``), not by the column name.
     """
 
     __nwbfields__ = ("_hed",)

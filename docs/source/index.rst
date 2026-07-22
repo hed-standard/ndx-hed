@@ -149,6 +149,7 @@ Resources
    :caption: Documentation
 
    description
+   hed_validation
    api
 
 .. toctree::

@@ -38,7 +38,7 @@ HedTags
 **Extends**: ``VectorData``
 
 **Key Properties**:
-- ``name``: Must be "HED" (enforced by constructor)
+- ``name``: Must be "HED" (enforced by constructor); at most one HedTags column per DynamicTable
 - ``data``: Array of HED tag strings, one per table row
 - ``description``: Description of the HED annotations
 

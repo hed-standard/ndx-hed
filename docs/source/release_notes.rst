@@ -18,6 +18,10 @@ standalone ``ndx-events`` extension.
 * A ``MeaningsTable`` is now bound to the column it annotates via a required ``target`` argument and
   is named ``"{column_name}_meanings"`` automatically. Attach it with ``table.add_meanings_table()``
   and retrieve it with ``table.get_meanings_for_column(col_name)``.
+* HED column rules: a ``HedTags`` column must be named ``"HED"`` (so at most one per
+  ``DynamicTable``); inside a ``MeaningsTable`` it provides categorical HED, elsewhere per-row HED. A
+  ``HedValueVector`` must not appear in a ``MeaningsTable``. The ``HedValueVector`` schema doc was
+  corrected (it previously stated "Always has the name HED").
 
 **Changes**
 
@@ -26,7 +30,7 @@ standalone ``ndx-events`` extension.
 * ``HedNWBValidator.validate_file()`` validates every ``DynamicTable`` uniformly (including
   ``EventsTable`` and ``MeaningsTable``), so categorical HED -- stored in a ``MeaningsTable`` -- is
   validated exactly once regardless of the table type it annotates.
-* ``HedLabMetaData``, ``HedTags``, ``HedValueVector``, and the extension schema are unchanged.
+* ``HedLabMetaData`` is unchanged (still named "hed_schema").
 
 Version 0.2.0 (October 18, 2025)
 --------------------------------

@@ -5,7 +5,7 @@ import numpy as np
 from typing import Union
 from hed.models import Sidecar
 from hed.schema import HedSchema, HedSchemaGroup
-from pynwb.core import VectorData
+from pynwb.core import DynamicTable, VectorData
 from pynwb.event import EventsTable, TimestampVectorData, DurationVectorData
 from hdmf.common import MeaningsTable
 from ndx_hed import HedTags, HedValueVector
@@ -160,28 +160,33 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
     return events_tab
 
 
-def get_bids_events(events_table: EventsTable) -> tuple:
+def get_bids_tabular(table: DynamicTable) -> tuple:
     """
-    Converts an EventsTable back to BIDS format (DataFrame and JSON sidecar).
+    Converts a DynamicTable to a BIDS-style tabular representation (DataFrame and JSON sidecar).
+
+    Works for any DynamicTable (an EventsTable or a plain DynamicTable). It is not meant for a
+    MeaningsTable, whose HED is consumed while assembling the table whose column it annotates. A
+    ``TimestampVectorData`` column is renamed to ``onset`` so that downstream BIDS-HED validation
+    treats the table as a timeline (temporal) file.
 
     Parameters:
-        events_table (EventsTable): The EventsTable to convert.
+        table (DynamicTable): The table to convert.
 
     Returns:
         tuple: A tuple containing:
-            - pd.DataFrame: The events data with proper column names (onset, duration, etc.)
+            - pd.DataFrame: The table data with BIDS column names (onset, duration, etc.)
             - dict: The JSON sidecar data with column metadata, levels, and HED annotations
     """
 
-    # Get DataFrame from EventsTable
-    df = events_table.to_dataframe()
+    # Get DataFrame from the table
+    df = table.to_dataframe()
 
     # Initialize JSON sidecar structure
     json_data = {}
 
     # Process each column to build JSON metadata
-    for col_name in events_table.colnames:
-        column = events_table[col_name]
+    for col_name in table.colnames:
+        column = table[col_name]
         column_info = {}
 
         # Add description if available
@@ -204,21 +209,22 @@ def get_bids_events(events_table: EventsTable) -> tuple:
             column_info["HED"] = column.hed
 
         elif isinstance(column, HedTags):
-            # The HED tags are stored as data in the column itself - no additional metadata
-            pass
+            # The HED column is self-describing (its cells are HED strings). "HED" is a reserved
+            # sidecar key and must NOT appear as a sidecar metadata entry, so emit nothing for it.
+            continue
 
         else:
             # A categorical column is a plain VectorData annotated by a MeaningsTable. Prefer the
             # public DynamicTable.get_meanings_for_column() API (it raises KeyError when the column
             # has no MeaningsTable); fall back to the meanings_tables dict if the API is unavailable.
-            getter = getattr(events_table, "get_meanings_for_column", None)
+            getter = getattr(table, "get_meanings_for_column", None)
             if getter is not None:
                 try:
                     meanings_table = getter(col_name)
                 except KeyError:
                     meanings_table = None
             else:
-                meanings_table = events_table.meanings_tables.get(f"{col_name}_meanings")
+                meanings_table = table.meanings_tables.get(f"{col_name}_meanings")
             if meanings_table is not None:
                 meanings_df = meanings_table.to_dataframe()
 

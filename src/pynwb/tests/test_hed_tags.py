@@ -70,12 +70,19 @@ class TestHedTagsConstructor(TestCase):
         self.assertIsInstance(my_table["HED"], HedTags)
 
     def test_dynamic_table_bad_hedName(self):
-        my_table = DynamicTable(name="bands", description="band info1")
+        """A HedTags column must be named 'HED'."""
         with self.assertRaises(ValueError) as cm:
-            my_table.add_column(
-                name="Blech", description="Another HedTags column", col_cls=HedTags, data=["White,Black"]
-            )
+            HedTags(name="Blech", description="Another HedTags column", data=["White,Black"])
         self.assertIn("The 'name' for HedTags must be 'HED'", str(cm.exception))
+
+    def test_at_most_one_hed_column(self):
+        """At most one HedTags column per DynamicTable: two 'HED' columns collide by name."""
+        with self.assertRaises(ValueError):
+            DynamicTable(
+                name="bands",
+                description="two HED columns",
+                columns=[HedTags(data=["Red"]), HedTags(data=["Blue"])],
+            )
 
     def test_dynamic_table_multiple_columns(self):
         color_nums = VectorData(name="color_code", description="Integers representing colors", data=[1, 2, 3])
@@ -100,6 +107,7 @@ class TestHedTagsConstructor(TestCase):
         self.assertEqual(nwbfile.trials["HED"].data[0], "Correct-action")
         self.assertEqual(nwbfile.trials["HED"].data[1], "Incorrect-action")
 
+        # A HedTags column must be named "HED"
         with self.assertRaises(ValueError) as cm:
             nwbfile.add_trial_column(name="Blech", description="HED annotations", col_cls=HedTags, data=["Red", "Blue"])
         self.assertIn("The 'name' for HedTags must be 'HED'", str(cm.exception))

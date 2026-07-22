@@ -11,12 +11,12 @@ from hed.models import DefinitionDict
 from pynwb.event import EventsTable, TimestampVectorData, DurationVectorData
 from hdmf.common import MeaningsTable
 from ndx_hed import HedTags, HedValueVector
-from pynwb.core import VectorData
+from pynwb.core import DynamicTable, VectorData
 from ndx_hed.utils.bids2nwb import (
     extract_meanings,
     get_categorical_meanings,
     get_events_table,
-    get_bids_events,
+    get_bids_tabular,
     extract_definitions,
 )
 
@@ -633,8 +633,8 @@ class TestGetEventsTable(unittest.TestCase):
             self.assertEqual(len(result[col_name].data), len(df))
 
 
-class TestGetBidsEvents(unittest.TestCase):
-    """Test class for get_bids_events function."""
+class TestGetBidsTabular(unittest.TestCase):
+    """Test class for get_bids_tabular function."""
 
     def setUp(self):
         """Set up test data."""
@@ -661,9 +661,9 @@ class TestGetBidsEvents(unittest.TestCase):
             name="test_events", description="Test events for conversion", df=sample_df, meanings=meanings
         )
 
-    def test_get_bids_events_basic(self):
+    def test_get_bids_tabular_basic(self):
         """Test basic conversion from EventsTable to BIDS format."""
-        df, json_data = get_bids_events(self.events_table)
+        df, json_data = get_bids_tabular(self.events_table)
 
         # Check DataFrame structure
         self.assertIsInstance(df, pd.DataFrame)
@@ -698,7 +698,7 @@ class TestGetBidsEvents(unittest.TestCase):
         self.assertEqual(json_data["trial"]["HED"], "Experimental-trial/#")
         self.assertEqual(json_data["letter"]["HED"], "(Character, Parameter-value/#)")
 
-    def test_get_bids_events_minimal(self):
+    def test_get_bids_tabular_minimal(self):
         """Test conversion with minimal EventsTable (only timestamp and duration)."""
         # Create minimal DataFrame
         minimal_df = pd.DataFrame({"onset": [1.0, 2.0], "duration": [0.5, 0.7]})
@@ -709,7 +709,7 @@ class TestGetBidsEvents(unittest.TestCase):
             name="minimal_events", description="Minimal test events", df=minimal_df, meanings=minimal_meanings
         )
 
-        df, json_data = get_bids_events(minimal_events)
+        df, json_data = get_bids_tabular(minimal_events)
 
         # Check DataFrame
         self.assertEqual(list(df.columns), ["onset", "duration"])
@@ -719,7 +719,7 @@ class TestGetBidsEvents(unittest.TestCase):
         # JSON should be empty or minimal since no HED metadata
         self.assertIsInstance(json_data, dict)
 
-    def test_get_bids_events_only_categorical(self):
+    def test_get_bids_tabular_only_categorical(self):
         """Test conversion with only categorical columns."""
         # Create categorical-only data
         cat_df = pd.DataFrame({"onset": [1.0, 2.0], "condition": ["A", "B"], "response": ["correct", "incorrect"]})
@@ -737,7 +737,7 @@ class TestGetBidsEvents(unittest.TestCase):
         }
 
         events = get_events_table("cat_events", "Categorical events", cat_df, meanings)
-        df, json_data = get_bids_events(events)
+        df, json_data = get_bids_tabular(events)
 
         # Check that both categorical columns are in JSON
         self.assertIn("condition", json_data)
@@ -753,7 +753,7 @@ class TestGetBidsEvents(unittest.TestCase):
         self.assertIn("Levels", json_data["response"])
         self.assertNotIn("HED", json_data["response"])
 
-    def test_get_bids_events_only_value_columns(self):
+    def test_get_bids_tabular_only_value_columns(self):
         """Test conversion with only value columns (HedValueVector)."""
         value_df = pd.DataFrame({"onset": [1.0, 2.0], "trial_num": [1, 2], "response_time": [0.5, 0.8]})
 
@@ -766,7 +766,7 @@ class TestGetBidsEvents(unittest.TestCase):
         }
 
         events = get_events_table("value_events", "Value events", value_df, meanings)
-        df, json_data = get_bids_events(events)
+        df, json_data = get_bids_tabular(events)
 
         # Check JSON has HED for value columns
         self.assertIn("trial_num", json_data)
@@ -774,7 +774,7 @@ class TestGetBidsEvents(unittest.TestCase):
         self.assertEqual(json_data["trial_num"]["HED"], "Experimental-trial/#")
         self.assertEqual(json_data["response_time"]["HED"], "Agent-action, Response-time, Parameter-value/#")
 
-    def test_get_bids_events_roundtrip(self):
+    def test_get_bids_tabular_roundtrip(self):
         """Test roundtrip conversion: DataFrame/JSON -> EventsTable -> DataFrame/JSON."""
         # Start with original data
         original_df = pd.DataFrame({
@@ -798,7 +798,7 @@ class TestGetBidsEvents(unittest.TestCase):
         events_table = get_events_table("roundtrip_test", "Roundtrip test", original_df, meanings)
 
         # Convert back to DataFrame/JSON
-        converted_df, converted_json = get_bids_events(events_table)
+        converted_df, converted_json = get_bids_tabular(events_table)
 
         # Check DataFrame roundtrip (with adjustments for expected differences)
         # The converted DataFrame should have "onset" column (renamed from "timestamp")
@@ -824,6 +824,29 @@ class TestGetBidsEvents(unittest.TestCase):
         self.assertEqual(converted_json["trial"]["HED"], "Experimental-trial/#")
         self.assertIn("Levels", converted_json["event_type"])
         self.assertIn("HED", converted_json["event_type"])
+
+    def test_get_bids_tabular_plain_dynamic_table(self):
+        """get_bids_tabular works on a plain (non-EventsTable) DynamicTable.
+
+        With no timestamp/onset column the result is a non-timeline table: the HED column carries
+        row HED and a HedValueVector column contributes a value template to the sidecar.
+        """
+        table = DynamicTable(
+            name="trials",
+            description="A plain table with HED",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2]),
+                HedTags(data=["Sensory-event", "Agent-action"]),
+                HedValueVector(name="reaction_time", description="RTs", data=[0.5, 0.6], hed="(Duration, # s)"),
+            ],
+        )
+        df, json_data = get_bids_tabular(table)
+        # No onset column (not time-anchored)
+        self.assertNotIn("onset", df.columns)
+        self.assertIn("HED", df.columns)
+        self.assertIn("reaction_time", df.columns)
+        # The value column's template is exported in the sidecar; the HED column is self-describing
+        self.assertEqual(json_data["reaction_time"]["HED"], "(Duration, # s)")
 
 
 if __name__ == "__main__":

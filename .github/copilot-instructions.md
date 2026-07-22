@@ -61,7 +61,7 @@ All workflows are in `.github/workflows/`:
 **Core extension structure:**
 
 - **HedLabMetaData** (`hed_lab_metadata.py`): Required schema metadata container — must be named "hed_schema", stores HED schema version and optional definitions
-- **HedTags** (`hed_tags.py`): VectorData subclass for row-specific HED annotations — must be named "HED"
+- **HedTags** (`hed_tags.py`): VectorData subclass for row-specific HED annotations — must be named "HED"; at most one per DynamicTable
 - **HedValueVector** (`hed_tags.py`): Template-based HED annotations with `#` placeholders for values. The annotation applies to the entire column.
 
 **Key integration points:**
@@ -76,7 +76,7 @@ All workflows are in `.github/workflows/`:
 **NWB extension conventions:**
 
 - All classes use `@register_class("ClassName", "ndx-hed")` decorator
-- Mandatory field names: `HedLabMetaData.name` must be "hed_schema", `HedTags.name` must be "HED"
+- Mandatory names: `HedLabMetaData.name` is "hed_schema", `HedTags.name` is "HED" (≤1 per DynamicTable). `HedValueVector` may have any name.
 - Schema loading uses `load_namespaces()` with fallback path for git repo development
 
 **Example workflow:**
@@ -134,7 +134,7 @@ cd examples && python 01_basic_hed_classes.py
 
 - `extract_meanings()`: Converts BIDS JSON sidecars to meanings dictionary
 - `get_events_table()`: Creates NWB EventsTable from BIDS events
-- `get_bids_events()`: Converts EventsTable back to BIDS format
+- `get_bids_tabular()`: Converts a DynamicTable to BIDS format (DataFrame + sidecar)
 
 ## File organization
 

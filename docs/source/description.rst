@@ -61,7 +61,7 @@ HedTags
 **Key Features**:
 
 * Stores one HED string per table row
-* Must be named "HED" (enforced by constructor)
+* Must be named "HED" (enforced by constructor); at most one HedTags column per DynamicTable
 * Works with any NWB ``DynamicTable`` (trials, units, epochs, etc.)
 * Ideal for event-specific annotations
 
@@ -291,7 +291,7 @@ The ndx-hed extension provides utilities to convert between BIDS events files an
 
 .. code-block:: python
 
-   from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table, get_bids_events
+   from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table, get_bids_tabular
    import pandas as pd
    import json
 
@@ -307,7 +307,7 @@ The ndx-hed extension provides utilities to convert between BIDS events files an
    events_table = get_events_table("task_events", "Task events", events_df, meanings)
 
    # Convert EventsTable to BIDS
-   bids_df, sidecar_dict = get_bids_events(events_table)
+   bids_df, sidecar_dict = get_bids_tabular(events_table)
 
 See `examples/04_bids_conversion.py <https://github.com/hed-standard/ndx-hed/blob/main/examples/04_bids_conversion.py>`_ for complete examples.
 

@@ -9,12 +9,13 @@ from typing import List, Dict, Any, Optional
 from pynwb import NWBFile
 from pynwb.core import DynamicTable
 from pynwb.event import EventsTable
+from hdmf.common import MeaningsTable
 from hed.errors import ErrorHandler, ErrorContext, HedExceptions, HedFileError
 from hed.errors.error_reporter import check_for_any_errors
-from hed.models import HedString, TabularInput
+from hed.models import HedString, TabularInput, Sidecar
 from ..hed_lab_metadata import HedLabMetaData
 from ..hed_tags import HedTags, HedValueVector
-from .bids2nwb import get_bids_events
+from .bids2nwb import get_bids_tabular
 
 
 class HedNWBValidator:
@@ -24,6 +25,11 @@ class HedNWBValidator:
     This class provides methods to validate HED tags in various NWB data structures
     using HED schema information stored in HedLabMetaData.
     """
+
+    # Sidecar error codes that indicate a structurally malformed sidecar (bad ``{column}`` braces or
+    # an otherwise invalid sidecar). These are only detected by Sidecar.validate(); when present, the
+    # assembled-table validation would emit misleading downstream errors, so it is skipped.
+    STRUCTURAL_SIDECAR_CODES = frozenset({"SIDECAR_BRACES_INVALID", "SIDECAR_INVALID"})
 
     def __init__(self, hed_metadata: HedLabMetaData):
         """
@@ -159,7 +165,7 @@ class HedNWBValidator:
         Validates HED tags in an EventsTable by converting it to BIDS format and validating the events.
 
         This function extracts the BIDS-formatted DataFrame and JSON sidecar from the EventsTable
-        using get_bids_events(), then validates the HED tags contained within using the provided
+        using get_bids_tabular(), then validates the HED tags contained within using the provided
         HED schema metadata.
 
         Parameters:
@@ -174,7 +180,7 @@ class HedNWBValidator:
             ValueError: If the EventsTable is invalid or cannot be converted to BIDS format
 
         Notes:
-            This function uses get_bids_events() to extract BIDS-formatted data from the EventsTable,
+            This function uses get_bids_tabular() to extract BIDS-formatted data from the EventsTable,
             then applies HED validation to the extracted event annotations. The validation follows
             BIDS-HED standards for event annotation validation.
         """
@@ -184,30 +190,118 @@ class HedNWBValidator:
         if error_handler is None:
             error_handler = ErrorHandler(check_for_warnings=False)
 
-        # Convert EventsTable to BIDS format using get_bids_events
-        df, json_data = get_bids_events(events)
-        if json_data:
-            json_input = json.dumps(json_data)
-        else:
-            json_input = None
+        return self._validate_assembled(events, error_handler)
 
-        if json_input is not None:
-            sidecar = io.StringIO(json_input)
-        else:
-            sidecar = None
+    def _validate_assembled(self, table: DynamicTable, error_handler: ErrorHandler) -> List[Dict[str, Any]]:
+        """
+        Assembled (BIDS-style) validation of a DynamicTable.
 
-        tab_input = TabularInput(file=df, sidecar=sidecar, name=events.name)
+        The table is converted to a BIDS-format dataframe + JSON sidecar with get_bids_tabular().
+        The sidecar (column metadata: value templates and categorical Levels/HED) is validated first
+        with Sidecar.validate(), then the assembled per-row annotations are validated with
+        TabularInput.validate(). Both steps are required: TabularInput.validate() does NOT re-run the
+        sidecar's brace-structure / column-reference checks (self, nested, invalid, or malformed
+        ``{column}`` references), so a malformed sidecar validated only through the assembled table
+        would be missed and surface as misleading downstream errors (e.g. a stray ``{`` reported as
+        CHARACTER_INVALID). If the sidecar itself has errors, they are returned and the assembled-table
+        step is skipped to avoid that downstream noise.
+
+        Assembly combines, for each row, the row's direct HED column, its categorical HED (from
+        attached MeaningsTables), and its value-template HED into a single annotation. If the assembled
+        dataframe has an ``onset`` column, TabularInput performs temporal (timeline) validation;
+        otherwise it performs non-temporal (per-row) validation.
+
+        Parameters:
+            table (DynamicTable): The table to validate.
+            error_handler (ErrorHandler): The error handler collecting issues.
+
+        Returns:
+            List[Dict[str, Any]]: Validation issues for the table.
+        """
+        df, json_data = get_bids_tabular(table)
+
+        # No sidecar metadata: validate the assembled table on its own (e.g. only a direct HED column).
+        if not json_data:
+            tab_input = TabularInput(file=df, name=table.name)
+            return tab_input.validate(self.hed_schema, extra_def_dicts=self.def_dict, error_handler=error_handler)
+
+        # Step 1: validate the sidecar metadata explicitly. Only Sidecar.validate() performs the
+        # brace-structure / column-reference checks; it also validates the HED of every categorical
+        # level even those not present in the data.
+        sidecar = Sidecar(io.StringIO(json.dumps(json_data)), name=table.name)
+        sidecar_issues = sidecar.validate(self.hed_schema, extra_def_dicts=self.def_dict, error_handler=error_handler)
+        for issue in sidecar_issues:
+            if not issue.get("ec_filename"):
+                issue["ec_filename"] = table.name
+
+        # If the sidecar is structurally malformed (bad braces / invalid sidecar), the assembled-table
+        # step would miss it and emit misleading downstream errors, so stop and report the structure.
+        if any(issue.get("code") in self.STRUCTURAL_SIDECAR_CODES for issue in sidecar_issues):
+            return sidecar_issues
+
+        # Step 2: validate the assembled table. This carries full context (ec_filename / ec_column /
+        # ec_row) and performs temporal (timeline) validation when an ``onset`` column is present. It
+        # re-reports the categorical/value HED errors for values that occur in the data, so those are
+        # taken from here (with context) rather than from the sidecar step.
+        tab_input = TabularInput(file=df, sidecar=sidecar, name=table.name)
         issues = tab_input.validate(self.hed_schema, extra_def_dicts=self.def_dict, error_handler=error_handler)
+
+        # TabularInput only sees categorical values that occur in the data, so add the sidecar errors
+        # for categorical levels that never appear (otherwise they would be missed).
+        issues += self._unused_categorical_level_issues(sidecar_issues, df, json_data)
         return issues
+
+    @staticmethod
+    def _unused_categorical_level_issues(sidecar_issues, df, json_data):
+        """Return the sidecar issues for categorical levels that do not occur in the data.
+
+        TabularInput validates only values present in the data, so a bad HED annotation on a
+        categorical level that is never used would be missed. Those sidecar issues are added back.
+        Value-column (template) and data-column errors are excluded because TabularInput reports them.
+        """
+        extra = []
+        for issue in sidecar_issues:
+            col = issue.get("ec_sidecarColumnName")
+            key = issue.get("ec_sidecarKeyName")
+            if not col or key is None or col not in df.columns:
+                continue
+            if "Levels" not in json_data.get(col, {}):  # only categorical columns have levels
+                continue
+            present = {str(v) for v in df[col].tolist()}
+            if str(key) not in present:
+                extra.append(issue)
+        return extra
+
+    def _check_meanings_table_rules(self, meanings_table: MeaningsTable) -> None:
+        """
+        Enforce structural rules on a MeaningsTable.
+
+        A MeaningsTable carries categorical (per-value) HED in a HedTags column. A HedValueVector
+        (a value template with a ``#`` placeholder) has no meaning for per-value categorical
+        annotation and is not allowed in a MeaningsTable.
+
+        Raises:
+            ValueError: If the MeaningsTable contains a HedValueVector column.
+        """
+        for col in meanings_table.columns:
+            if isinstance(col, HedValueVector):
+                raise ValueError(
+                    f"HedValueVector column '{col.name}' is not allowed in MeaningsTable "
+                    f"'{meanings_table.name}'; categorical HED must be stored in a HedTags column."
+                )
 
     def validate_file(self, nwbfile: NWBFile, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
         """
         Validates all HED tags in an NWB file by iterating through all DynamicTable objects.
 
-        This method first checks if HedLabMetaData is defined in the NWB file. If not found,
-        it returns an issue about invalid schema. Then it iterates through all DynamicTable
-        objects in the file, calling validate_events for EventsTable objects and validate_table
-        for other DynamicTable objects.
+        This method first checks that HedLabMetaData is defined in the NWB file and that its schema
+        version matches the validator's. Then it validates every DynamicTable **except MeaningsTable**
+        using assembled (BIDS-style) validation (see _validate_assembled): the table is converted to a
+        dataframe + sidecar and validated with TabularInput, which performs temporal (timeline)
+        validation when the table has an ``onset`` column and non-temporal validation otherwise. A
+        MeaningsTable is not validated on its own -- its categorical HED is validated as part of the
+        table whose column it annotates -- but it is checked against the structural rule that it must
+        not contain a HedValueVector column (a violation raises ValueError).
 
         Parameters:
             nwbfile (NWBFile): The NWB file to validate
@@ -219,6 +313,7 @@ class HedNWBValidator:
 
         Raises:
             ValueError: If nwbfile is not a valid NWBFile instance
+            ValueError: If a MeaningsTable contains a HedValueVector column
             HedFileError: If HedLabMetaData is missing or invalid in the NWB file
             HedFileError: If the HED schema version in the NWB file does not match the validator's schema version
         """
@@ -247,15 +342,16 @@ class HedNWBValidator:
         issues = []
 
         error_handler.push_error_context(ErrorContext.FILE_NAME, nwbfile.identifier)
-        # Validate every DynamicTable uniformly with validate_table. This treats EventsTable,
-        # MeaningsTable, and any other DynamicTable identically: validate_table checks each table's
-        # own HedTags and HedValueVector columns. Categorical HED lives in a MeaningsTable's HED
-        # column, and a MeaningsTable is itself a DynamicTable, so it is validated in this same loop.
-        # Every HED string is therefore validated exactly once, no matter which table (or table
-        # type) it belongs to. (validate_events remains available for BIDS-context validation of a
-        # single EventsTable, but is not needed here.)
+        # Validate every DynamicTable with assembled (BIDS-style) validation, except MeaningsTables.
+        # A MeaningsTable is a lookup consumed during the assembly of the table whose column it
+        # annotates, so it is not validated on its own; it is only checked against the structural
+        # rule that it must not contain a HedValueVector column.
         for obj in nwbfile.all_children():
-            if isinstance(obj, DynamicTable):
-                issues.extend(self.validate_table(obj, error_handler))
+            if not isinstance(obj, DynamicTable):
+                continue
+            if isinstance(obj, MeaningsTable):
+                self._check_meanings_table_rules(obj)  # raises ValueError on a disallowed column
+                continue
+            issues.extend(self._validate_assembled(obj, error_handler))
         error_handler.pop_error_context()
         return issues

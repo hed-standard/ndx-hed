@@ -1,5 +1,9 @@
 # ndx-hed 0.2.0 release preparation summary
 
+> **Status — historical (0.2.0).** This document records the release-preparation process for **ndx-hed 0.2.0** (October 2025). The dependency versions and steps below reflect *that* release and are **out of date** for the current 1.0.0 / PyNWB 4 migration, which requires `pynwb>=4.0.0`, `hdmf>=6.1.0`, `hedtools>=1.2.0` and removes the `ndx-events` dependency. Treat it as a reference for the general release mechanics only — not for current versions or as an active 1.0.0 checklist.
+>
+> **1.0.0 may never be published as a standalone extension.** HED support is expected to be incorporated into NWB core, which would make a separate `ndx-hed` release unnecessary. Before using these steps to cut a 1.0.0 release, first confirm that a standalone release is still intended.
+
 ## Overview
 
 Comprehensive preparation for the ndx-hed 0.2.0 release, including dependency upgrades, documentation enhancements, and complete Sphinx documentation infrastructure setup.

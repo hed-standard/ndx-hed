@@ -62,6 +62,15 @@ The ndx-hed extension provides three main classes:
 | **HedTags**        | Row-specific HED annotations                          | Row-specific tags in any DynamicTable          |
 | **HedValueVector** | Column-wide HED templates                             | Shared annotations with value placeholders (#) |
 
+## HED annotation rules
+
+HED annotations in NWB follow a small set of rules so that a table's HED can be assembled and validated consistently:
+
+1. A `HedTags` column must be named `HED`. Because column names within a table are unique, a `DynamicTable` therefore holds at most one `HedTags` column.
+2. A `HedTags` column inside a `MeaningsTable` supplies categorical (per-value) HED for the annotated column. In any other `DynamicTable` it supplies per-row HED for that table.
+3. A `HedValueVector` column carries one HED template with a single `#` placeholder that applies to every value in the column. It may have any name and is identified by its type.
+4. A `HedValueVector` may not appear in a `MeaningsTable` (a value template has no meaning for categorical values); `HedNWBValidator.validate_file` raises `ValueError` if it finds one.
+
 ## Examples
 
 The `examples/` directory contains comprehensive runnable examples:
@@ -105,7 +114,7 @@ See [examples/03_events_table_integration.py](examples/03_events_table_integrati
 The ndx-hed extension provides utilities to convert between BIDS events files and NWB `EventsTable` format:
 
 ```python
-from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table, get_bids_events
+from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table, get_bids_tabular
 import pandas as pd
 import json
 
@@ -118,7 +127,7 @@ meanings = extract_meanings(bids_sidecar_file_path)
 events_table = get_events_table("task_events", "Task events", events_df, meanings)
 
 # Convert EventsTable to BIDS
-bids_df, sidecar_dict = get_bids_events(events_table)
+bids_df, sidecar_dict = get_bids_tabular(events_table)
 ```
 
 See [examples/04_bids_conversion.py](examples/04_bids_conversion.py) for complete examples.
@@ -128,10 +137,11 @@ See [examples/04_bids_conversion.py](examples/04_bids_conversion.py) for complet
 Creating HED annotations for NWB data and saving these annotations as part of an `NWBFile` does not mean the annotations are valid. HED validation is performed to ensure they conform to the HED schema:
 
 ```python
+from ndx_hed import HedLabMetaData
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 
 # Create validator and validate entire file
-hed_metadata = HedLabMetadata(hed_schema_version= '8.4.0')
+hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
 validator = HedNWBValidator(hed_metadata)
 
 # Assume nwbfile has already been created
@@ -140,6 +150,8 @@ issues = validator.validate_file(nwbfile)
 if not issues:
     print("All HED annotations are valid!")
 ```
+
+`validate_file` validates every `DynamicTable` (except `MeaningsTable`) by assembling each row's full HED annotation (its per-row HED column, its categorical HED from any `MeaningsTable`, and its value templates) and validating with the HED tools. Tables that are time-anchored (have an `onset` column, such as an `EventsTable`) are validated as a timeline, so temporal HED (onset/offset/duration scopes across rows) is checked; other tables are validated per row. A `MeaningsTable` is validated as part of the table whose column it annotates, not on its own.
 
 See [examples/05_hed_validation.py](examples/05_hed_validation.py) for comprehensive validation examples.
 
