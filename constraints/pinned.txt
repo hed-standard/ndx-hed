@@ -6,7 +6,7 @@
 # now come from PyNWB core / hdmf). pynwb, hdmf, and hedtools reflect the versions the test
 # suite was validated against. CI should confirm this snapshot on a clean solve.
 typos==1.47.2
-coverage==7.5.4
+coverage==7.15.2
 hdmf==6.1.0
 hdmf-docutils==0.4.7
 hedtools==1.2.0
