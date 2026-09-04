@@ -221,9 +221,10 @@ def get_levels_and_hed(meanings_table: "MeaningsTable") -> tuple:
             - dict: HED -- maps each value to its HED string, omitting missing (None, NaN, or
               empty) annotations. Empty if the MeaningsTable has no HED column.
     """
-    values = list(meanings_table["value"].data)
-    meanings = list(meanings_table["meaning"].data) if "meaning" in meanings_table.colnames else []
-    hed_strings = list(meanings_table["HED"].data) if "HED" in meanings_table.colnames else []
+    # Each column is sliced once rather than iterated, so a file-backed column costs one read.
+    values = list(meanings_table["value"].data[:])
+    meanings = list(meanings_table["meaning"].data[:]) if "meaning" in meanings_table.colnames else []
+    hed_strings = list(meanings_table["HED"].data[:]) if "HED" in meanings_table.colnames else []
 
     levels = {}
     hed_dict = {}

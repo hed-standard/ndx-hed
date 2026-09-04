@@ -59,11 +59,11 @@ Docs build from `docs/` (`make html` on POSIX, `make.bat html` on Windows withou
 
 All are registered with `@register_class("<Name>", "ndx-hed")` and declared in `src/spec/create_extension_spec.py`.
 
-| Class | File | Constraint |
-| --- | --- | --- |
+| Class                            | File                  | Constraint                                                                                                                                                                  |
+| -------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `HedLabMetaData` (`LabMetaData`) | `hed_lab_metadata.py` | name forced to `"hed_schema"`; loads the `HedSchema` and a `DefinitionDict` in the constructor, so a constructed instance is guaranteed valid. Required before any HED use. |
-| `HedTags` (`VectorData`) | `hed_tags.py` | name must be `"HED"` (constructor raises otherwise), hence at most one per table |
-| `HedValueVector` (`VectorData`) | `hed_tags.py` | any name; carries a `hed` template that must contain exactly one `#` |
+| `HedTags` (`VectorData`)         | `hed_tags.py`         | name must be `"HED"` (constructor raises otherwise), hence at most one per table                                                                                            |
+| `HedValueVector` (`VectorData`)  | `hed_tags.py`         | any name; carries a `hed` template that must contain exactly one `#`                                                                                                        |
 
 `src/pynwb/ndx_hed/__init__.py` calls `load_namespaces()` on the installed `ndx_hed/spec/` path, falling back to the repo's top-level `spec/` when running from a git checkout — keep both paths working.
 

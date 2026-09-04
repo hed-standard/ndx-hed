@@ -26,11 +26,6 @@ class HedNWBValidator:
     using HED schema information stored in HedLabMetaData.
     """
 
-    # Sidecar error codes that indicate a structurally malformed sidecar (bad ``{column}`` braces or
-    # an otherwise invalid sidecar). These are only detected by Sidecar.validate(); when present, the
-    # assembled-table validation would emit misleading downstream errors, so it is skipped.
-    STRUCTURAL_SIDECAR_CODES = frozenset({"SIDECAR_BRACES_INVALID", "SIDECAR_INVALID"})
-
     def __init__(self, hed_metadata: HedLabMetaData):
         """
         Initialize the HedNWBValidator with HED metadata.
@@ -72,21 +67,24 @@ class HedNWBValidator:
         if error_handler is None:
             error_handler = ErrorHandler(check_for_warnings=False)
         issues = []
-        # TODO: FILE_NAME context needs to be replaced by TABLE context when available in hed-python
-        error_handler.push_error_context(ErrorContext.FILE_NAME, table.name)
-        for col in table.columns:
-            if isinstance(col, HedTags):
+        # Contexts are popped in finally blocks so that an exception raised while validating a column
+        # does not leave a stale context on a caller-provided error handler.
+        error_handler.push_error_context(ErrorContext.TABLE_NAME, table.name)
+        try:
+            for col in table.columns:
+                if isinstance(col, HedTags):
+                    validate_column = self.validate_vector
+                elif isinstance(col, HedValueVector):
+                    validate_column = self.validate_value_vector
+                else:
+                    continue
                 error_handler.push_error_context(ErrorContext.COLUMN, col.name)
-                col_issues = self.validate_vector(col, error_handler)
-                issues += col_issues
-                error_handler.pop_error_context()
-            elif isinstance(col, HedValueVector):
-                error_handler.push_error_context(ErrorContext.COLUMN, col.name)
-                col_issues = self.validate_value_vector(col, error_handler)
-                issues += col_issues
-                error_handler.pop_error_context()
-
-        error_handler.pop_error_context()
+                try:
+                    issues += validate_column(col, error_handler)
+                finally:
+                    error_handler.pop_error_context()
+        finally:
+            error_handler.pop_error_context()
         return issues
 
     def validate_vector(self, hed_tags: HedTags, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
@@ -114,15 +112,20 @@ class HedNWBValidator:
         issues = []
         validated_without_issues = set()
 
-        for index, tag in enumerate(hed_tags.data):
+        # Slice once: on a file-backed column, iterating the dataset directly is one HDF5 read per row.
+        # For an in-memory list the slice is a shallow copy of references (about 4 ms and 8 MB per
+        # million rows, the cost of validating a few rows); for a numpy array it is a view.
+        for index, tag in enumerate(hed_tags.data[:]):
             if tag is None or tag == "" or tag == "n/a" or tag in validated_without_issues:
                 continue
 
             error_handler.push_error_context(ErrorContext.ROW, index)
-            hed_obj = HedString(tag, self.hed_schema, def_dict=self.def_dict)
-            row_issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
+            try:
+                hed_obj = HedString(tag, self.hed_schema, def_dict=self.def_dict)
+                row_issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
+            finally:
+                error_handler.pop_error_context()
             issues += row_issues
-            error_handler.pop_error_context()
 
             if not row_issues:
                 validated_without_issues.add(tag)
@@ -160,7 +163,10 @@ class HedNWBValidator:
             return issues
 
         validated_without_issues = set()
-        for index, tag in enumerate(hed_values.data):
+        # Slice once: on a file-backed column, iterating the dataset directly is one HDF5 read per row.
+        # For an in-memory list the slice is a shallow copy of references (about 4 ms and 8 MB per
+        # million rows, the cost of validating a few rows); for a numpy array it is a view.
+        for index, tag in enumerate(hed_values.data[:]):
             if tag is None or tag == "" or tag == "n/a" or (isinstance(tag, float) and math.isnan(tag)):
                 continue
 
@@ -170,10 +176,12 @@ class HedNWBValidator:
                 continue
 
             error_handler.push_error_context(ErrorContext.ROW, index)
-            hed_obj = HedString(eval_tag, self.hed_schema, def_dict=self.def_dict)
-            row_issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
+            try:
+                hed_obj = HedString(eval_tag, self.hed_schema, def_dict=self.def_dict)
+                row_issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
+            finally:
+                error_handler.pop_error_context()
             issues += row_issues
-            error_handler.pop_error_context()
 
             if not row_issues:
                 validated_without_issues.add(eval_tag)
@@ -204,7 +212,9 @@ class HedNWBValidator:
         Notes:
             This function uses get_bids_tabular() to extract BIDS-formatted data from the EventsTable,
             then applies HED validation to the extracted event annotations. The validation follows
-            BIDS-HED standards for event annotation validation.
+            BIDS-HED standards for event annotation validation. If the table's sidecar-level HED (a
+            HedValueVector template or a MeaningsTable HED string) has any error, validation of the
+            table stops there and only the sidecar issues are returned (see _validate_assembled).
         """
         if events is None or not isinstance(events, EventsTable):
             raise ValueError("The provided events is not a valid EventsTable instance.")
@@ -220,18 +230,25 @@ class HedNWBValidator:
 
         The table is converted to a BIDS-format dataframe + JSON sidecar with get_bids_tabular().
         The sidecar (column metadata: value templates and categorical Levels/HED) is validated first
-        with Sidecar.validate(), then the assembled per-row annotations are validated with
-        TabularInput.validate(). Both steps are required: TabularInput.validate() does NOT re-run the
-        sidecar's brace-structure / column-reference checks (self, nested, invalid, or malformed
-        ``{column}`` references), so a malformed sidecar validated only through the assembled table
-        would be missed and surface as misleading downstream errors (e.g. a stray ``{`` reported as
-        CHARACTER_INVALID). If the sidecar itself has errors, they are returned and the assembled-table
-        step is skipped to avoid that downstream noise.
+        with Sidecar.validate(). If it has any error, validation of the table stops and the sidecar
+        issues are returned: a sidecar-level error is repeated on every row that uses the template or
+        the categorical value, and the row annotations assembled from it cannot be trusted, so the
+        assembled-table step would only add noise. Sidecar issues name the column and, for categorical
+        HED, the value (``ec_sidecarColumnName``, ``ec_sidecarKeyName``); they have no row. Warnings
+        alone do not stop validation.
+
+        Otherwise the assembled per-row annotations are validated with TabularInput.validate(). Both
+        steps are needed: TabularInput.validate() does NOT re-run the sidecar's brace-structure /
+        column-reference checks (self, nested, invalid, or malformed ``{column}`` references), so a
+        malformed sidecar validated only through the assembled table would be missed and surface as
+        misleading downstream errors (e.g. a stray ``{`` reported as CHARACTER_INVALID).
 
         Assembly combines, for each row, the row's direct HED column, its categorical HED (from
         attached MeaningsTables), and its value-template HED into a single annotation. If the assembled
         dataframe has an ``onset`` column, TabularInput performs temporal (timeline) validation;
         otherwise it performs non-temporal (per-row) validation.
+
+        Every issue carries the table name in the TABLE_NAME error context (``ec_table_name``).
 
         Parameters:
             table (DynamicTable): The table to validate.
@@ -240,6 +257,14 @@ class HedNWBValidator:
         Returns:
             List[Dict[str, Any]]: Validation issues for the table.
         """
+        error_handler.push_error_context(ErrorContext.TABLE_NAME, table.name)
+        try:
+            return self._validate_assembled_in_context(table, error_handler)
+        finally:
+            error_handler.pop_error_context()
+
+    def _validate_assembled_in_context(self, table: DynamicTable, error_handler: ErrorHandler) -> List[Dict[str, Any]]:
+        """Body of _validate_assembled, run with the TABLE_NAME context already pushed."""
         df, json_data = get_bids_tabular(table)
 
         # No sidecar metadata: validate the assembled table on its own (e.g. only a direct HED column).
@@ -253,23 +278,23 @@ class HedNWBValidator:
         sidecar = Sidecar(io.StringIO(json.dumps(json_data)), name=table.name)
         sidecar_issues = sidecar.validate(self.hed_schema, extra_def_dicts=self.def_dict, error_handler=error_handler)
         for issue in sidecar_issues:
-            if not issue.get("ec_filename"):
+            if not issue.get("ec_filename"):  # Sidecar.validate() leaves it empty
                 issue["ec_filename"] = table.name
 
-        # If the sidecar is structurally malformed (bad braces / invalid sidecar), the assembled-table
-        # step would miss it and emit misleading downstream errors, so stop and report the structure.
-        if any(issue.get("code") in self.STRUCTURAL_SIDECAR_CODES for issue in sidecar_issues):
+        # Any sidecar error (a bad value template or a bad categorical HED string) would be repeated on
+        # every row that uses it, and the row annotations assembled from it are not trustworthy, so
+        # stop here. The sidecar issues already name the column and the categorical value.
+        if check_for_any_errors(sidecar_issues):
             return sidecar_issues
 
-        # Step 2: validate the assembled table. This carries full context (ec_filename / ec_column /
-        # ec_row) and performs temporal (timeline) validation when an ``onset`` column is present. It
-        # re-reports the categorical/value HED errors for values that occur in the data, so those are
-        # taken from here (with context) rather than from the sidecar step.
+        # Step 2: validate the assembled table. This carries row context (ec_column / ec_row) and
+        # performs temporal (timeline) validation when an ``onset`` column is present. Sidecar
+        # warnings for values that occur in the data are re-reported here with that context.
         tab_input = TabularInput(file=df, sidecar=sidecar, name=table.name)
         issues = tab_input.validate(self.hed_schema, extra_def_dicts=self.def_dict, error_handler=error_handler)
 
-        # TabularInput only sees categorical values that occur in the data, so add the sidecar errors
-        # for categorical levels that never appear (otherwise they would be missed).
+        # TabularInput only sees categorical values that occur in the data, so add the sidecar
+        # warnings for categorical levels that never appear (otherwise they would be missed).
         issues += self._unused_categorical_level_issues(sidecar_issues, df, json_data)
         return issues
 
@@ -324,6 +349,11 @@ class HedNWBValidator:
         MeaningsTable is not validated on its own -- its categorical HED is validated as part of the
         table whose column it annotates -- but it is checked against the structural rule that it must
         not contain a HedValueVector column (a violation raises ValueError).
+
+        For each table, the sidecar-level HED (HedValueVector templates and MeaningsTable HED strings)
+        is validated first; if it has any error, validation of that table stops and only its sidecar
+        issues are returned, since such an error would repeat on every row that uses it. Every issue
+        carries its table's name in ``ec_table_name``.
 
         Parameters:
             nwbfile (NWBFile): The NWB file to validate

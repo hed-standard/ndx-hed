@@ -2,6 +2,8 @@
 Unit tests for HedNWBValidator class.
 """
 
+import os
+import tempfile
 import unittest
 from unittest.mock import patch
 import pandas as pd
@@ -10,7 +12,7 @@ from ndx_hed import HedTags, HedLabMetaData, HedValueVector
 from ndx_hed.utils import hed_nwb_validator
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 from ndx_hed.utils.bids2nwb import get_events_table
-from hed.errors import ErrorHandler
+from hed.errors import ErrorContext, ErrorHandler, get_printable_issue_string
 from hed.models import HedString
 
 
@@ -304,6 +306,29 @@ class TestValidateTable(unittest.TestCase):
         self.assertIsNotNone(hed_column)
         vector_issues = self.validator.validate_vector(hed_column)
         self.assertIsInstance(vector_issues, list)
+
+    def test_validate_table_issues_carry_table_name(self):
+        """Test that validate_table reports the table in the TABLE_NAME context, not FILE_NAME."""
+        issues = self.validator.validate_table(self.invalid_table)
+
+        self.assertGreater(len(issues), 0)
+        for issue in issues:
+            self.assertEqual(issue.get("ec_table_name"), "invalid_test_table")
+            self.assertNotIn("ec_filename", issue)
+            self.assertEqual(issue.get("ec_column"), "HED")
+            self.assertIn("ec_row", issue)
+        self.assertIn("Errors in table 'invalid_test_table'", get_printable_issue_string(issues))
+
+    def test_validate_table_restores_context_after_exception(self):
+        """Test that a failure inside a column leaves a caller-provided ErrorHandler's context stack as it was."""
+        error_handler = ErrorHandler(check_for_warnings=False)
+        error_handler.push_error_context(ErrorContext.FILE_NAME, "caller_context")
+
+        with patch.object(hed_nwb_validator, "HedString", side_effect=TypeError("unexpected cell type")):
+            with self.assertRaises(TypeError):
+                self.validator.validate_table(self.invalid_table, error_handler)
+
+        self.assertEqual(error_handler.error_context, [(ErrorContext.FILE_NAME, "caller_context")])
 
 
 class TestValidateEventsTable(unittest.TestCase):
@@ -1361,12 +1386,16 @@ class TestValidateFile(unittest.TestCase):
         self.nwbfile.add_acquisition(events_table)
 
         issues = self.validator.validate_file(self.nwbfile)
-        # The categorical value 'stop' occurs in the data, so the assembled-table step reports it with
-        # full context (table name and categorical column).
+        # The bad categorical HED is a sidecar-level error, so validation of the table stops after the
+        # sidecar step and the issue names the table, the categorical column, and the value; it is not
+        # repeated for the rows that use the value.
         bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
         self.assertEqual(len(bad), 1, f"expected one TAG_INVALID issue, got {len(bad)}: {issues}")
+        self.assertEqual(bad[0].get("ec_table_name"), "events")
         self.assertEqual(bad[0].get("ec_filename"), "events")
-        self.assertEqual(bad[0].get("ec_column"), "event_type")
+        self.assertEqual(bad[0].get("ec_sidecarColumnName"), "event_type")
+        self.assertEqual(bad[0].get("ec_sidecarKeyName"), "stop")
+        self.assertNotIn("ec_row", bad[0])
 
     def test_validate_file_validates_plain_table_categorical(self):
         """Categorical HED on a non-EventsTable DynamicTable is validated the same (assembled) way.
@@ -1394,8 +1423,11 @@ class TestValidateFile(unittest.TestCase):
         issues = self.validator.validate_file(self.nwbfile)
         bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
         self.assertEqual(len(bad), 1, f"expected one TAG_INVALID issue, got {len(bad)}: {issues}")
+        self.assertEqual(bad[0].get("ec_table_name"), "trials")
         self.assertEqual(bad[0].get("ec_filename"), "trials")
-        self.assertEqual(bad[0].get("ec_column"), "condition")
+        self.assertEqual(bad[0].get("ec_sidecarColumnName"), "condition")
+        self.assertEqual(bad[0].get("ec_sidecarKeyName"), "b")
+        self.assertNotIn("ec_row", bad[0])
 
     def test_validate_file_unused_categorical_level(self):
         """A bad HED on a categorical level not present in the data is still caught.
@@ -1542,6 +1574,85 @@ class TestValidateFile(unittest.TestCase):
         # Should validate HedValueVector with no issues
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
+
+    @staticmethod
+    def _categorical_table(name, n_rows, level_hed, row_hed=None):
+        """A table of n_rows with a categorical column annotated by a MeaningsTable and, optionally, a HED column.
+
+        level_hed maps each categorical value to its HED string; the values cycle through the rows.
+        """
+        from hdmf.common import MeaningsTable
+
+        values = list(level_hed)
+        columns = [
+            VectorData(name="condition", description="Condition", data=[values[i % len(values)] for i in range(n_rows)])
+        ]
+        if row_hed is not None:
+            columns.append(HedTags(data=row_hed))
+        table = DynamicTable(name=name, description="Categorical table", columns=columns)
+        meanings = MeaningsTable(target=table["condition"], description="Condition meanings")
+        for value in values:
+            meanings.add_row(value=value, meaning=f"Condition {value}")
+        meanings.add_column(name="HED", description="HED tags", col_cls=HedTags, data=[level_hed[v] for v in values])
+        table.add_meanings_table(meanings)
+        return table
+
+    def test_validate_file_stops_after_sidecar_error(self):
+        """A sidecar-level error stops validation of the table: it is reported once and no row issues follow."""
+        n_rows = 200
+        row_hed = ["Sensory-event"] * n_rows
+        row_hed[7] = "InvalidRowTag"  # would be a row-level TAG_INVALID if validation continued
+        table = self._categorical_table(
+            "trials", n_rows, level_hed={"a": "Sensory-event", "b": "InvalidTagXYZ"}, row_hed=row_hed
+        )
+        self.nwbfile.add_acquisition(table)
+
+        issues = self.validator.validate_file(self.nwbfile)
+
+        self.assertEqual(len(issues), 1, f"expected only the sidecar issue, got: {issues}")
+        self.assertEqual(issues[0].get("code"), "TAG_INVALID")
+        self.assertEqual(issues[0].get("ec_sidecarKeyName"), "b")
+        self.assertTrue(all("ec_row" not in issue for issue in issues))
+
+    def test_validate_file_sidecar_warning_does_not_stop(self):
+        """A sidecar warning alone does not stop validation; row-level errors are still reported."""
+        row_hed = ["Sensory-event", "InvalidRowTag", "Sensory-event", "Sensory-event"]
+        # 'sensory-event' is valid but produces a STYLE_WARNING (case) when warnings are checked
+        table = self._categorical_table(
+            "trials", 4, level_hed={"a": "sensory-event", "b": "Agent-action"}, row_hed=row_hed
+        )
+        self.nwbfile.add_acquisition(table)
+
+        issues = self.validator.validate_file(self.nwbfile, ErrorHandler(check_for_warnings=True))
+
+        codes = {issue.get("code") for issue in issues}
+        self.assertIn("STYLE_WARNING", codes, f"expected the sidecar warning to be reported: {issues}")
+        row_errors = [issue for issue in issues if issue.get("code") == "TAG_INVALID"]
+        self.assertEqual(len(row_errors), 1, f"expected the row-level error to be reported: {issues}")
+        self.assertIn("ec_row", row_errors[0])
+
+    def test_validate_file_issues_carry_table_name(self):
+        """Every issue from validate_file carries its table in ec_table_name, on both the sidecar and the row path."""
+        sidecar_bad = self._categorical_table("sidecar_bad", 3, level_hed={"a": "Sensory-event", "b": "InvalidTagXYZ"})
+        rows_bad = DynamicTable(
+            name="rows_bad",
+            description="Only a row-level error",
+            columns=[
+                VectorData(name="trial_id", description="Trial IDs", data=[1, 2]),
+                HedTags(data=["Sensory-event", "InvalidRowTag"]),
+            ],
+        )
+        self.nwbfile.add_acquisition(sidecar_bad)
+        self.nwbfile.add_acquisition(rows_bad)
+
+        issues = self.validator.validate_file(self.nwbfile)
+
+        by_table = {}
+        for issue in issues:
+            by_table.setdefault(issue.get("ec_table_name"), []).append(issue)
+        self.assertEqual(set(by_table), {"sidecar_bad", "rows_bad"}, f"unexpected table names: {by_table.keys()}")
+        self.assertTrue(all("ec_sidecarKeyName" in issue for issue in by_table["sidecar_bad"]))
+        self.assertTrue(all("ec_row" in issue for issue in by_table["rows_bad"]))
 
     def test_validate_file_no_hed_metadata(self):
         """Test validate_file raises error when HedLabMetaData is missing."""
@@ -1704,6 +1815,85 @@ class TestValidateRepeatedAnnotations(unittest.TestCase):
         self.assertEqual(len(issues), 0)
         # One call for the template itself, then one for each of the two distinct substituted values
         self.assertEqual(hed_string_spy.call_count, 3)
+
+
+class TestValidateFromDisk(unittest.TestCase):
+    """Test that per-column validation of a table read back from an HDF5 file matches the in-memory result."""
+
+    def setUp(self):
+        """Write a table with a HedTags column and a HedValueVector column to a temporary NWB file."""
+        from pynwb import NWBFile, NWBHDF5IO
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        self.validator = HedNWBValidator(self.hed_metadata)
+
+        # 200 rows drawn from three valid annotations and one invalid one, plus the skippable values
+        hed_data = ["Sensory-event", "Agent-action", "InvalidTagXYZ", "(Sensory-event, Visual-presentation)"] * 50
+        hed_data[0] = "n/a"
+        hed_data[1] = ""
+        age_data = [float(i) for i in range(200)]
+        age_data[5] = float("nan")  # skipped by validate_value_vector
+
+        self.table = DynamicTable(
+            name="events",
+            description="Events with HED annotations",
+            columns=[
+                VectorData(name="onset", description="Onsets", data=[float(i) for i in range(200)]),
+                HedTags(data=hed_data),
+                HedValueVector(name="age", description="Ages", data=age_data, hed="Age/#"),
+            ],
+        )
+        nwbfile = NWBFile(
+            session_description="Test session for validation from disk",
+            identifier="test_from_disk",
+            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+        )
+        nwbfile.add_lab_meta_data(self.hed_metadata)
+        nwbfile.add_acquisition(self.table)
+
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.temp_dir.name, "from_disk.nwb")
+        with NWBHDF5IO(self.path, "w") as io:
+            io.write(nwbfile)
+        self.io = NWBHDF5IO(self.path, "r")
+        self.read_table = self.io.read().acquisition["events"]
+
+    def tearDown(self):
+        self.io.close()
+        self.temp_dir.cleanup()
+
+    @staticmethod
+    def _summary(issues):
+        return [(issue["code"], issue.get("ec_column"), issue.get("ec_row")) for issue in issues]
+
+    def test_validate_table_from_disk_matches_in_memory(self):
+        """Test that the issues from a file-backed table equal those from the same table in memory."""
+        in_memory = self.validator.validate_table(self.table)
+        from_disk = self.validator.validate_table(self.read_table)
+
+        self.assertGreater(len(in_memory), 0)
+        self.assertEqual(self._summary(from_disk), self._summary(in_memory))
+        # Every invalid row is reported (50 rows hold the invalid annotation); the values column is clean
+        self.assertEqual(sum(1 for issue in from_disk if issue["code"] == "TAG_INVALID"), 50)
+        self.assertTrue(all(issue.get("ec_column") == "HED" for issue in from_disk))
+        self.assertTrue(all(issue.get("ec_table_name") == "events" for issue in from_disk))
+
+    def test_validate_vector_from_disk_reads_the_column_once(self):
+        """Test that a file-backed HedTags column is read in one slice, not one element at a time.
+
+        Only the text column is guarded: hdmf wraps a text dataset in its pure-Python StrDataset, whose
+        __getitem__ can be spied on. A numeric column is a bare h5py Dataset (Cython), which cannot be patched.
+        """
+        hed_column = self.read_table["HED"]
+        data_cls = type(hed_column.data)
+
+        with patch.object(data_cls, "__getitem__", autospec=True, side_effect=data_cls.__getitem__) as reads:
+            issues = self.validator.validate_vector(hed_column)
+
+        self.assertEqual(reads.call_count, 1)
+        self.assertEqual(sum(1 for issue in issues if issue["code"] == "TAG_INVALID"), 50)
 
 
 if __name__ == "__main__":
