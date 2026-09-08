@@ -2,5 +2,5 @@
 # These must match the minimum versions specified in pyproject.toml.
 # Used by CI for the 'minimum' matrix variant.
 pynwb==4.1.0
-hdmf==6.1.0
+hdmf==6.2.0
 hedtools==1.2.0

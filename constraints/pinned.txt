@@ -7,7 +7,7 @@
 # suite was validated against. CI should confirm this snapshot on a clean solve.
 typos==1.50.1
 coverage==7.16.0
-hdmf==6.1.0
+hdmf==6.2.0
 hdmf-docutils==0.4.10
 hedtools==1.2.0
 linkify-it-py==2.1.0
