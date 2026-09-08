@@ -10,7 +10,7 @@ coverage==7.16.0
 hdmf==6.2.0
 hdmf-docutils==0.4.10
 hedtools==1.2.0
-linkify-it-py==2.1.0
+linkify-it-py==2.2.0
 myst-parser==5.1.0
 pre-commit==4.6.2
 pynwb==4.1.0
