@@ -54,6 +54,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-ver }}
 
+      - name: Allow long paths in git (Windows)
+        if: runner.os == 'Windows'
+        # pip installs hedtools from a git URL and checks out hed-python's submodules,
+        # whose nested paths can exceed the Windows 260-character limit without this.
+        run: git config --global core.longpaths true
+
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
