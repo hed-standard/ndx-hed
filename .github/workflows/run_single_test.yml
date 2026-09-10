@@ -83,6 +83,7 @@ jobs:
         run: |
           python -m venv test-wheel-env
           source test-wheel-env/bin/activate
+          python -m pip install --upgrade pip
           python -m pip install dist/*-none-any.whl
           python -c "import ndx_hed"
 
@@ -91,6 +92,7 @@ jobs:
         run: |
           python -m venv test-wheel-env
           test-wheel-env/Scripts/activate.bat
+          python -m pip install --upgrade pip
           python -m pip install dist/*-none-any.whl
           python -c "import ndx_hed"
 
@@ -168,5 +170,6 @@ jobs:
         run: |
           python -m venv test-wheel-env
           source test-wheel-env/bin/activate
+          python -m pip install --upgrade pip
           python -m pip install dist/*-none-any.whl
           python -c "import ndx_hed"

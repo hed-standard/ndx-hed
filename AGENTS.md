@@ -67,6 +67,7 @@ So three HED shapes coexist: per-row (`HedTags`), value template (`HedValueVecto
 - `validate_table`, `validate_vector`, and `validate_value_vector` are per-column helpers that neither assemble rows nor validate temporally.
 - Validation reuses `get_bids_tabular`, so a change to that converter changes validation behavior. `get_bids_tabular` emits nothing for the `HED` column (`HED` is a reserved sidecar key) and reads categorical levels through `DynamicTable.get_meanings_for_column`.
 - `extract_meanings` keeps categorical sidecar entries raw because a PyNWB 4 `MeaningsTable` needs the target `VectorData`, which does not exist until `get_events_table` builds it.
+- `hedtools` currently installs from the hed-python `main` branch, not PyPI (`pyproject.toml` dependencies, with `allow-direct-references`), because hed-python is gaining the support ndx-hed needs. Installing needs git on PATH. The constraints files carry no hedtools pin for the same reason. Before a release this reverts to a PyPI version; do not add a hedtools pin anywhere until it does.
 - Tests load real HED schemas from the network on first use.
 - `_version.py` is written by hatch-vcs and gitignored; never edit or commit it.
 

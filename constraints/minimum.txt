@@ -1,6 +1,9 @@
 # Minimum versions of core package dependencies for installation.
 # These must match the minimum versions specified in pyproject.toml.
 # Used by CI for the 'minimum' matrix variant.
+#
+# hedtools is deliberately absent: pyproject.toml installs it from the hed-python main
+# branch for now, and a version constraint here would conflict with that direct reference.
+# Restore a hedtools pin when pyproject.toml goes back to a PyPI version.
 pynwb==4.1.0
 hdmf==6.2.0
-hedtools==1.2.0

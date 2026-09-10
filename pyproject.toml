@@ -36,7 +36,11 @@ keywords = [
 dependencies = [
     "pynwb>=4.1.0",
     "hdmf>=6.1.0",
-    "hedtools>=1.2.0",
+    # hedtools is installed from the hed-python main branch while hed-python gains
+    # the support ndx-hed needs. Before a release this reverts to a PyPI pin
+    # (hedtools>=<version>), and constraints/*.txt get their hedtools lines back.
+    # Installing needs git on PATH.
+    "hedtools @ git+https://github.com/hed-standard/hed-python.git@main",
 ]
 
 [project.optional-dependencies]
@@ -68,6 +72,11 @@ docs = [
     "myst-parser[linkify]>=3.0.1",
     "hdmf-docutils>=0.4.7",
 ]
+
+# Needed while a dependency is a direct git reference (see dependencies above);
+# remove together with that reference.
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.version]
 source = "vcs"
