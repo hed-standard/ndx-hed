@@ -40,12 +40,12 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[docs]"
-        
+
     - name: Verify sphinx extensions
       run: |
         python -c "import sphinx_design; print(f'sphinx_design version: {sphinx_design.__version__}')"
         python -c "import sphinx_book_theme; print(f'sphinx_book_theme version: {sphinx_book_theme.__version__}')"
-        python -c "import sphinx; print(f'sphinx version: {sphinx.__version__}')" 
+        python -c "import sphinx; print(f'sphinx version: {sphinx.__version__}')"
 
     - name: Build documentation
       run: |
@@ -85,4 +85,4 @@ jobs:
       - name: Deploy to GitHub Pages
         # This is the official action for deploying the artifact to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1
