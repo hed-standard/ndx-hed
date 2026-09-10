@@ -1,8 +1,15 @@
 # output NWB files
 *.nwb
 
-# Local status files
+# Working notes, plans, prompts, and decision records. Deliberately not
+# committed: the repo is public and .status/ holds half-formed thinking.
 .status/
+
+# Personal per-repo Claude Code notes (imports .status/local-environment.md)
+CLAUDE.local.md
+
+# Personal per-repo settings (absolute paths, claudeMdExcludes)
+.claude/settings.local.json
 
 # generated docs
 docs/source/_format_auto_docs

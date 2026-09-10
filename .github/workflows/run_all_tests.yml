@@ -73,7 +73,7 @@ jobs:
         run: |
           # Installs the test extras with all deps pinned to a known-good snapshot.
           # Provides a stable, reproducible baseline for the test suite.
-          # See constraints/pinned.txt — update when doing a planned dependency bump.
+          # See constraints/pinned.txt - update when doing a planned dependency bump.
           python -m pip install -e ".[test]" -c constraints/pinned.txt
 
       - name: Install run requirements (upgraded)
@@ -164,7 +164,7 @@ jobs:
         run: |
           # Installs the test extras with all deps pinned to a known-good snapshot.
           # Provides a stable, reproducible baseline for the test suite.
-          # See constraints/pinned.txt — update when doing a planned dependency bump.
+          # See constraints/pinned.txt - update when doing a planned dependency bump.
           python -m pip install -e ".[test]" -c constraints/pinned.txt
 
       - name: Install run requirements (upgraded)

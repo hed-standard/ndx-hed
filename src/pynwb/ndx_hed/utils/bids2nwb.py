@@ -1,14 +1,16 @@
-import json
 import io
+import json
 import math
-import pandas as pd
-import numpy as np
 from typing import Union
+
+import numpy as np
+import pandas as pd
+from hdmf.common import MeaningsTable
 from hed.models import Sidecar
 from hed.schema import HedSchema, HedSchemaGroup
 from pynwb.core import DynamicTable, VectorData
-from pynwb.event import EventsTable, TimestampVectorData, DurationVectorData
-from hdmf.common import MeaningsTable
+from pynwb.event import DurationVectorData, EventsTable, TimestampVectorData
+
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 
 # Sidecar key under which the HedLabMetaData definitions are exported. In BIDS, definitions live in
@@ -16,7 +18,7 @@ from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 DEFINITIONS_KEY = "definitions"
 
 
-def extract_definitions(sidecar_data: dict, hed_schema: Union[HedSchema, HedSchemaGroup]) -> tuple:
+def extract_definitions(sidecar_data: dict, hed_schema: HedSchema | HedSchemaGroup) -> tuple:
     """
     Extracts definitions from a HED sidecar JSON data using the provided HED schema.
 

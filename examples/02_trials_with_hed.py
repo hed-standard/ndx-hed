@@ -7,9 +7,11 @@ This example demonstrates how to add HED annotations to the trials table in NWB.
 
 """
 
-from pynwb import NWBFile
-from ndx_hed import HedTags, HedLabMetaData
 from datetime import datetime, timezone
+
+from pynwb import NWBFile
+
+from ndx_hed import HedLabMetaData, HedTags
 
 
 def main():
@@ -48,7 +50,7 @@ def main():
     # Trial 4: Rest period
     nwbfile.add_trial(start_time=6.0, stop_time=8.0, HED="Experimental-trial, Rest")
 
-    print("\n✓ Successfully created trials table with HED annotations!")
+    print("\n[OK] Successfully created trials table with HED annotations!")
     print(f"  - Number of trials: {len(nwbfile.trials)}")
     print(f"  - Trial columns: {list(nwbfile.trials.colnames)}")
 

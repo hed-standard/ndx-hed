@@ -1,22 +1,19 @@
 {
-    // Preferred new setting for selecting interpreter in newer VS Code
-    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
-    // Legacy setting kept for compatibility with older extensions
-    "python.pythonPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
-    // Make the language server see the `src` package layout (src/pynwb/...)
-    "python.analysis.extraPaths": [
-        "${workspaceFolder}\\src"
-    ],
-    // Improve analysis behavior
-    "python.analysis.useLibraryCodeForTypes": true,
-    "python.analysis.packageIndexDepth": 2,
-    
-    // Test discovery settings - pytest only
-    "python.testing.pytestEnabled": true,
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestArgs": [
-        "src"
-    ],
-    "python.testing.cwd": "${workspaceFolder}",
-    "python.testing.autoTestDiscoverOnSaveEnabled": true
+  // Committed and shared: portable settings only. Interpreter paths belong in
+  // your VS Code user settings, not here.
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // The package lives under src/pynwb/, so the language server needs that root.
+  "python.analysis.extraPaths": ["src/pynwb"],
+
+  // Test framework: unittest (see AGENTS.md). The suite is pynwb.testing.TestCase
+  // classes; pytest is the command-line runner, but discovery here uses unittest.
+  "python.testing.unittestEnabled": true,
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestArgs": ["-v", "-s", "src/pynwb/tests", "-p", "test_*.py"],
+  "python.testing.cwd": "${workspaceFolder}",
+  "python.testing.autoTestDiscoverOnSaveEnabled": true,
+  "python.terminal.activateEnvironment": false
 }

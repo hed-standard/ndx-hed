@@ -1,5 +1,5 @@
 from hdmf.common import VectorData
-from hdmf.utils import docval, getargs, get_docval
+from hdmf.utils import docval, get_docval, getargs
 from pynwb import register_class
 
 

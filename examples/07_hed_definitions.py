@@ -10,13 +10,15 @@ This example demonstrates how to use HED definitions with ndx-hed:
 
 """
 
+from datetime import datetime, timezone
+
 import pandas as pd
 from hed.models.df_util import expand_defs
 from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
+
 from ndx_hed import HedLabMetaData, HedTags
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-from datetime import datetime, timezone
 
 
 def create_file_with_definitions():
@@ -126,11 +128,11 @@ def validate_definitions(hed_metadata, nwbfile):
     if issues:
         print("   - Issues found:")
         for issue in issues[:3]:  # Show first 3 issues
-            print(f"     • {issue['message']}")
+            print(f"     - {issue['message']}")
         if len(issues) > 3:
-            print(f"     • ... and {len(issues) - 3} more issues")
+            print(f"     - ... and {len(issues) - 3} more issues")
     else:
-        print("   ✓ All HED annotations are valid!")
+        print("   [OK] All HED annotations are valid!")
 
     # Show definition validation specifically
     def_dict = hed_metadata.get_definition_dict()
@@ -162,7 +164,7 @@ def demonstrate_definition_expansion(hed_metadata):
     print("   Definition expansions:")
     for i, original_annotation in enumerate(sample_annotations):
         expanded_annotation = df.iloc[i]["HED"]  # Get the expanded value from the DataFrame
-        print(f"     '{original_annotation}' → '{expanded_annotation}'")
+        print(f"     '{original_annotation}' -> '{expanded_annotation}'")
 
 
 def main():
@@ -179,7 +181,7 @@ def main():
     # Show definition expansion
     demonstrate_definition_expansion(hed_metadata)
 
-    print("\n✓ Successfully demonstrated HED definitions!")
+    print("\n[OK] Successfully demonstrated HED definitions!")
     print(f"  - Definitions created: {len(hed_metadata.get_definition_dict().defs)}")
     print(f"  - Trials with definitions: {len(trials_data)}")
     print(f"  - Events with definitions: {len(events_table)}")
@@ -190,7 +192,7 @@ def main():
     for def_name in hed_metadata.get_definition_dict().defs.keys():
         def_entry = hed_metadata.get_definition_dict().defs[def_name]
         takes_value = " (takes value)" if def_entry.takes_value else ""
-        print(f"    • {def_name}{takes_value}")
+        print(f"    - {def_name}{takes_value}")
 
     return nwbfile
 

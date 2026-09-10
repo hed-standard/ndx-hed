@@ -8,14 +8,16 @@ to NWB EventsTable format using the ndx-hed utilities.
 
 """
 
-import pandas as pd
 import json
-import tempfile
 import os
+import tempfile
+from datetime import datetime, timezone
+
+import pandas as pd
 from pynwb import NWBFile
+
 from ndx_hed import HedLabMetaData
 from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table
-from datetime import datetime, timezone
 
 
 def create_sample_bids_data():
@@ -87,7 +89,7 @@ def demonstrate_bids_conversion():
         meanings=meanings,
     )
 
-    print("\n✓ Successfully converted to EventsTable:")
+    print("\n[OK] Successfully converted to EventsTable:")
     print(f"  - Number of events: {len(events_table)}")
     print(f"  - Columns: {events_table.colnames}")
 
@@ -100,13 +102,14 @@ def save_sample_bids_files():
 
     events_df, events_sidecar = create_sample_bids_data()
 
-    # Create temporary files
-    with tempfile.NamedTemporaryFile(mode="w", suffix="_events.tsv", delete=False) as events_file:
-        events_df.to_csv(events_file.name, sep="\t", index=False)
+    # Create temporary files. Write LF explicitly: on Windows, text mode and the
+    # pandas default line terminator would otherwise produce CRLF.
+    with tempfile.NamedTemporaryFile(mode="w", suffix="_events.tsv", delete=False, newline="\n") as events_file:
+        events_df.to_csv(events_file.name, sep="\t", index=False, lineterminator="\n")
         events_filename = events_file.name
 
     sidecar_filename = events_filename.replace("_events.tsv", "_events.json")
-    with open(sidecar_filename, "w") as sidecar_file:
+    with open(sidecar_filename, "w", newline="\n") as sidecar_file:
         json.dump(events_sidecar, sidecar_file, indent=2)
 
     print(f"  - Events file: {events_filename}")
@@ -125,7 +128,7 @@ def demonstrate_file_conversion():
     try:
         # Load BIDS events data from files
         events_df = pd.read_csv(events_filename, sep="\t")
-        with open(sidecar_filename, "r") as f:
+        with open(sidecar_filename) as f:
             events_sidecar = json.load(f)
 
         print("Loaded BIDS data from files")
@@ -136,7 +139,7 @@ def demonstrate_file_conversion():
             name="file_based_events", description="Events loaded from BIDS files", df=events_df, meanings=meanings
         )
 
-        print(f"✓ File-based conversion successful: {len(events_table)} events")
+        print(f"[OK] File-based conversion successful: {len(events_table)} events")
 
         return events_table
 
@@ -168,7 +171,7 @@ def main():
     nwbfile.add_acquisition(events_table1)
     nwbfile.add_acquisition(events_table2)
 
-    print("\n✓ Successfully created NWB file with BIDS-converted events!")
+    print("\n[OK] Successfully created NWB file with BIDS-converted events!")
     print(f"  - Memory-based conversion: {len(events_table1)} events")
     print(f"  - File-based conversion: {len(events_table2)} events")
 

@@ -6,14 +6,16 @@ import os
 import tempfile
 import unittest
 from unittest.mock import patch
+
 import pandas as pd
-from pynwb.core import DynamicTable, VectorData
-from ndx_hed import HedTags, HedLabMetaData, HedValueVector
-from ndx_hed.utils import hed_nwb_validator
-from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-from ndx_hed.utils.bids2nwb import get_events_table
 from hed.errors import ErrorContext, ErrorHandler, get_printable_issue_string
 from hed.models import HedString
+from pynwb.core import DynamicTable, VectorData
+
+from ndx_hed import HedLabMetaData, HedTags, HedValueVector
+from ndx_hed.utils import hed_nwb_validator
+from ndx_hed.utils.bids2nwb import get_events_table
+from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 
 
 class TestHedNWBValidatorInit(unittest.TestCase):
@@ -1241,9 +1243,10 @@ class TestValidateFile(unittest.TestCase):
 
     def setUp(self):
         """Set up test data."""
-        from pynwb import NWBFile
         from datetime import datetime
         from zoneinfo import ZoneInfo
+
+        from pynwb import NWBFile
 
         # Create HED lab metadata with definitions
         self.test_definitions = (
@@ -1656,10 +1659,11 @@ class TestValidateFile(unittest.TestCase):
 
     def test_validate_file_no_hed_metadata(self):
         """Test validate_file raises error when HedLabMetaData is missing."""
-        from pynwb import NWBFile
         from datetime import datetime
         from zoneinfo import ZoneInfo
+
         from hed.errors import HedFileError
+        from pynwb import NWBFile
 
         # Create NWB file without HED metadata
         nwbfile_no_hed = NWBFile(
@@ -1674,10 +1678,11 @@ class TestValidateFile(unittest.TestCase):
 
     def test_validate_file_schema_version_mismatch(self):
         """Test validate_file raises error when schema versions don't match."""
-        from pynwb import NWBFile
         from datetime import datetime
         from zoneinfo import ZoneInfo
+
         from hed.errors import HedFileError
+        from pynwb import NWBFile
 
         # Create NWB file with different schema version
         nwbfile_different = NWBFile(
@@ -1822,9 +1827,10 @@ class TestValidateFromDisk(unittest.TestCase):
 
     def setUp(self):
         """Write a table with a HedTags column and a HedValueVector column to a temporary NWB file."""
-        from pynwb import NWBFile, NWBHDF5IO
         from datetime import datetime
         from zoneinfo import ZoneInfo
+
+        from pynwb import NWBHDF5IO, NWBFile
 
         self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
         self.validator = HedNWBValidator(self.hed_metadata)

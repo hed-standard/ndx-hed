@@ -2,29 +2,31 @@
 Unit tests for bids2nwb utility functions.
 """
 
-import unittest
 import io
-import os
 import json
+import os
+import unittest
 from unittest import mock
+
 import numpy as np
 import pandas as pd
-from hed.schema import load_schema_version
-from hed.models import DefinitionDict, Sidecar, TabularInput
-from pynwb.event import EventsTable, TimestampVectorData, DurationVectorData
 from hdmf.common import MeaningsTable
-from ndx_hed import HedLabMetaData, HedTags, HedValueVector
+from hed.models import DefinitionDict, Sidecar, TabularInput
+from hed.schema import load_schema_version
 from pynwb.core import DynamicTable, VectorData
+from pynwb.event import DurationVectorData, EventsTable, TimestampVectorData
+
+from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils import bids2nwb
 from ndx_hed.utils.bids2nwb import (
     DEFINITIONS_KEY,
+    extract_definitions,
     extract_meanings,
+    get_bids_tabular,
     get_categorical_meanings,
     get_events_table,
-    get_bids_tabular,
     get_json_hed_dict,
     get_levels_and_hed,
-    extract_definitions,
 )
 
 
@@ -86,7 +88,7 @@ class TestExtractMeanings(unittest.TestCase):
             self.skipTest("Real sidecar data file not found")
 
         # Load the real sidecar data
-        with open(self.json_path, "r") as f:
+        with open(self.json_path) as f:
             real_sidecar_data = json.load(f)
 
         result = extract_meanings(real_sidecar_data)
@@ -620,7 +622,7 @@ class TestGetEventsTable(unittest.TestCase):
 
         # Load real data
         df = pd.read_csv(tsv_path, sep="\t")
-        with open(json_path, "r") as f:
+        with open(json_path) as f:
             sidecar_data = json.load(f)
 
         meanings = extract_meanings(sidecar_data)
@@ -976,7 +978,7 @@ class TestGetJsonHedDict(unittest.TestCase):
             self.skipTest("Real test data files not found")
 
         df = pd.read_csv(tsv_path, sep="\t")
-        with open(json_path, "r") as f:
+        with open(json_path) as f:
             sidecar_data = json.load(f)
 
         events_table = get_events_table("real_events", "Real event data", df, extract_meanings(sidecar_data))

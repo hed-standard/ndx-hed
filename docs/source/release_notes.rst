@@ -78,7 +78,7 @@ Validation System
 BIDS Integration
 ~~~~~~~~~~~~~~~~
 
-* **Bidirectional BIDS ↔ NWB conversion utilities** in ``utils/bids2nwb.py``:
+* **Bidirectional BIDS-NWB conversion utilities** in ``utils/bids2nwb.py``:
   
   * ``extract_meanings()``: Converts BIDS JSON sidecars to meanings dictionary
   * ``get_categorical_meanings()``: Creates MeaningsTable from BIDS categorical columns
@@ -103,7 +103,7 @@ Seven comprehensive runnable examples demonstrating all features:
 * ``01_basic_hed_classes.py``: Introduction to HedLabMetaData, HedTags, and HedValueVector
 * ``02_trials_with_hed.py``: Adding HED annotations to NWB trials table
 * ``03_events_table_integration.py``: Three patterns for EventsTable integration
-* ``04_bids_conversion.py``: Bidirectional BIDS ↔ NWB conversion workflows
+* ``04_bids_conversion.py``: Bidirectional BIDS-NWB conversion workflows
 * ``05_hed_validation.py``: Comprehensive validation examples
 * ``06_complete_workflow.py``: End-to-end workflow with file I/O
 * ``07_hed_definitions.py``: Custom HED definitions and expansion

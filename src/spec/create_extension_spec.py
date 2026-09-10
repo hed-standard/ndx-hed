@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 import os.path
 
-from pynwb.spec import NWBNamespaceBuilder, export_spec, NWBDatasetSpec, NWBAttributeSpec, NWBGroupSpec
+from pynwb.spec import NWBAttributeSpec, NWBDatasetSpec, NWBGroupSpec, NWBNamespaceBuilder, export_spec
 
 
 def main():
@@ -78,6 +77,14 @@ def main():
     # export the spec to yaml files in the spec folder
     output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "spec"))
     export_spec(ns_builder, new_data_types, output_dir)
+    # hdmf writes the YAML in text mode, which on Windows produces CRLF; the
+    # repository is LF only, so normalize the generated files.
+    for filename in ("ndx-hed.namespace.yaml", "ndx-hed.extensions.yaml"):
+        path = os.path.join(output_dir, filename)
+        with open(path, "rb") as f:
+            content = f.read()
+        with open(path, "wb") as f:
+            f.write(content.replace(b"\r\n", b"\n"))
     print("Spec files generated. Please make sure to rerun `pip install .` to load the changes.")
 
 
