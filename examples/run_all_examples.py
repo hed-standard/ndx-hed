@@ -8,8 +8,8 @@ Use this to test the examples or as a demonstration of all ndx-hed features.
 
 """
 
-import sys
 import importlib.util
+import sys
 import traceback
 
 
@@ -26,11 +26,11 @@ def run_example(example_name, description):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        print(f"\n✓ {example_name} completed successfully!")
+        print(f"\n[OK] {example_name} completed successfully!")
         return True
 
     except Exception as e:
-        print(f"\n✗ {example_name} failed with error:")
+        print(f"\n[FAIL] {example_name} failed with error:")
         print(f"Error: {str(e)}")
         print("\nTraceback:")
         traceback.print_exc()
@@ -72,14 +72,14 @@ def main():
 
     print("\nDetailed results:")
     for example_name, success in results:
-        status = "✓ PASS" if success else "✗ FAIL"
+        status = "[OK] PASS" if success else "[FAIL] FAIL"
         print(f"  {status} {example_name}")
 
     if successful == total:
-        print("\n🎉 All examples completed successfully!")
+        print("\nAll examples completed successfully!")
         return 0
     else:
-        print("\n⚠️  Some examples failed. Check the output above for details.")
+        print("\nWarning: Some examples failed. Check the output above for details.")
         return 1
 
 

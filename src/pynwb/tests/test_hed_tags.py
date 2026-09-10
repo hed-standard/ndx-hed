@@ -1,12 +1,14 @@
 """Unit and integration tests for ndx-hed."""
 
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
 from dateutil.tz import tzlocal, tzutc
-from pynwb.core import DynamicTable, VectorData
 from pynwb import NWBHDF5IO, NWBFile
-from pynwb.testing.mock.file import mock_NWBFile
+from pynwb.core import DynamicTable, VectorData
 from pynwb.testing import TestCase, remove_test_file
+from pynwb.testing.mock.file import mock_NWBFile
+
 from ndx_hed.hed_tags import HedTags, HedValueVector
 
 

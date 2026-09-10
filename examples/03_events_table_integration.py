@@ -11,11 +11,13 @@ the PyNWB core EventsTable (NWBEP001, PyNWB >= 4.0.0):
 
 """
 
-from pynwb import NWBFile
-from pynwb.event import EventsTable, DurationVectorData
-from hdmf.common import MeaningsTable
-from ndx_hed import HedTags, HedValueVector, HedLabMetaData
 from datetime import datetime, timezone
+
+from hdmf.common import MeaningsTable
+from pynwb import NWBFile
+from pynwb.event import DurationVectorData, EventsTable
+
+from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 
 
 def create_direct_hed_events():
@@ -179,7 +181,7 @@ def main():
     nwbfile.add_events_table(value_vector_events)
     nwbfile.add_events_table(categorical_events)
 
-    print("\n✓ Successfully created NWB file with EventsTable HED integration!")
+    print("\n[OK] Successfully created NWB file with EventsTable HED integration!")
     print(f"  - Direct HED events: {len(direct_events)} events")
     print(f"  - HedValueVector events: {len(value_vector_events)} events")
     print(f"  - Categorical events: {len(categorical_events)} events")

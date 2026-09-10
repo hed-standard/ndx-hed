@@ -1,0 +1,9 @@
+# mdformat settings. They live here because mdformat reads only this file -
+# a [tool.mdformat] section in pyproject.toml is silently ignored.
+#
+#   python -m mdformat --check README.md CHANGELOG.md AGENTS.md docs/source/hed_validation.md examples/README.md
+#   python -m mdformat         <same files>      to fix
+
+wrap = "no"
+number = true
+end_of_line = "lf"

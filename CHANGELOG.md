@@ -8,7 +8,7 @@ Migration to PyNWB 4.0.0. NWBEP001 (`EventsTable`, `MeaningsTable`, `TimestampVe
 
 - **Dependencies**: now requires `pynwb>=4.0.0` and `hdmf>=6.1.0`; the `ndx-events` dependency has been removed. `EventsTable`, `TimestampVectorData`, and `DurationVectorData` are now imported from `pynwb.event`; `MeaningsTable` from `hdmf.common`. Use the standard `pynwb.NWBFile` (the `NdxEventsNWBFile` type no longer exists).
 - **No `CategoricalVectorData`** (the categorical column type formerly provided by the `ndx-events` extension): PyNWB 4.0.0 did not introduce an equivalent. Any `DynamicTable` column (a plain `VectorData`) can now be annotated by a `MeaningsTable`.
-- **Reversed column ↔ meanings relationship**: a `MeaningsTable` is now bound to the column it annotates via a required `target` argument (`MeaningsTable(target=column, ...)`), and its name is auto-derived as `"{column_name}_meanings"`. Meanings are attached to a table with `table.add_meanings_table(...)` and retrieved with `table.get_meanings_for_column(col_name)`. A `MeaningsTable` can no longer be constructed standalone.
+- **Reversed column-meanings relationship**: a `MeaningsTable` is now bound to the column it annotates via a required `target` argument (`MeaningsTable(target=column, ...)`), and its name is auto-derived as `"{column_name}_meanings"`. Meanings are attached to a table with `table.add_meanings_table(...)` and retrieved with `table.get_meanings_for_column(col_name)`. A `MeaningsTable` can no longer be constructed standalone.
 - **HED column rules clarified/enforced**: a `HedTags` column must be named `"HED"`, and therefore there is at most one `HedTags` column per `DynamicTable`. A `HedTags` column inside a `MeaningsTable` provides categorical (per-value) HED; in any other `DynamicTable` it provides per-row HED. A `HedValueVector` (a value template, which never had a fixed name) must not appear in a `MeaningsTable`. The `HedValueVector` schema doc was corrected (it previously and incorrectly stated "Always has the name HED").
 
 ### Changes
@@ -61,7 +61,7 @@ Major rewrite and expansion of the ndx-hed extension with three core classes and
 
 #### BIDS integration
 
-- **Bidirectional BIDS ↔ NWB conversion utilities** in `utils/bids2nwb.py`:
+- **Bidirectional BIDS-NWB conversion utilities** in `utils/bids2nwb.py`:
   - `extract_meanings()`: Converts BIDS JSON sidecars to meanings dictionary
   - `get_categorical_meanings()`: Creates MeaningsTable from BIDS categorical columns
   - `get_events_table()`: Converts BIDS events.tsv + sidecar to NWB EventsTable
@@ -83,7 +83,7 @@ Seven comprehensive runnable examples demonstrating all features:
 - `01_basic_hed_classes.py`: Introduction to HedLabMetaData, HedTags, and HedValueVector
 - `02_trials_with_hed.py`: Adding HED annotations to NWB trials table
 - `03_events_table_integration.py`: Three patterns for EventsTable integration
-- `04_bids_conversion.py`: Bidirectional BIDS ↔ NWB conversion workflows
+- `04_bids_conversion.py`: Bidirectional BIDS-NWB conversion workflows
 - `05_hed_validation.py`: Comprehensive validation examples
 - `06_complete_workflow.py`: End-to-end workflow with file I/O
 - `07_hed_definitions.py`: Custom HED definitions and expansion

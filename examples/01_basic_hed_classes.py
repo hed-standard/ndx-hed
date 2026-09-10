@@ -10,10 +10,12 @@ This example demonstrates the three main classes provided by the ndx-hed extensi
 
 """
 
+from datetime import datetime, timezone
+
 from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
+
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
-from datetime import datetime, timezone
 
 
 def main():
@@ -80,7 +82,7 @@ def main():
     nwbfile.add_acquisition(stim_table1)
     nwbfile.add_acquisition(stim_table2)
 
-    print("\n✓ Successfully created NWB file with HED annotations!")
+    print("\n[OK] Successfully created NWB file with HED annotations!")
     print(f"  - Stimulus table 1: {len(stim_table1)} rows")
     print(f"  - Stimulus table 2: {len(stim_table2)} rows")
     print(f"  - HED schema version: {hed_metadata.hed_schema_version}")

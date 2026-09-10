@@ -5,14 +5,16 @@ HedValidator class for validating HED tags in NWB DynamicTable objects.
 import io
 import json
 import math
-from typing import List, Dict, Any, Optional
+from typing import Any
+
+from hdmf.common import MeaningsTable
+from hed.errors import ErrorContext, ErrorHandler, HedExceptions, HedFileError
+from hed.errors.error_reporter import check_for_any_errors
+from hed.models import HedString, Sidecar, TabularInput
 from pynwb import NWBFile
 from pynwb.core import DynamicTable
 from pynwb.event import EventsTable
-from hdmf.common import MeaningsTable
-from hed.errors import ErrorHandler, ErrorContext, HedExceptions, HedFileError
-from hed.errors.error_reporter import check_for_any_errors
-from hed.models import HedString, TabularInput, Sidecar
+
 from ..hed_lab_metadata import HedLabMetaData
 from ..hed_tags import HedTags, HedValueVector
 from .bids2nwb import get_bids_tabular
@@ -50,7 +52,7 @@ class HedNWBValidator:
         self.hed_schema = hed_metadata.get_hed_schema()
         self.def_dict = hed_metadata.get_definition_dict()
 
-    def validate_table(self, table: DynamicTable, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
+    def validate_table(self, table: DynamicTable, error_handler: ErrorHandler | None = None) -> list[dict[str, Any]]:
         """
         Validates all HedTags columns in a DynamicTable using the provided HED schema metadata.
 
@@ -60,7 +62,7 @@ class HedNWBValidator:
                                                    If None, a new instance will be created.
 
         Returns:
-            List[Dict[str, Any]]: A consolidated list of validation issues from all HedTags columns
+            list[dict[str, Any]]: A consolidated list of validation issues from all HedTags columns
         """
         if table is None or not isinstance(table, DynamicTable):
             raise ValueError("The provided table is not a valid DynamicTable instance.")
@@ -87,7 +89,7 @@ class HedNWBValidator:
             error_handler.pop_error_context()
         return issues
 
-    def validate_vector(self, hed_tags: HedTags, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
+    def validate_vector(self, hed_tags: HedTags, error_handler: ErrorHandler | None = None) -> list[dict[str, Any]]:
         """
         Validates a HedTags column using the provided HED schema metadata.
 
@@ -97,7 +99,7 @@ class HedNWBValidator:
                                                    If None, a new instance will be created.
 
         Returns:
-            List[Dict[str, Any]]: A list of validation issues found in the HedTags column
+            list[dict[str, Any]]: A list of validation issues found in the HedTags column
 
         Notes:
             An annotation that has already been validated in this column and found to have no issues
@@ -133,8 +135,8 @@ class HedNWBValidator:
         return issues
 
     def validate_value_vector(
-        self, hed_values: HedValueVector, error_handler: Optional[ErrorHandler] = None
-    ) -> List[Dict[str, Any]]:
+        self, hed_values: HedValueVector, error_handler: ErrorHandler | None = None
+    ) -> list[dict[str, Any]]:
         """
         Validates a HedValueVector column using the provided HED schema metadata.
 
@@ -144,7 +146,7 @@ class HedNWBValidator:
                                                    If None, a new instance will be created.
 
         Returns:
-            List[Dict[str, Any]]: A list of validation issues found in the HedValueVector column
+            list[dict[str, Any]]: A list of validation issues found in the HedValueVector column
 
         Notes:
             As in validate_vector, a substituted annotation that has already been validated in this
@@ -188,9 +190,7 @@ class HedNWBValidator:
 
         return issues
 
-    def validate_events(
-        self, events: EventsTable, error_handler: Optional[ErrorHandler] = None
-    ) -> List[Dict[str, Any]]:
+    def validate_events(self, events: EventsTable, error_handler: ErrorHandler | None = None) -> list[dict[str, Any]]:
         """
         Validates HED tags in an EventsTable by converting it to BIDS format and validating the events.
 
@@ -204,7 +204,7 @@ class HedNWBValidator:
                                                    If None, a new instance will be created.
 
         Returns:
-            List[Dict[str, Any]]: A list of validation issues found in the EventsTable HED tags
+            list[dict[str, Any]]: A list of validation issues found in the EventsTable HED tags
 
         Raises:
             ValueError: If the EventsTable is invalid or cannot be converted to BIDS format
@@ -224,7 +224,7 @@ class HedNWBValidator:
 
         return self._validate_assembled(events, error_handler)
 
-    def _validate_assembled(self, table: DynamicTable, error_handler: ErrorHandler) -> List[Dict[str, Any]]:
+    def _validate_assembled(self, table: DynamicTable, error_handler: ErrorHandler) -> list[dict[str, Any]]:
         """
         Assembled (BIDS-style) validation of a DynamicTable.
 
@@ -255,7 +255,7 @@ class HedNWBValidator:
             error_handler (ErrorHandler): The error handler collecting issues.
 
         Returns:
-            List[Dict[str, Any]]: Validation issues for the table.
+            list[dict[str, Any]]: Validation issues for the table.
         """
         error_handler.push_error_context(ErrorContext.TABLE_NAME, table.name)
         try:
@@ -263,7 +263,7 @@ class HedNWBValidator:
         finally:
             error_handler.pop_error_context()
 
-    def _validate_assembled_in_context(self, table: DynamicTable, error_handler: ErrorHandler) -> List[Dict[str, Any]]:
+    def _validate_assembled_in_context(self, table: DynamicTable, error_handler: ErrorHandler) -> list[dict[str, Any]]:
         """Body of _validate_assembled, run with the TABLE_NAME context already pushed."""
         df, json_data = get_bids_tabular(table)
 
@@ -337,7 +337,7 @@ class HedNWBValidator:
                     f"'{meanings_table.name}'; categorical HED must be stored in a HedTags column."
                 )
 
-    def validate_file(self, nwbfile: NWBFile, error_handler: Optional[ErrorHandler] = None) -> List[Dict[str, Any]]:
+    def validate_file(self, nwbfile: NWBFile, error_handler: ErrorHandler | None = None) -> list[dict[str, Any]]:
         """
         Validates all HED tags in an NWB file by iterating through all DynamicTable objects.
 
@@ -361,7 +361,7 @@ class HedNWBValidator:
                                                    If None, a new instance will be created.
 
         Returns:
-            List[Dict[str, Any]]: A consolidated list of validation issues from all tables in the file
+            list[dict[str, Any]]: A consolidated list of validation issues from all tables in the file
 
         Raises:
             ValueError: If nwbfile is not a valid NWBFile instance

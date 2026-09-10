@@ -1,14 +1,15 @@
-import json
 import io
+import json
 import math
-import pandas as pd
+
 import numpy as np
-from typing import Union
+import pandas as pd
+from hdmf.common import MeaningsTable
 from hed.models import Sidecar
 from hed.schema import HedSchema, HedSchemaGroup
 from pynwb.core import DynamicTable, VectorData
-from pynwb.event import EventsTable, TimestampVectorData, DurationVectorData
-from hdmf.common import MeaningsTable
+from pynwb.event import DurationVectorData, EventsTable, TimestampVectorData
+
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 
 # Sidecar key under which the HedLabMetaData definitions are exported. In BIDS, definitions live in
@@ -16,7 +17,7 @@ from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 DEFINITIONS_KEY = "definitions"
 
 
-def extract_definitions(sidecar_data: dict, hed_schema: Union[HedSchema, HedSchemaGroup]) -> tuple:
+def extract_definitions(sidecar_data: dict, hed_schema: HedSchema | HedSchemaGroup) -> tuple:
     """
     Extracts definitions from a HED sidecar JSON data using the provided HED schema.
 
@@ -61,7 +62,7 @@ def extract_meanings(sidecar_data: dict) -> dict:
     return meanings
 
 
-def get_categorical_meanings(target_column: "VectorData", column_info: dict) -> "MeaningsTable":
+def get_categorical_meanings(target_column: VectorData, column_info: dict) -> MeaningsTable:
     """
     Converts a categorical column info dict to a MeaningsTable annotating a target column.
 
@@ -165,7 +166,7 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
     return events_tab
 
 
-def _get_meanings_table(table: DynamicTable, col_name: str) -> Union["MeaningsTable", None]:
+def _get_meanings_table(table: DynamicTable, col_name: str) -> MeaningsTable | None:
     """
     Returns the MeaningsTable annotating a column of a table, or None if the column has none.
 
@@ -206,7 +207,7 @@ def _is_missing(value) -> bool:
         return False
 
 
-def get_levels_and_hed(meanings_table: "MeaningsTable") -> tuple:
+def get_levels_and_hed(meanings_table: MeaningsTable) -> tuple:
     """
     Extracts the BIDS "Levels" and "HED" dictionaries from a MeaningsTable without using pandas.
 

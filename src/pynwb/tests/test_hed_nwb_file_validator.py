@@ -2,17 +2,19 @@
 Unit tests for HedNWBValidator validate_file method.
 """
 
-import unittest
-import tempfile
 import os
+import tempfile
+import unittest
 from datetime import datetime
+
 from dateutil.tz import tzlocal
-from pynwb import NWBFile, ProcessingModule, NWBHDF5IO
+from hed.errors import ErrorHandler
+from pynwb import NWBHDF5IO, NWBFile, ProcessingModule
 from pynwb.core import DynamicTable, VectorData
 from pynwb.event import EventsTable, TimestampVectorData
-from ndx_hed import HedTags, HedLabMetaData, HedValueVector
+
+from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-from hed.errors import ErrorHandler
 
 
 class TestHedNWBFileValidator(unittest.TestCase):
@@ -327,8 +329,8 @@ class TestHedNWBFileValidator(unittest.TestCase):
         nwbfile.add_acquisition(self.events_table)
 
         # Add a non-DynamicTable object (should be ignored by validator)
-        from pynwb.base import TimeSeries
         import numpy as np
+        from pynwb.base import TimeSeries
 
         time_series = TimeSeries(
             name="test_timeseries",

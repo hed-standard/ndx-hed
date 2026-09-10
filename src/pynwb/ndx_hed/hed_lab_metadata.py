@@ -1,10 +1,9 @@
 """The HED Lab Metadata class for storing HED (Hierarchical Event Descriptors) information."""
 
-from typing import Union
 from hdmf.utils import docval, popargs
-from hed.errors import get_printable_issue_string, ErrorSeverity
-from hed.schema import load_schema_version, HedSchema, HedSchemaGroup
+from hed.errors import ErrorSeverity, get_printable_issue_string
 from hed.models import DefinitionDict
+from hed.schema import HedSchema, HedSchemaGroup, load_schema_version
 from pynwb import register_class
 from pynwb.file import LabMetaData
 
@@ -42,7 +41,7 @@ class HedLabMetaData(LabMetaData):
             return None
         return self.extract_definitions()
 
-    def _init_internal(self, original_definitions: Union[str, list, dict, None]):
+    def _init_internal(self, original_definitions: str | list | dict | None):
         """
         Load the HED schema and initialize the internal DefinitionDict.
 
@@ -74,7 +73,7 @@ class HedLabMetaData(LabMetaData):
         except Exception as e:
             raise ValueError(f"Failed to create DefinitionDict for HedLabMetaData: {e}") from e
 
-    def add_definitions(self, defs: Union[str, list, dict, None]):
+    def add_definitions(self, defs: str | list | dict | None):
         """
         Add new definitions to the existing definition dictionary.
 
@@ -105,7 +104,7 @@ class HedLabMetaData(LabMetaData):
         """
         return self.hed_schema_version
 
-    def get_hed_schema(self) -> Union[HedSchema, HedSchemaGroup]:
+    def get_hed_schema(self) -> HedSchema | HedSchemaGroup:
         """
         Get the loaded HED schema object.
 

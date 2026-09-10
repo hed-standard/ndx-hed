@@ -12,15 +12,17 @@ This example demonstrates a complete workflow using the ndx-hed extension:
 
 """
 
+import os
+import tempfile
+from datetime import datetime, timezone
+
+import numpy as np
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.core import DynamicTable, VectorData
-from pynwb.event import EventsTable, DurationVectorData
+from pynwb.event import DurationVectorData, EventsTable
+
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-from datetime import datetime, timezone
-import tempfile
-import os
-import numpy as np
 
 
 def create_comprehensive_nwb_file():
@@ -187,7 +189,7 @@ def print_issues(title, issues):
                 message = error.get("message", "Unknown error")
                 print(f"       {i + 1}. [{get_context(error)}] {message}")
     else:
-        print("   ✓ All HED annotations are valid!")
+        print("   [OK] All HED annotations are valid!")
 
 
 def save_and_reload_file(nwbfile):
@@ -214,9 +216,9 @@ def save_and_reload_file(nwbfile):
             reloaded_schema = reloaded_nwbfile.lab_meta_data["hed_schema"].hed_schema_version
 
             if original_schema == reloaded_schema:
-                print(f"   ✓ HED schema version preserved: {reloaded_schema}")
+                print(f"   [OK] HED schema version preserved: {reloaded_schema}")
             else:
-                print(f"   ✗ Schema version mismatch: {original_schema} -> {reloaded_schema}")
+                print(f"   [FAIL] Schema version mismatch: {original_schema} -> {reloaded_schema}")
 
             # Validate while file is open
             reloaded_issues = validate_annotations(reloaded_nwbfile)
@@ -242,7 +244,7 @@ def verify_validation_consistency(original_issues, reloaded_issues):
     print(f"   - Reloaded file issues: {len(reloaded_issues)}")
 
     if len(original_issues) == len(reloaded_issues):
-        print("   ✓ Validation consistency maintained")
+        print("   [OK] Validation consistency maintained")
 
         # Check issue details match
         if len(original_issues) > 0:
@@ -250,13 +252,13 @@ def verify_validation_consistency(original_issues, reloaded_issues):
             reloaded_codes = {issue.get("code", "") for issue in reloaded_issues}
 
             if original_codes == reloaded_codes:
-                print("   ✓ Issue types are identical")
+                print("   [OK] Issue types are identical")
             else:
                 print("   ! Issue types differ slightly")
                 print(f"     Original: {sorted(original_codes)}")
                 print(f"     Reloaded: {sorted(reloaded_codes)}")
     else:
-        print("   ✗ Validation inconsistency detected")
+        print("   [FAIL] Validation inconsistency detected")
         print(f"     Original had {len(original_issues)} issues")
         print(f"     Reloaded had {len(reloaded_issues)} issues")
 
@@ -335,7 +337,7 @@ def main():
     # Step 5: Display summary
     display_summary(nwbfile)
 
-    print("\n✓ Complete HED workflow demonstration finished!")
+    print("\n[OK] Complete HED workflow demonstration finished!")
     print("This example shows the full cycle of creating, validating, and")
     print("persisting NWB files with comprehensive HED annotations.")
 

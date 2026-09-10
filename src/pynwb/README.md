@@ -1,10 +1,7 @@
-## ndx_hed Extension for NWB
+## ndx_hed extension for NWB
 
 This is an NWB extension for adding Hierarchical Event Descriptor (HED) tags to NWB data.
-HED is a system for
-
-The latest version is 0.2.0. This is the first release of ndx-hed.
-
+The project README at the repository root has the full description, examples, and links.
 
 This extension was developed by Kay Robbins, Ryan Ly, Oliver Rübel, and the HED Working Group.
 
@@ -25,13 +22,9 @@ Run tests:
 pytest
 ```
 
-Install pre-commit hooks:
-```bash
-pre-commit install
-```
-
 Style and other checks:
 ```bash
 ruff check .
+ruff format --check .
 typos .
 ```

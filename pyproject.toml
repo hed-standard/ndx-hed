@@ -36,7 +36,11 @@ keywords = [
 dependencies = [
     "pynwb>=4.1.0",
     "hdmf>=6.1.0",
-    "hedtools>=1.2.0",
+    # hedtools is installed from the hed-python main branch while hed-python gains
+    # the support ndx-hed needs. Before a release this reverts to a PyPI pin
+    # (hedtools>=<version>), and constraints/*.txt get their hedtools lines back.
+    # Installing needs git on PATH.
+    "hedtools @ git+https://github.com/hed-standard/hed-python.git@main",
 ]
 
 [project.optional-dependencies]
@@ -68,6 +72,11 @@ docs = [
     "myst-parser[linkify]>=3.0.1",
     "hdmf-docutils>=0.4.7",
 ]
+
+# Needed while a dependency is a direct git reference (see dependencies above);
+# remove together with that reference.
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.version]
 source = "vcs"
@@ -151,6 +160,9 @@ exclude_lines = [
 [tool.ruff]
 target-version = "py310"
 line-length = 120
+# The package lives under src/pynwb/; without this, ruff's first-party detection
+# sees the src/pynwb directory and sorts `pynwb` imports as first-party.
+src = ["src/pynwb"]
 exclude = [
   ".git",
   ".mypy_cache",
@@ -170,43 +182,32 @@ exclude = [
 
 [tool.ruff.lint]
 select = [
-    "E",     # pycodestyle errors
-    "W",     # pycodestyle warnings
-    "F",     # pyflakes
-    "T100",  # debugger
-    "T201",  # print
-    "T203",  # pprint
-    "N",     # pep8-naming
-    "B",     # flake8-bugbear
-    "C4",    # flake8-comprehensions
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "T100", # debugger left in code
+    "T201", # print in library code (examples and the spec script are exempt below)
+    "T203", # pprint in library code
 ]
 ignore = [
-    "E501",   # Line too long (handled by formatter)
-    "N802",   # Function name should be lowercase
-    "N803",   # Argument name should be lowercase
-    "N806",   # Variable in function should be lowercase
-    "SIM108", # if-else-block-instead-of-if-exp
-    "SIM105", # suppressible-exception
-    "SIM118", # in-dict-keys
-    "SIM102", # collapsible-if
-    "SIM103", # needless-bool
-    "SIM110", # reimplemented-builtin
-    "SIM101", # duplicate-isinstance-call
-    "UP007",  # Use X | Y for Union types
-    "UP008",  # Use super() without parameters
-    "UP031",  # Use format strings over %-formatting
-    "UP028",  # yield in for loop
-    "UP045",  # Use X | None for Optional
+    "E501",  # line too long, handled by ruff format
+    "N802",  # camelCase test methods (legacy convention)
+    "N803",  # non-lowercase argument names (scientific code)
+    "N806",  # non-lowercase variables in functions (scientific code)
 ]
 
+# __init__.py files: unused imports are re-exports, and their import order is
+# curated by hand to avoid circular imports - isort must not reorder them.
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]
+"__init__.py" = ["F401", "I001"]
 "src/spec/create_extension_spec.py" = ["T201"]
 "src/pynwb/ndx_hed/__init__.py" = ["E402"]
 "examples/*" = ["T201"]
-
-[tool.ruff.lint.mccabe]
-max-complexity = 17
 
 [tool.ruff.lint.isort]
 known-first-party = ["ndx_hed"]
@@ -215,5 +216,5 @@ known-first-party = ["ndx_hed"]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
-line-ending = "auto"
+line-ending = "lf"
 preview = true

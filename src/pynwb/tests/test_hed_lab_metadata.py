@@ -2,11 +2,13 @@
 
 import os
 from datetime import datetime
+
 from dateutil.tz import tzlocal
-from hed.schema import HedSchema, HedSchemaGroup
 from hed.models import DefinitionDict
+from hed.schema import HedSchema, HedSchemaGroup
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing import TestCase, remove_test_file
+
 from ndx_hed.hed_lab_metadata import HedLabMetaData
 
 
