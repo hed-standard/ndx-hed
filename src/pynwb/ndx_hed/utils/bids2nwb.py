@@ -1,7 +1,6 @@
 import io
 import json
 import math
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -63,7 +62,7 @@ def extract_meanings(sidecar_data: dict) -> dict:
     return meanings
 
 
-def get_categorical_meanings(target_column: "VectorData", column_info: dict) -> "MeaningsTable":
+def get_categorical_meanings(target_column: VectorData, column_info: dict) -> MeaningsTable:
     """
     Converts a categorical column info dict to a MeaningsTable annotating a target column.
 
@@ -167,7 +166,7 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
     return events_tab
 
 
-def _get_meanings_table(table: DynamicTable, col_name: str) -> Union["MeaningsTable", None]:
+def _get_meanings_table(table: DynamicTable, col_name: str) -> MeaningsTable | None:
     """
     Returns the MeaningsTable annotating a column of a table, or None if the column has none.
 
@@ -208,7 +207,7 @@ def _is_missing(value) -> bool:
         return False
 
 
-def get_levels_and_hed(meanings_table: "MeaningsTable") -> tuple:
+def get_levels_and_hed(meanings_table: MeaningsTable) -> tuple:
     """
     Extracts the BIDS "Levels" and "HED" dictionaries from a MeaningsTable without using pandas.
 
