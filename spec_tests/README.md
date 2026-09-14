@@ -67,8 +67,10 @@ The same as hed-python's `report_result`: `SCHEMA_PRERELEASE_VERSION_USED` issue
 
 Two layers, both counted by reason in the summary:
 
-- Rule-based, computed from the case by the harness: a ragged events row; a HED-bearing sidecar entry for a column the events lack (M6); a `schema` that `HedLabMetaData` cannot load.
+- Rule-based, computed from the case by the harness: a ragged events row; a HED-bearing sidecar entry for a column the events lack (M6).
 - Named, in `skipped_cases.py`: `SKIP_RECORDS` for whole records and `SKIP_CASES` for single cases, keyed by `(record name, kind, result, index)` with a 1-based index within the `passes` or `fails` list. Every entry has a reason, grouped by ndx-hed limits, hedtools differences, representation limits, and hed-tests data bugs. When a reason no longer holds, remove the entry.
+
+A `schema` that `HedLabMetaData` cannot load is a failure, not a skip. The schema versions a case needs are known in advance, and a version hedtools cannot provide is a named skip, so a load failure at run time means a network or cache problem; skipping it would let an offline runner report green.
 
 ## Files
 

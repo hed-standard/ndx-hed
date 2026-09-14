@@ -143,12 +143,15 @@ def run_case(record, kind, expected, index, case, *, include_skipped=False):
     if rows is not None and is_ragged(rows):
         return SKIPPED, "ragged events row (hed-tests data bug)"
 
-    # M1: metadata. A schema that cannot be loaded is a skip; a bad definition is a construction rejection.
+    # M1: metadata. A schema that cannot be loaded is a harness failure, never a skip: the schemas a case
+    # needs are known in advance (a version hedtools lacks is a named skip in skipped_cases.py), so a
+    # load failure here means a network or cache problem, and skipping would leave an offline run green.
+    # Any other ValueError is a bad definition, a construction rejection.
     try:
         metadata = build_metadata(record["schema"], record.get("definitions"), extra_definitions)
     except ValueError as e:
         if str(e).startswith(SCHEMA_LOAD_PREFIX):
-            return SKIPPED, f"schema not loadable by HedLabMetaData: {record['schema']}"
+            return FAILED, f"schema {record['schema']} could not be loaded (network, cache, or version):\n{e}"
         return construction_outcome(expected, f"HedLabMetaData: {e}")
 
     # M2-M4: the table.
@@ -259,7 +262,8 @@ def print_skipped(result):
 
 
 def write_report(path, outcomes):
-    """Write every case outcome to a JSON file (LF line endings on every OS)."""
+    """Write every case outcome to a JSON file (LF line endings on every OS), creating its directory."""
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="\n") as fp:
         json.dump(outcomes, fp, indent=1)
 

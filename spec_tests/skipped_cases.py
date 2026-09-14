@@ -9,11 +9,12 @@ Two granularities:
   is ``"sidecar"``, ``"event"``, or ``"combo"``; ``result`` is ``"passes"`` or ``"fails"``; ``index``
   is the 1-based position in that list, the number the harness prints as ``sidecar[3]``.
 
-Rule-based skips (a ragged row, a sidecar entry for a column the events lack, a schema that
-HedLabMetaData cannot load) are computed by the harness and are not listed here.
+Rule-based skips (a ragged row, a sidecar entry for a column the events lack) are computed by the
+harness and are not listed here. A schema that HedLabMetaData cannot load is a failure, not a skip.
 
-Set ``HED_TESTS_RUN_SKIPPED=1`` to run the listed cases anyway, for example to re-check the list
-after a fix. Every entry needs a reason; when a reason no longer holds, remove the entry.
+Run ``python -m spec_tests.run_cases --include-skipped`` to run the listed cases anyway, for example
+to re-check the list after a fix. Every entry needs a reason; when a reason no longer holds, remove
+the entry.
 
 Groups: ndx-hed limits, hedtools differences, representation limits, hed-tests data bugs.
 """
