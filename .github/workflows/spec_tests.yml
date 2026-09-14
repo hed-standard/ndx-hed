@@ -1,0 +1,36 @@
+name: Spec tests
+# Runs the hed-tests validation suite through ndx-hed (spec_tests/). Separate from the unit
+# tests because it needs the hed-tests submodule and network access for HED schemas.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spec-tests:
+    name: hed-tests through validate_file
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0  # fetch tags for hatch-vcs
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test]" -c constraints/pinned.txt
+
+      - name: Check the submodule is present
+        run: python spec_tests/check_setup.py
+
+      - name: Run spec tests
+        run: python -m pytest spec_tests -v -s

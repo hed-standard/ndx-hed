@@ -99,6 +99,7 @@ include = [
 ]
 exclude = [
     "src/pynwb/tests",
+    "spec_tests",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -117,7 +118,8 @@ include = [
     "spec/ndx-hed.namespace.yaml",
     "docs",
 ]
-exclude = []
+# The unanchored "docs" pattern above would also match spec_tests/hed-tests/docs.
+exclude = ["spec_tests"]
 
 [tool.typos.files]
 extend-exclude = [
@@ -136,6 +138,7 @@ extend-exclude = [
     "*.xml",
     "*.mediawiki",
     "*.omn",
+    "spec_tests/hed-tests",
 ]
 
 [tool.typos.default.extend-words]
@@ -178,6 +181,7 @@ exclude = [
   "*.ipynb",
   "docs/",
   ".status",
+  "spec_tests/hed-tests",
 ]
 
 [tool.ruff.lint]
@@ -208,6 +212,7 @@ ignore = [
 "src/spec/create_extension_spec.py" = ["T201"]
 "src/pynwb/ndx_hed/__init__.py" = ["E402"]
 "examples/*" = ["T201"]
+"spec_tests/*" = ["T201"]  # the spec harness prints its report, as hed-python's does
 
 [tool.ruff.lint.isort]
 known-first-party = ["ndx_hed"]

@@ -9,10 +9,11 @@ Test framework: unittest. The suite is written as `pynwb.testing.TestCase` class
 - Install dev env: `pip install -e ".[dev]" -c constraints/pinned.txt` (the pinned snapshot is what CI uses; `constraints/minimum.txt` holds the declared minimums and must stay in step with `pyproject.toml`)
 - Run tests: `python -m pytest` (configuration in `pytest.ini`)
 - Single test: `python -m pytest src/pynwb/tests/test_hed_tags.py::TestHedTagsConstructor::test_constructor`
+- Spec tests (the hed-tests validation suite through `validate_file`; not part of the default run): `git submodule update --init spec_tests/hed-tests` once, then `python -m pytest spec_tests -v`. To run one record, the skip list, or write a report: `python -m spec_tests.run_cases --help`. See `spec_tests/README.md`.
 - Coverage: `python -m pytest --cov=src/pynwb/ndx_hed --cov-report=term`
 - Lint and format: `ruff check .` and `ruff format --check .` (`ruff format .` to fix)
 - Spelling: `typos .`
-- Markdown: `python -m mdformat --check README.md CHANGELOG.md AGENTS.md docs/source/hed_validation.md examples/README.md` (settings in `.mdformat.toml`)
+- Markdown: `python -m mdformat --check README.md CHANGELOG.md AGENTS.md docs/source/hed_validation.md examples/README.md spec_tests/README.md` (settings in `.mdformat.toml`)
 - Examples: run from inside `examples/` - `cd examples` then `python run_all_examples.py` or one script; they resolve paths relative to the working directory
 - Docs: `make html` in `docs/` (`make.bat html` on Windows); output in `docs/_build/html`
 - Regenerate the spec: `python src/spec/create_extension_spec.py`, then reinstall so the namespace reloads
@@ -23,6 +24,7 @@ CI runs the pytest suite on Linux, macOS, and Windows across the supported Pytho
 
 - `src/pynwb/ndx_hed/` - the package: `hed_lab_metadata.py`, `hed_tags.py`, `utils/bids2nwb.py`, `utils/hed_nwb_validator.py`
 - `src/pynwb/tests/` - the suite; BIDS fixtures in `tests/data/`
+- `spec_tests/` - the hed-tests validation suite run through ndx-hed; `spec_tests/hed-tests` is a git submodule, `nwb_case_builder.py` converts JSON cases to NWB, `run_cases.py` runs them (also a command line), `test_errors.py` is the unittest wrapper, `skipped_cases.py` lists what does not run yet and why
 - `src/spec/create_extension_spec.py` - generator for `spec/*.yaml`
 - `spec/` - the generated extension YAML, shipped in the wheel as `ndx_hed/spec/`
 - `examples/` - runnable scripts 01-07 and `run_all_examples.py`
@@ -65,6 +67,7 @@ So three HED shapes coexist: per-row (`HedTags`), value template (`HedValueVecto
 - `HedNWBValidator.validate_file` does assembled, BIDS-style validation, not tag-by-tag checks: each table becomes `(dataframe, sidecar)` through `get_bids_tabular`; `Sidecar.validate()` runs first and any sidecar error stops that table; then `TabularInput.validate()` merges each row's per-row, categorical, and value HED and validates temporally when an `onset` column is present, otherwise per row. `get_bids_tabular` renames a `TimestampVectorData` column to `onset` precisely so an `EventsTable` is validated as a timeline.
 - A `MeaningsTable` is skipped in the file walk (its HED is validated with the table it annotates) and checked only against R5.
 - `validate_table`, `validate_vector`, and `validate_value_vector` are per-column helpers that neither assemble rows nor validate temporally.
+- The spec harness builds its NWB objects with `extract_meanings`, `get_categorical_meanings`, and `get_events_table`, so a change to those converters changes what `spec_tests` tests; run `python -m pytest spec_tests` after touching them.
 - Validation reuses `get_bids_tabular`, so a change to that converter changes validation behavior. `get_bids_tabular` emits nothing for the `HED` column (`HED` is a reserved sidecar key) and reads categorical levels through `DynamicTable.get_meanings_for_column`.
 - `extract_meanings` keeps categorical sidecar entries raw because a PyNWB 4 `MeaningsTable` needs the target `VectorData`, which does not exist until `get_events_table` builds it.
 - `hedtools` currently installs from the hed-python `main` branch, not PyPI (`pyproject.toml` dependencies, with `allow-direct-references`), because hed-python is gaining the support ndx-hed needs. Installing needs git on PATH. The constraints files carry no hedtools pin for the same reason. Before a release this reverts to a PyPI version; do not add a hedtools pin anywhere until it does.
@@ -87,11 +90,12 @@ Hosted at https://github.com/hed-standard/ndx-hed. Keep local `main` a clean mir
 
 `.status/` is gitignored, so it exists only on the machine that wrote it and never in a fresh clone or worktree.
 
-- `.status/README.md` - the index. Read this first; it lists what is active.
+- `.status/README.md` - current state, unfinished work, and an ordered `Next` list. Read this first.
+- `.status/development_history.md` - what has shipped, newest first, with pointers to the records. History only; append at the top when a PR merges.
 - `.status/decisions.md` - why things are the way they are. Read before proposing structural changes. Append entries; never rewrite one.
-- `.status/plans/*.md` - active plans. Check the `Status:` header and the `[ ]` / `[x]` markers before starting work.
+- `.status/plans/*.md` - unfinished plans only. Check the `Status:` header and the `[ ]` / `[x]` markers before starting work. A finished plan moves to `.status/archive/completed_plans/`; split any still-open boxes into a new plan first.
 - `.status/local-environment.md` - this machine's paths, interpreter, and quirks. Tool-agnostic. Never copy its contents into a committed file.
-- IMPORTANT: do not read `.status/archive/` unless a file is named for you. Nothing new is created at the `.status/` root.
+- IMPORTANT: do not read `.status/archive/` unless a file is named for you. The `.status/` root holds only `README.md`, `decisions.md`, `development_history.md`, and `local-environment.md`; nothing else is created there.
 
 ## Working agreements
 
