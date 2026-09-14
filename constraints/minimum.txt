@@ -5,5 +5,5 @@
 # hedtools is deliberately absent: pyproject.toml installs it from the hed-python main
 # branch for now, and a version constraint here would conflict with that direct reference.
 # Restore a hedtools pin when pyproject.toml goes back to a PyPI version.
-pynwb==4.1.0
+pynwb==4.2.0
 hdmf==6.2.0
