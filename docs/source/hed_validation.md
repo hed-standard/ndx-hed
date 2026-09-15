@@ -26,15 +26,15 @@ The following rules govern how HED may appear in an NWB table.
 
 ### How each rule is enforced
 
-| Rule | How it is enforced                                                                                                                                                                                                                                                                              |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1   | `HedTags.__init__` raises `ValueError` if the name is not `HED` (which is also the default).                                                                                                                                                                                                    |
-| R2   | Follows from R1: column names within a table are unique, so two `HED` columns cannot coexist.                                                                                                                                                                                                   |
-| R3   | The MeaningsTable's `HED` column is consumed as categorical HED when assembling the annotated table.                                                                                                                                                                                            |
-| R4   | The table's `HED` column is assembled as its per-row HED.                                                                                                                                                                                                                                       |
-| R5   | `HedNWBValidator.validate_table` reports `MEANINGS_VALUE_VECTOR_INVALID` and stops validating that table.                                                                                                                                                                                       |
-| R6   | `HedNWBValidator.validate_table` reports `HED_COLUMN_TYPE_INVALID` and stops validating that table.                                                                                                                                                                                             |
-| R7   | `HedNWBValidator.validate_table` checks the column against the class (a numeric column under a numeric or text class, or an integer column under a name class, passes on its dtype alone; otherwise each distinct value is substituted into the template and validated) and stops on any error. |
+| Rule | How it is enforced                                                                                                                                                                                                                                                                                                                                                   |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1   | `HedTags.__init__` raises `ValueError` if the name is not `HED` (which is also the default).                                                                                                                                                                                                                                                                         |
+| R2   | Follows from R1: column names within a table are unique, so two `HED` columns cannot coexist.                                                                                                                                                                                                                                                                        |
+| R3   | The MeaningsTable's `HED` column is consumed as categorical HED when assembling the annotated table.                                                                                                                                                                                                                                                                 |
+| R4   | The table's `HED` column is assembled as its per-row HED.                                                                                                                                                                                                                                                                                                            |
+| R5   | `HedNWBValidator.validate_table` reports `MEANINGS_VALUE_VECTOR_INVALID` and stops validating that table.                                                                                                                                                                                                                                                            |
+| R6   | `HedNWBValidator.validate_table` reports `HED_COLUMN_TYPE_INVALID` and stops validating that table.                                                                                                                                                                                                                                                                  |
+| R7   | `HedNWBValidator.validate_table` checks the column against the class (a numeric column under a text class, or an integer column under a numeric or name class, passes on its dtype alone; a float column under a numeric class is scanned once for infinities; otherwise each distinct value is substituted into the template and validated) and stops on any error. |
 
 Notes:
 
@@ -74,7 +74,7 @@ Every issue carries the table name in `ec_table_name`; through `validate_file` i
 An inspector check receives one object. For a `DynamicTable` it finds the schema through the file and validates the table without assembly:
 
 ```python
-nwbfile = table.get_ancestor("NWBFile")
+nwbfile = table.get_ancestor(data_type="NWBFile")
 hed_metadata = nwbfile.lab_meta_data.get("hed_schema") if nwbfile is not None else None
 if isinstance(hed_metadata, HedLabMetaData):
     issues = HedNWBValidator(hed_metadata).validate_table(table, assemble=False)

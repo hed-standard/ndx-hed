@@ -354,6 +354,15 @@ class TestHedLabMetaDataDefinitions(TestCase):
         extracted = labdata.definitions
         self.assertEqual(extracted, definitions)
 
+    def test_definitions_namespaced_schema_keeps_prefix(self):
+        """The exported Definition tag carries the schema namespace, with and without a definition body."""
+        metadata = HedLabMetaData(
+            hed_schema_version="ts:8.4.0", definitions="(ts:Definition/Empty), (ts:Definition/Full, (ts:Red))"
+        )
+        self.assertEqual(metadata.definitions, "(ts:Definition/empty),(ts:Definition/full,(ts:Red))")
+        # The exported string constructs a new metadata object against the same schema without issues
+        HedLabMetaData(hed_schema_version="ts:8.4.0", definitions=metadata.definitions)
+
     def test_multiple_definitions(self):
         """List of definitions."""
         definitions = "(Definition/event1,(Sensory-event)),(Definition/event2/#,(Parameter-value/#))"

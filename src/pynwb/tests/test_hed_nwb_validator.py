@@ -288,6 +288,25 @@ class TestValidateTable(unittest.TestCase):
         self.assertEqual([(issue["code"], issue["ec_row"]) for issue in assembled], [("TAG_EXPRESSION_REPEATED", 0)])
         self.assertEqual(self.validator.validate_table(table, assemble=False), [])
 
+    def test_validate_table_sidecar_warnings_reported_once(self):
+        """Test that a categorical-level warning is reported per row that uses the level, once for an unused level."""
+        table = self._categorical_table(
+            "trials", ["a", "a", "b"], ["a", "b", "c"], ["Item/Extended-a", "Sensory-event", "Item/Extended-c"]
+        )
+
+        assembled = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True))
+        self.assertEqual([i["code"] for i in assembled], ["TAG_EXTENDED"] * 3, assembled)
+        self.assertEqual(sorted(i.get("ec_row", -1) for i in assembled), [-1, 0, 1])
+        unused = [i for i in assembled if "ec_row" not in i]
+        self.assertEqual(unused[0]["ec_sidecarKeyName"], "c")
+
+        collapsed = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True), assemble=False)
+        self.assertEqual(
+            sorted((i["code"], i["ec_sidecarKeyName"]) for i in collapsed),
+            [("TAG_EXTENDED", "a"), ("TAG_EXTENDED", "c")],
+        )
+        self.assertTrue(all("ec_row" not in i for i in collapsed))
+
     def test_validate_table_warnings_only_with_a_warning_handler(self):
         """Test that a warning is dropped by the default handler and kept by one that checks for warnings."""
         table = self._table("extended", ["Item/MyThing"])
@@ -532,10 +551,22 @@ class TestValueVectorCheck(unittest.TestCase):
         self.assertEqual(issues, [], f"{dtype} under {hed}")
         self.assertGreater(unreadable.call_count, 0)  # the dtype was looked at
 
-    def test_numeric_dtype_under_numeric_class_is_not_read(self):
-        """Test that a numeric column under a numericClass placeholder passes without its data being read."""
-        for dtype in ("float64", "int64", "uint8", "float32"):
+    def test_integer_dtype_under_numeric_class_is_not_read(self):
+        """Test that an integer column under a numericClass placeholder passes without its data being read."""
+        for dtype in ("int64", "uint8", "int32"):
             self._assert_not_read(dtype, "Age/# s")
+
+    def test_float_dtype_under_numeric_class_is_scanned_for_infinity(self):
+        """Test that a float column under a numericClass placeholder passes when finite and reports an infinity."""
+        finite = HedValueVector(name="age", description="d", data=np.array([1.5, 2.0, float("nan")]), hed="Age/# s")
+        self.assertEqual(self.validator.validate_table(self._table(finite, hed=("Sensory-event",))), [])
+
+        column = HedValueVector(
+            name="age", description="d", data=np.array([1.0, float("inf"), float("nan")]), hed="Age/# s"
+        )
+        for assemble in (True, False):
+            issues = self.validator.validate_table(self._table(column, hed=("Sensory-event",)), assemble=assemble)
+            self.assertEqual([(i["code"], i["ec_column"], i["ec_row"]) for i in issues], [("VALUE_INVALID", "age", 1)])
 
     def test_numeric_dtype_under_text_class_is_not_read(self):
         """Test that a numeric column under a textClass placeholder, or one with no value class, is not read."""
@@ -586,8 +617,8 @@ class TestValueVectorCheck(unittest.TestCase):
         self.assertEqual(self._summary(issues), [("VALUE_INVALID", "when", 1, 1)])
 
     def test_def_template_resolves_through_the_definition(self):
-        """Test that Def/Acc/# takes its classes from Age/# inside the definition: floats pass unread, text is checked."""
-        self._assert_not_read("float64", "Def/Acc/#")
+        """Test that Def/Acc/# takes its classes from Age/# inside the definition: integers pass unread, text is checked."""
+        self._assert_not_read("int64", "Def/Acc/#")
 
         column = HedValueVector(name="acc", description="d", data=["1.5", "x"], hed="Def/Acc/#")
         issues = self.validator.validate_table(self._table(column))

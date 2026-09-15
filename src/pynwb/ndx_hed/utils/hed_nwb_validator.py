@@ -87,9 +87,10 @@ class HedNWBValidator:
            hedtools ``Sidecar.validate``. Any error stops: such an error would repeat on every row that
            uses it, and the row annotations assembled from it cannot be trusted. Warnings do not stop.
         5. The values of every HedValueVector column are checked against the value class of the
-           template's ``#`` tag. A numeric column passes without being read when the class is numeric
-           or text, and an integer column when it is a name; otherwise the column is read once and
-           each distinct value is substituted into the template and validated once. Any error stops.
+           template's ``#`` tag. A numeric column passes without being read when the class is text,
+           and an integer column when it is numeric or a name; a float column under a numeric class is
+           scanned once for infinities, which are not numeric values; otherwise the column is read once
+           and each distinct value is substituted into the template and validated once. Any error stops.
         6. The assembly gate. With ``assemble=True`` (the default) the whole table is read into a BIDS
            dataframe with ``get_bids_dataframe`` and hedtools ``TabularInput.validate`` runs: each cell
            on its own, the categorical values against their levels, each row's HED assembled from its
@@ -152,6 +153,11 @@ class HedNWBValidator:
         # the table's data is read only where a step below needs it.
         json_data = get_json_hed_dict(table, self.hed_metadata)
 
+        # Steps 4 and 5 stop the table on any error. Their warnings are kept only where nothing later
+        # would report them: in the no-assembly path, and when a step stops the table. In the assembled
+        # path TabularInput re-reports a sidecar or value warning on every row that uses the annotation,
+        # so adding them here as well would report each twice; only the warnings for categorical levels
+        # that no row uses are added back after assembly.
         sidecar = None
         sidecar_issues = []
         if json_data:
@@ -161,14 +167,13 @@ class HedNWBValidator:
             sidecar_issues = sidecar.validate(self.hed_schema, name="", error_handler=error_handler)
             if check_for_any_errors(sidecar_issues):
                 return sidecar_issues
-            issues += sidecar_issues
 
         value_issues = self._check_value_vectors(table, error_handler)
-        issues += value_issues
         if check_for_any_errors(value_issues):
-            return issues
+            return sidecar_issues + value_issues
 
         if not assemble:
+            issues += sidecar_issues + value_issues
             issues += self._validate_hed_column(table, error_handler)
             issues += self._check_categorical_coverage(table, error_handler)
             return issues
@@ -227,10 +232,22 @@ class HedNWBValidator:
 
     def _check_value_vector(self, column: HedValueVector, error_handler: ErrorHandler) -> list[dict[str, Any]]:
         """Check the values of one HedValueVector; see validate_table step 5."""
-        if _dtype_settles(_column_dtype(column), self._placeholder_value_classes(column.hed)):
+        dtype = _column_dtype(column)
+        classes = self._placeholder_value_classes(column.hed)
+        if _dtype_settles(dtype, classes):
             return []
+        if dtype is not None and dtype.kind == "f" and _NUMERIC_CLASS in classes:
+            # A finite float is a numeric value, but inf is not ("Age/inf s" fails numericClass). One
+            # vectorized pass over the column finds the infinities; only those are substituted.
+            values = np.asarray(column.data[:], dtype=float)
+            infinite = np.isinf(values)
+            if not infinite.any():
+                return []
+            distinct = _distinct_values(np.where(infinite, values, np.nan))
+        else:
+            distinct = _distinct_values(column.data[:])
         issues = []
-        for value, rows in _distinct_values(column.data[:]).items():
+        for value, rows in distinct.items():
             issues += self._validate_once(column.hed.replace("#", value), rows, error_handler)
         return issues
 
@@ -526,14 +543,16 @@ def _dtype_settles(dtype: np.dtype | None, value_classes: set[str]) -> bool:
     Return True if the dtype alone proves every value satisfies one of the value classes.
 
     A number's text has only digits, a sign, a period, and an exponent letter, so it satisfies
-    numericClass and textClass; an integer's text satisfies nameClass (a bare integer is a valid name
-    and a negative one adds only a hyphen). Nothing about a string or object dtype is settled.
+    textClass, and an integer's text satisfies numericClass and nameClass (a bare integer is a valid
+    name and a negative one adds only a hyphen). A float satisfies numericClass only when finite
+    ("inf" is not a numeric value), so a float column under numericClass is not settled here; the
+    caller scans it for infinities. Nothing about a string or object dtype is settled.
     """
     if dtype is None:
         return False
-    if dtype.kind in "iuf" and (_NUMERIC_CLASS in value_classes or _TEXT_CLASS in value_classes):
+    if dtype.kind in "iuf" and _TEXT_CLASS in value_classes:
         return True
-    return dtype.kind in "iu" and _NAME_CLASS in value_classes
+    return dtype.kind in "iu" and (_NUMERIC_CLASS in value_classes or _NAME_CLASS in value_classes)
 
 
 def _distinct_values(values) -> dict[str, list[int]]:

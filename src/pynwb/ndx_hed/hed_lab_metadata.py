@@ -113,6 +113,17 @@ class HedLabMetaData(LabMetaData):
         """
         return self._hed_schema
 
+    def _schema_namespace(self) -> str:
+        """Return the namespace prefix tags of this schema carry ("" for an unprefixed schema).
+
+        For a schema group the prefix is unambiguous only when the group has one; a mixed group gives
+        "" and hedtools then reports the missing prefix, which is honest.
+        """
+        if isinstance(self._hed_schema, HedSchemaGroup):
+            prefixes = self._hed_schema.valid_prefixes()
+            return prefixes[0] if len(prefixes) == 1 else ""
+        return self._hed_schema.schema_namespace
+
     def extract_definitions(self) -> str:
         """
         Extract definitions as string (for serialization).
@@ -124,9 +135,10 @@ class HedLabMetaData(LabMetaData):
         for def_name, def_entry in self._definition_dict.items():
             takes_value = "/#" if def_entry.takes_value else ""
             # A namespaced schema (for example "ts:8.5.0") needs the prefix on the Definition tag as well as
-            # on the contents, or the exported string does not validate against that schema.
+            # on the contents, or the exported string does not validate against that schema. The prefix
+            # comes from the body's first tag, or from the schema when the definition has no body.
             tags = def_entry.contents.get_all_tags() if def_entry.contents is not None else []
-            prefix = tags[0].schema_namespace if tags else ""
+            prefix = tags[0].schema_namespace if tags else self._schema_namespace()
             contents = f",{def_entry.contents}" if def_entry.contents is not None else ""
             def_list.append(f"({prefix}Definition/{def_name}{takes_value}{contents})")
         return ",".join(def_list)
