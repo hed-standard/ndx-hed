@@ -5,10 +5,12 @@ Unit tests for HedNWBValidator class.
 import os
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
+import numpy as np
 import pandas as pd
-from hed.errors import ErrorContext, ErrorHandler, get_printable_issue_string
+from hdmf.common import MeaningsTable
+from hed.errors import ErrorContext, ErrorHandler, ErrorSeverity, get_printable_issue_string
 from hed.models import HedString
 from pynwb.core import DynamicTable, VectorData
 
@@ -158,116 +160,64 @@ class TestValidateHedTagsVector(unittest.TestCase):
 
 
 class TestValidateTable(unittest.TestCase):
-    """Test class for validating DynamicTable objects."""
+    """Test class for validate_table: the assembled pipeline on a DynamicTable."""
 
     def setUp(self):
-        """Set up test data."""
-        # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
-
-        # Create HedNWBValidator instance
+        """Set up a validator with two definitions, one of them a value definition."""
+        self.hed_metadata = HedLabMetaData(
+            hed_schema_version="8.4.0", definitions="(Definition/Blink, (Blink)), (Definition/Acc/#, (Age/# s, Red))"
+        )
         self.validator = HedNWBValidator(self.hed_metadata)
 
-        # Create test HedTags with valid and invalid tags
-        self.valid_tags = HedTags(data=["Sensory-event", "Visual-presentation", "Item", "Agent-action", "Red"])
+    @staticmethod
+    def _table(name, hed, extra_columns=()):
+        """A DynamicTable with a data column, a HED column holding hed, and any extra columns."""
+        columns = [VectorData(name="data", description="Test data", data=list(range(len(hed)))), HedTags(data=hed)]
+        columns.extend(extra_columns)
+        return DynamicTable(name=name, description=f"Table {name}", columns=columns)
 
-        self.invalid_tags = HedTags(
-            data=[
-                "InvalidTag123",
-                "NonExistentEvent",
-                "BadTag/WithSlash",
-                "Sensory-event",  # This one is valid
-                "",  # Empty string should be skipped
-            ]
+    @staticmethod
+    def _categorical_table(name, values, levels, level_hed):
+        """A DynamicTable with a categorical column annotated by a MeaningsTable holding level_hed."""
+        table = DynamicTable(
+            name=name, description=f"Table {name}", columns=[VectorData(name="condition", description="c", data=values)]
         )
+        meanings = MeaningsTable(target=table["condition"], description="Condition meanings")
+        for level in levels:
+            meanings.add_row(value=level, meaning=f"Condition {level}")
+        meanings.add_column(name="HED", description="HED for the levels", col_cls=HedTags, data=level_hed)
+        table.add_meanings_table(meanings)
+        return table
 
-        self.mixed_tags = HedTags(
-            data=["Sensory-event", "InvalidTag456", "Visual-presentation", "n/a", "AnotherBadTag"]  # Should be skipped
-        )
-
-        # Create test tables
-        self.valid_table = DynamicTable(
-            name="valid_test_table",
-            description="Table with valid HED tags",
-            columns=[VectorData(name="data", description="Test data", data=[1, 2, 3, 4, 5]), self.valid_tags],
-        )
-
-        self.invalid_table = DynamicTable(
-            name="invalid_test_table",
-            description="Table with invalid HED tags",
-            columns=[VectorData(name="data", description="Test data", data=[1, 2, 3, 4, 5]), self.invalid_tags],
-        )
-
-        self.mixed_table = DynamicTable(
-            name="mixed_test_table",
-            description="Table with mixed valid/invalid HED tags",
-            columns=[
-                VectorData(name="data", description="Test data", data=[1, 2, 3, 4, 5]),
-                self.mixed_tags,
-                VectorData(name="other_data", description="Other test data", data=["a", "b", "c", "d", "e"]),
-            ],
-        )
-
-        self.no_hed_table = DynamicTable(
-            name="no_hed_table",
-            description="Table without HED tags",
-            columns=[
-                VectorData(name="data", description="Test data", data=[1, 2, 3]),
-                VectorData(name="more_data", description="More test data", data=["x", "y", "z"]),
-            ],
-        )
+    @staticmethod
+    def _summary(issues):
+        return sorted((issue["code"], issue.get("ec_column") or "", issue.get("ec_row", -1)) for issue in issues)
 
     def test_validate_table_valid_table(self):
-        """Test validate_table with table containing valid HED tags."""
-        issues = self.validator.validate_table(self.valid_table)
+        """Test that a table whose HED column holds only valid annotations has no issues."""
+        table = self._table("valid", ["Sensory-event", "Visual-presentation", "Item", "Agent-action", "Red"])
+        self.assertEqual(self.validator.validate_table(table), [])
 
-        self.assertIsInstance(issues, list)
-        # Should have no issues for valid table
-        # Note: May fail initially until HED tags are corrected
+    def test_validate_table_reports_table_row_index(self):
+        """Test that each bad cell is reported once, at its table row index, with the table and column context."""
+        table = self._table("invalid", ["InvalidTag123", "Sensory-event", "", "n/a", "NonExistentEvent"])
+        issues = self.validator.validate_table(table)
 
-    def test_validate_table_invalid_table(self):
-        """Test validate_table with table containing invalid HED tags."""
-        issues = self.validator.validate_table(self.invalid_table)
+        self.assertEqual(self._summary(issues), [("TAG_INVALID", "HED", 0), ("TAG_INVALID", "HED", 4)])
+        for issue in issues:
+            self.assertEqual(issue["ec_table_name"], "invalid")
+            self.assertNotIn("ec_filename", issue)
+        self.assertIn("Errors in table 'invalid'", get_printable_issue_string(issues))
 
-        self.assertIsInstance(issues, list)
-        # Should have issues for invalid table
-
-    def test_validate_table_mixed_table(self):
-        """Test validate_table with table containing mixed valid/invalid HED tags."""
-        issues = self.validator.validate_table(self.mixed_table)
-
-        self.assertIsInstance(issues, list)
-        # Should have some issues
-
-    def test_validate_table_no_hed_columns(self):
-        """Test validate_table with table containing no HED columns."""
-        issues = self.validator.validate_table(self.no_hed_table)
-
-        # Should return empty list since no HED columns to validate
-        self.assertIsInstance(issues, list)
-        self.assertEqual(len(issues), 0)
-
-    def test_validate_table_with_custom_error_handler(self):
-        """Test validate_table with custom error handler."""
-        error_handler = ErrorHandler(check_for_warnings=True)
-        issues = self.validator.validate_table(self.mixed_table, error_handler)
-
-        self.assertIsInstance(issues, list)
-
-    def test_table_multiple_hed_columns(self):
-        """Test validate_table with multiple HED columns."""
-        # Create table with multiple HED columns
-        with self.assertRaises(ValueError) as cm:
-            DynamicTable(
-                name="multi_hed_table",
-                description="Table with multiple HED columns",
-                columns=[
-                    VectorData(name="data", description="Test data", data=[1, 2, 3]),
-                    HedTags(data=["Sensory-event", "Visual-presentation", "Auditory-event"]),
-                    HedTags(name="HED", data=["Agent-action", "InvalidTag789", "Red"]),
-                ],
-            )
-        self.assertIn("columns with duplicate names", str(cm.exception))
+    def test_validate_table_no_hed_table_is_not_read(self):
+        """Test that a table without any HED returns no issues and is never converted to a dataframe."""
+        table = DynamicTable(
+            name="units",
+            description="Table without HED",
+            columns=[VectorData(name="data", description="Test data", data=[1, 2, 3])],
+        )
+        with patch.object(DynamicTable, "to_dataframe", side_effect=AssertionError("the table was read")):
+            self.assertEqual(self.validator.validate_table(table), [])
 
     def test_validate_table_none_input(self):
         """Test validate_table with None input."""
@@ -281,94 +231,445 @@ class TestValidateTable(unittest.TestCase):
             self.validator.validate_table("not a table")
         self.assertIn("not a valid DynamicTable instance", str(cm.exception))
 
-    def test_validate_integration(self):
-        """Integration test for both functions working together."""
-        # Create a comprehensive test scenario
-        integration_table = DynamicTable(
-            name="integration_test",
-            description="Integration test table",
-            columns=[
-                VectorData(name="trial_id", description="Trial IDs", data=[1, 2, 3, 4]),
-                HedTags(data=["Sensory-event", "InvalidTag999", "", "Visual-presentation"]),
-                VectorData(name="response", description="Responses", data=["A", "B", "C", "D"]),
-            ],
-        )
+    def test_validate_table_refuses_meanings_table(self):
+        """Test that a MeaningsTable is refused: its HED is validated with the table it annotates."""
+        table = self._categorical_table("trials", ["a", "b"], ["a", "b"], ["Sensory-event", "Red"])
+        with self.assertRaises(ValueError) as cm:
+            self.validator.validate_table(table.get_meanings_for_column("condition"))
+        self.assertIn("MeaningsTable", str(cm.exception))
+        self.assertIn("annotates", str(cm.exception))
 
-        # Test table validation
-        table_issues = self.validator.validate_table(integration_table)
-        self.assertIsInstance(table_issues, list)
+    def test_validate_table_categorical_hed_is_a_sidecar_issue(self):
+        """Test that bad categorical HED is reported once, on the level, and stops the table before the rows."""
+        table = self._categorical_table("trials", ["a", "b", "a", "b"], ["a", "b"], ["Sensory-event", "InvalidTagXYZ"])
+        issues = self.validator.validate_table(table)
 
-        # Test vector validation directly
-        hed_column = None
-        for col in integration_table.columns:
-            if isinstance(col, HedTags):
-                hed_column = col
-                break
+        self.assertEqual([issue["code"] for issue in issues], ["TAG_INVALID"])
+        self.assertEqual(issues[0]["ec_table_name"], "trials")
+        self.assertEqual(issues[0]["ec_sidecarColumnName"], "condition")
+        self.assertEqual(issues[0]["ec_sidecarKeyName"], "b")
+        self.assertNotIn("ec_row", issues[0])
 
-        self.assertIsNotNone(hed_column)
-        vector_issues = self.validator.validate_vector(hed_column)
-        self.assertIsInstance(vector_issues, list)
-
-    def test_validate_table_issues_carry_table_name(self):
-        """Test that validate_table reports the table in the TABLE_NAME context, not FILE_NAME."""
-        issues = self.validator.validate_table(self.invalid_table)
+    def test_validate_table_sidecar_error_stops_the_table(self):
+        """Test that a bad value template stops validation before the HED column's own errors are reported."""
+        template = HedValueVector(name="rt", description="Reaction time", data=[0.5, 0.6], hed="InvalidValueTag/#")
+        table = self._table("trials", ["InvalidTag123", "Sensory-event"], [template])
+        issues = self.validator.validate_table(table)
 
         self.assertGreater(len(issues), 0)
-        for issue in issues:
-            self.assertEqual(issue.get("ec_table_name"), "invalid_test_table")
-            self.assertNotIn("ec_filename", issue)
-            self.assertEqual(issue.get("ec_column"), "HED")
-            self.assertIn("ec_row", issue)
-        self.assertIn("Errors in table 'invalid_test_table'", get_printable_issue_string(issues))
+        self.assertTrue(all(issue.get("ec_sidecarColumnName") == "rt" for issue in issues), issues)
+        self.assertTrue(all("ec_row" not in issue for issue in issues), issues)
+
+    def test_validate_table_definitions_reach_hedtools(self):
+        """Test that Def/ references resolve against the HedLabMetaData definitions, and fail without them."""
+        table = self._table("defs", ["Def/Blink", "Def/Acc/1.5"])
+        self.assertEqual(self.validator.validate_table(table), [])
+
+        no_defs = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0"))
+        codes = [issue["code"] for issue in no_defs.validate_table(table)]
+        self.assertEqual(codes, ["DEF_INVALID", "DEF_INVALID"])
+
+    def test_validate_table_temporal_checks_need_the_rows(self):
+        """Test that an Offset without its Onset is reported only when the rows are assembled."""
+        events_df = pd.DataFrame({"onset": [1.0, 2.0], "HED": ["(Def/Blink, Offset)", "Sensory-event"]})
+        events = get_events_table("events", "Events", events_df, {"categorical": {}, "value": {}})
+
+        assembled = self.validator.validate_table(events)
+        self.assertEqual([issue["code"] for issue in assembled], ["TEMPORAL_TAG_ERROR"])
+        self.assertEqual(assembled[0]["ec_row"], 0)
+        self.assertEqual(self.validator.validate_table(events, assemble=False), [])
+
+    def test_validate_table_within_row_checks_need_assembly(self):
+        """Test that a tag repeated between the HED column and the categorical HED of the same row needs assembly."""
+        table = self._categorical_table("trials", ["a", "b"], ["a", "b"], ["Sensory-event", "Green"])
+        table.add_column(name="HED", description="HED", col_cls=HedTags, data=["Sensory-event", "Red"])
+
+        assembled = self.validator.validate_table(table)
+        self.assertEqual([(issue["code"], issue["ec_row"]) for issue in assembled], [("TAG_EXPRESSION_REPEATED", 0)])
+        self.assertEqual(self.validator.validate_table(table, assemble=False), [])
+
+    def test_validate_table_sidecar_warnings_reported_once(self):
+        """Test that a categorical-level warning is reported per row that uses the level, once for an unused level."""
+        table = self._categorical_table(
+            "trials", ["a", "a", "b"], ["a", "b", "c"], ["Item/Extended-a", "Sensory-event", "Item/Extended-c"]
+        )
+
+        assembled = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True))
+        self.assertEqual([i["code"] for i in assembled], ["TAG_EXTENDED"] * 3, assembled)
+        self.assertEqual(sorted(i.get("ec_row", -1) for i in assembled), [-1, 0, 1])
+        unused = [i for i in assembled if "ec_row" not in i]
+        self.assertEqual(unused[0]["ec_sidecarKeyName"], "c")
+
+        collapsed = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True), assemble=False)
+        self.assertEqual(
+            sorted((i["code"], i["ec_sidecarKeyName"]) for i in collapsed),
+            [("TAG_EXTENDED", "a"), ("TAG_EXTENDED", "c")],
+        )
+        self.assertTrue(all("ec_row" not in i for i in collapsed))
+
+    def test_validate_table_warnings_only_with_a_warning_handler(self):
+        """Test that a warning is dropped by the default handler and kept by one that checks for warnings."""
+        table = self._table("extended", ["Item/MyThing"])
+        self.assertEqual(self.validator.validate_table(table), [])
+        issues = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True))
+        self.assertEqual([issue["code"] for issue in issues], ["TAG_EXTENDED"])
+
+    def test_validate_table_matches_validate_file(self):
+        """Test that validate_file reports, table by table, exactly what validate_table reports for each."""
+        from datetime import datetime, timezone
+
+        from pynwb import NWBFile
+
+        nwbfile = NWBFile(
+            session_description="d", identifier="file_001", session_start_time=datetime(2024, 1, 1, tzinfo=timezone.utc)
+        )
+        nwbfile.add_lab_meta_data(self.hed_metadata)
+        first = self._table("first", ["InvalidTag123", "Sensory-event"])
+        second = self._categorical_table("second", ["a", "b"], ["a", "b"], ["Sensory-event", "InvalidTagXYZ"])
+        nwbfile.add_acquisition(first)
+        nwbfile.add_acquisition(second)
+
+        for assemble in (True, False):
+            from_file = self.validator.validate_file(nwbfile, assemble=assemble)
+            per_table = self.validator.validate_table(first, assemble=assemble) + self.validator.validate_table(
+                second, assemble=assemble
+            )
+            self.assertEqual(self._summary(from_file), self._summary(per_table))
+            self.assertTrue(all(issue["ec_filename"] == "file_001" for issue in from_file))
+            self.assertEqual({issue["ec_table_name"] for issue in from_file}, {"first", "second"})
 
     def test_validate_table_restores_context_after_exception(self):
-        """Test that a failure inside a column leaves a caller-provided ErrorHandler's context stack as it was."""
+        """Test that a failure while converting the table leaves a caller-provided ErrorHandler's context as it was."""
         error_handler = ErrorHandler(check_for_warnings=False)
         error_handler.push_error_context(ErrorContext.FILE_NAME, "caller_context")
+        table = self._table("invalid", ["InvalidTag123"])
 
-        with patch.object(hed_nwb_validator, "HedString", side_effect=TypeError("unexpected cell type")):
+        with patch.object(hed_nwb_validator, "get_json_hed_dict", side_effect=TypeError("conversion failed")):
             with self.assertRaises(TypeError):
-                self.validator.validate_table(self.invalid_table, error_handler)
+                self.validator.validate_table(table, error_handler)
 
         self.assertEqual(error_handler.error_context, [(ErrorContext.FILE_NAME, "caller_context")])
 
 
+class TestValidateTableNoAssembly(unittest.TestCase):
+    """Test class for validate_table(assemble=False): each distinct annotation once, no row assembly."""
+
+    def setUp(self):
+        self.validator = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0"))
+
+    def test_hed_column_distinct_strings_reported_once_with_row_count(self):
+        """Test that a repeated bad annotation is one issue at its first row carrying the number of rows."""
+        hed = ["InvalidTagXYZ", "Sensory-event", "InvalidTagXYZ", "n/a", "InvalidTagXYZ", ""]
+        table = DynamicTable(name="events", description="d", columns=[HedTags(data=hed)])
+
+        collapsed = self.validator.validate_table(table, assemble=False)
+        self.assertEqual(len(collapsed), 1)
+        self.assertEqual(collapsed[0]["code"], "TAG_INVALID")
+        self.assertEqual(collapsed[0]["ec_column"], "HED")
+        self.assertEqual(collapsed[0]["ec_row"], 0)
+        self.assertEqual(collapsed[0]["row_count"], 3)
+        self.assertEqual(collapsed[0]["ec_table_name"], "events")
+
+        assembled = self.validator.validate_table(table)
+        self.assertEqual([issue["ec_row"] for issue in assembled], [0, 2, 4])
+        self.assertTrue(all("row_count" not in issue for issue in assembled))
+
+    def test_categorical_value_without_a_level_in_both_modes(self):
+        """Test that a value the MeaningsTable does not annotate is the same warning in both modes."""
+        table = DynamicTable(
+            name="trials",
+            description="d",
+            columns=[VectorData(name="condition", description="c", data=["a", "b", "c"])],
+        )
+        meanings = MeaningsTable(target=table["condition"], description="m")
+        meanings.add_row(value="a", meaning="A")
+        meanings.add_row(value="b", meaning="B")
+        meanings.add_column(name="HED", description="h", col_cls=HedTags, data=["Sensory-event", "Green"])
+        table.add_meanings_table(meanings)
+
+        for assemble in (True, False):
+            issues = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True), assemble=assemble)
+            self.assertEqual([issue["code"] for issue in issues], ["SIDECAR_KEY_MISSING"], f"assemble={assemble}")
+            self.assertEqual(issues[0]["ec_column"], "condition")
+            self.assertIn("'c'", issues[0]["message"])
+            self.assertEqual(self.validator.validate_table(table, assemble=assemble), [])  # a warning only
+
+    def test_printable_issue_string_accepts_row_count(self):
+        """Test that the extra row_count key does not break hedtools' issue printing."""
+        table = DynamicTable(name="events", description="d", columns=[HedTags(data=["InvalidTagXYZ"] * 3)])
+        issues = self.validator.validate_table(table, assemble=False)
+        self.assertIn("Errors in table 'events'", get_printable_issue_string(issues))
+
+
+class TestStructuralRules(unittest.TestCase):
+    """Test class for the structural rules validate_table reports before converting a table."""
+
+    def setUp(self):
+        self.validator = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0"))
+
+    @staticmethod
+    def _table_with_meanings(extra_meanings_column):
+        table = DynamicTable(
+            name="trials", description="d", columns=[VectorData(name="condition", description="c", data=["a", "b"])]
+        )
+        meanings = MeaningsTable(target=table["condition"], description="m")
+        meanings.add_row(value="a", meaning="A")
+        meanings.add_row(value="b", meaning="B")
+        meanings.add_column(**extra_meanings_column)
+        table.add_meanings_table(meanings)
+        return table
+
+    def test_vector_data_named_hed_in_table(self):
+        """Test that a VectorData named HED is HED_COLUMN_TYPE_INVALID and stops the table."""
+        table = DynamicTable(
+            name="events",
+            description="d",
+            columns=[
+                VectorData(name="HED", description="not a HedTags", data=["Sensory-event", "InvalidTag123"]),
+                HedValueVector(name="rt", description="r", data=[0.5, 0.6], hed="InvalidValueTag/#"),
+            ],
+        )
+        issues = self.validator.validate_table(table)
+        self.assertEqual([issue["code"] for issue in issues], ["HED_COLUMN_TYPE_INVALID"])
+        self.assertEqual(issues[0]["ec_table_name"], "events")
+        self.assertEqual(issues[0]["severity"], ErrorSeverity.ERROR)
+        self.assertIn("VectorData", issues[0]["message"])
+        self.assertIn("HED_COLUMN_TYPE_INVALID", get_printable_issue_string(issues))
+
+    def test_hed_value_vector_named_hed_in_table(self):
+        """Test that a HedValueVector named HED is HED_COLUMN_TYPE_INVALID."""
+        table = DynamicTable(
+            name="events",
+            description="d",
+            columns=[HedValueVector(name="HED", description="template", data=[1, 2], hed="Label/#")],
+        )
+        issues = self.validator.validate_table(table)
+        self.assertEqual([issue["code"] for issue in issues], ["HED_COLUMN_TYPE_INVALID"])
+        self.assertIn("HedValueVector", issues[0]["message"])
+
+    def test_vector_data_named_hed_in_meanings_table(self):
+        """Test that a VectorData named HED inside a MeaningsTable is reported against the MeaningsTable."""
+        table = self._table_with_meanings({
+            "name": "HED",
+            "description": "not a HedTags",
+            "data": ["Sensory-event", "Red"],
+        })
+        issues = self.validator.validate_table(table)
+        self.assertEqual([issue["code"] for issue in issues], ["HED_COLUMN_TYPE_INVALID"])
+        self.assertIn("condition_meanings", issues[0]["message"])
+        self.assertEqual(issues[0]["ec_table_name"], "trials")
+
+    def test_hed_value_vector_in_meanings_table(self):
+        """Test that a HedValueVector in a MeaningsTable is MEANINGS_VALUE_VECTOR_INVALID, an issue, not an exception."""
+        table = self._table_with_meanings({
+            "name": "bad_template",
+            "description": "not allowed",
+            "col_cls": HedValueVector,
+            "data": [1, 2],
+            "hed": "Parameter-value/#",
+        })
+        issues = self.validator.validate_table(table)
+        self.assertEqual([issue["code"] for issue in issues], ["MEANINGS_VALUE_VECTOR_INVALID"])
+        self.assertIn("bad_template", issues[0]["message"])
+        self.assertIn("condition_meanings", issues[0]["message"])
+
+    def test_validate_file_continues_with_the_other_tables(self):
+        """Test that a structural issue in one table does not stop validate_file from validating the others."""
+        from datetime import datetime, timezone
+
+        from pynwb import NWBFile
+
+        nwbfile = NWBFile(
+            session_description="d", identifier="file_002", session_start_time=datetime(2024, 1, 1, tzinfo=timezone.utc)
+        )
+        nwbfile.add_lab_meta_data(self.validator.hed_metadata)
+        nwbfile.add_acquisition(
+            DynamicTable(
+                name="bad_shape",
+                description="d",
+                columns=[VectorData(name="HED", description="not a HedTags", data=["Sensory-event"])],
+            )
+        )
+        nwbfile.add_acquisition(
+            DynamicTable(name="bad_tag", description="d", columns=[HedTags(data=["InvalidTag123"])])
+        )
+
+        issues = self.validator.validate_file(nwbfile)
+        self.assertEqual(
+            sorted((issue["code"], issue["ec_table_name"]) for issue in issues),
+            [("HED_COLUMN_TYPE_INVALID", "bad_shape"), ("TAG_INVALID", "bad_tag")],
+        )
+
+
+class _UnreadableData:
+    """Stand-in for a column's data that exposes a dtype and fails on any read, like an unread HDF5 dataset."""
+
+    def __init__(self, dtype, length):
+        self.dtype = np.dtype(dtype)
+        self._length = length
+
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, item):
+        raise AssertionError("the column data was read")
+
+    def __iter__(self):
+        raise AssertionError("the column data was read")
+
+
+class TestValueVectorCheck(unittest.TestCase):
+    """Test class for the HedValueVector value check: dtype shortcut, distinct substituted strings, definitions."""
+
+    def setUp(self):
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0", definitions="(Definition/Acc/#, (Age/# s, Red))")
+        self.validator = HedNWBValidator(self.hed_metadata)
+
+    @staticmethod
+    def _table(column, hed=("InvalidTag123",)):
+        """A table holding the value column and a HED column whose cells are all invalid, to show a stop."""
+        hed_data = list(hed) * len(column.data) if len(hed) == 1 else list(hed)
+        return DynamicTable(name="trials", description="d", columns=[HedTags(data=hed_data), column])
+
+    @staticmethod
+    def _summary(issues):
+        return [
+            (issue["code"], issue.get("ec_column"), issue.get("ec_row"), issue.get("row_count")) for issue in issues
+        ]
+
+    def _assert_not_read(self, dtype, hed):
+        """Validate, without assembly, a table whose value column has this dtype and template and must not be read.
+
+        The assembled path reads the whole table into a dataframe by design, so only the no-assembly path
+        can leave a column unread. The column's data property is replaced on the class for the duration.
+        """
+        column = HedValueVector(name="values", description="d", data=[0.0] * 3, hed=hed)
+        table = self._table(column, hed=("Sensory-event",))
+        unreadable = PropertyMock(return_value=_UnreadableData(dtype, 3))
+        with patch.object(HedValueVector, "data", unreadable):
+            issues = self.validator.validate_table(table, assemble=False)
+        self.assertEqual(issues, [], f"{dtype} under {hed}")
+        self.assertGreater(unreadable.call_count, 0)  # the dtype was looked at
+
+    def test_integer_dtype_under_numeric_class_is_not_read(self):
+        """Test that an integer column under a numericClass placeholder passes without its data being read."""
+        for dtype in ("int64", "uint8", "int32"):
+            self._assert_not_read(dtype, "Age/# s")
+
+    def test_float_dtype_under_numeric_class_is_scanned_for_infinity(self):
+        """Test that a float column under a numericClass placeholder passes when finite and reports an infinity."""
+        finite = HedValueVector(name="age", description="d", data=np.array([1.5, 2.0, float("nan")]), hed="Age/# s")
+        self.assertEqual(self.validator.validate_table(self._table(finite, hed=("Sensory-event",))), [])
+
+        column = HedValueVector(
+            name="age", description="d", data=np.array([1.0, float("inf"), float("nan")]), hed="Age/# s"
+        )
+        for assemble in (True, False):
+            issues = self.validator.validate_table(self._table(column, hed=("Sensory-event",)), assemble=assemble)
+            self.assertEqual([(i["code"], i["ec_column"], i["ec_row"]) for i in issues], [("VALUE_INVALID", "age", 1)])
+
+    def test_numeric_dtype_under_text_class_is_not_read(self):
+        """Test that a numeric column under a textClass placeholder, or one with no value class, is not read."""
+        for hed in ("Description/#", "Data-value/#"):  # Data-value declares no value class
+            self._assert_not_read("float64", hed)
+
+    def test_integer_dtype_under_name_class_is_not_read(self):
+        """Test that an integer column under a nameClass placeholder is not read, while a float column is checked."""
+        self._assert_not_read("int64", "Label/#")
+
+        floats = HedValueVector(name="values", description="d", data=np.array([1.5, 2.5]), hed="Label/#")
+        issues = self.validator.validate_table(self._table(floats, hed=("Sensory-event",)))
+        self.assertEqual([issue["code"] for issue in issues], ["CHARACTER_INVALID", "CHARACTER_INVALID"])
+
+    def test_string_values_under_numeric_class(self):
+        """Test that text values under a numericClass placeholder are checked one distinct value at a time."""
+        column = HedValueVector(name="age", description="d", data=["1.5", "x", "2", "x"], hed="Age/# s")
+        issues = self.validator.validate_table(self._table(column))
+        self.assertEqual(self._summary(issues), [("VALUE_INVALID", "age", 1, 2)])
+        self.assertEqual(issues[0]["ec_table_name"], "trials")
+
+    def test_value_error_stops_the_table(self):
+        """Test that a value error is reported and the HED column's own errors are not, in both modes."""
+        column = HedValueVector(name="age", description="d", data=["1.5", "x"], hed="Age/# s")
+        for assemble in (True, False):
+            issues = self.validator.validate_table(self._table(column), assemble=assemble)
+            self.assertEqual([issue["code"] for issue in issues], ["VALUE_INVALID"], f"assemble={assemble}")
+
+    def test_name_class_values(self):
+        """Test that a bare integer is a valid name and a value with a blank is not."""
+        column = HedValueVector(name="label", description="d", data=["3", "a b", "fine_name"], hed="Label/#")
+        issues = self.validator.validate_table(self._table(column))
+        self.assertEqual(self._summary(issues), [("CHARACTER_INVALID", "label", 1, 1)])
+
+    def test_text_class_forbids_a_comma(self):
+        """Test that a text value with a comma is an error, since it would split the annotation."""
+        column = HedValueVector(name="desc", description="d", data=["fine text", "bad, text"], hed="Description/#")
+        issues = self.validator.validate_table(self._table(column))
+        self.assertEqual(len(issues), 1)
+        self.assertEqual((issues[0]["ec_column"], issues[0]["ec_row"], issues[0]["row_count"]), ("desc", 1, 1))
+
+    def test_date_time_class_values(self):
+        """Test that a dateTimeClass placeholder accepts an ISO timestamp and rejects other text."""
+        column = HedValueVector(
+            name="when", description="d", data=["2009-04-09T12:04:14", "yesterday"], hed="Creation-date/#"
+        )
+        issues = self.validator.validate_table(self._table(column))
+        self.assertEqual(self._summary(issues), [("VALUE_INVALID", "when", 1, 1)])
+
+    def test_def_template_resolves_through_the_definition(self):
+        """Test that Def/Acc/# takes its classes from Age/# inside the definition: integers pass unread, text is checked."""
+        self._assert_not_read("int64", "Def/Acc/#")
+
+        column = HedValueVector(name="acc", description="d", data=["1.5", "x"], hed="Def/Acc/#")
+        issues = self.validator.validate_table(self._table(column))
+        self.assertEqual({issue["code"] for issue in issues}, {"VALUE_INVALID", "DEF_INVALID"})
+        self.assertTrue(all((issue["ec_column"], issue["ec_row"]) == ("acc", 1) for issue in issues))
+
+    def test_missing_values_are_skipped(self):
+        """Test that None, NaN, an empty string, and n/a in a value column are not substituted."""
+        column = HedValueVector(name="age", description="d", data=["1.5", None, float("nan"), "", "n/a"], hed="Age/# s")
+        self.assertEqual(self.validator.validate_table(self._table(column, hed=("Sensory-event",))), [])
+
+    def test_same_issues_in_both_modes(self):
+        """Test that the value check reports the same issues with and without assembly."""
+        column = HedValueVector(name="age", description="d", data=["1.5", "x", "y", "x"], hed="Age/# s")
+        table = self._table(column, hed=("Sensory-event",))
+        self.assertEqual(
+            self._summary(self.validator.validate_table(table)),
+            self._summary(self.validator.validate_table(table, assemble=False)),
+        )
+
+
 class TestValidateEventsTable(unittest.TestCase):
-    """Test class for validating EventsTable objects."""
+    """Test class for validate_table on an EventsTable (validated as a timeline)."""
 
     def setUp(self):
         """Set up test data."""
-        # Create HED lab metadata with a basic schema
         self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
-
-        # Create HedNWBValidator instance
         self.validator = HedNWBValidator(self.hed_metadata)
 
-        # Create test EventsTables using get_events_table function
-        # This is the proper way to create EventsTable for testing
-
-        # Create valid test data for EventsTable
         valid_df = pd.DataFrame({
             "onset": [1.0, 2.0, 3.0, 4.0, 5.0],
             "duration": [0.5, 0.5, 0.5, 0.5, 0.5],
-            "HED": ["Sensory-event", "Visual-presentation", "Auditory-event", "Sensory-event", "Auditory-event"],
+            "HED": [
+                "Sensory-event",
+                "Visual-presentation",
+                "Auditory-presentation",
+                "Sensory-event",
+                "Auditory-presentation",
+            ],
         })
-
-        # Create invalid test data for EventsTable
         invalid_df = pd.DataFrame({
             "onset": [1.0, 2.0, 3.0],
             "duration": [0.5, 0.5, 0.5],
             "HED": ["InvalidTag123", "NonExistentEvent", "BadTag/WithSlash"],
         })
-
-        # Create EventsTables using get_events_table
         self.valid_events_table = get_events_table(
             name="valid_events",
             description="Valid events table with HED tags",
             df=valid_df,
             meanings={"categorical": {}, "value": {}},
         )
-
         self.invalid_events_table = get_events_table(
             name="invalid_events",
             description="Invalid events table with HED tags",
@@ -377,55 +678,28 @@ class TestValidateEventsTable(unittest.TestCase):
         )
 
     def test_validate_events_valid_table(self):
-        """Test validate_events with valid EventsTable."""
-        issues = self.validator.validate_events(self.valid_events_table)
-
-        self.assertIsInstance(issues, list)
-        # Should have no issues for valid events table
-        # Note: May fail initially until HED tags are corrected
+        """Test validate_table with a valid EventsTable."""
+        self.assertEqual(self.validator.validate_table(self.valid_events_table), [])
 
     def test_validate_events_invalid_table(self):
-        """Test validate_events with invalid EventsTable."""
-        issues = self.validator.validate_events(self.invalid_events_table)
-
-        self.assertIsInstance(issues, list)
-        # Should have issues for invalid events table
+        """Test validate_table with an invalid EventsTable reports every row at its table index."""
+        issues = self.validator.validate_table(self.invalid_events_table)
+        self.assertEqual(sorted(issue["ec_row"] for issue in issues), [0, 1, 2])
+        self.assertTrue(all(issue["code"] == "TAG_INVALID" for issue in issues))
+        self.assertTrue(all(issue["ec_table_name"] == "invalid_events" for issue in issues))
 
     def test_validate_events_with_custom_error_handler(self):
-        """Test validate_events with custom error handler."""
+        """Test validate_table on an EventsTable with a custom error handler."""
         error_handler = ErrorHandler(check_for_warnings=True)
-        issues = self.validator.validate_events(self.invalid_events_table, error_handler)
+        issues = self.validator.validate_table(self.invalid_events_table, error_handler)
+        self.assertEqual(len(issues), 3)
+        self.assertEqual(error_handler.error_context, [])
 
-        self.assertIsInstance(issues, list)
-
-    def test_validate_events_none_input(self):
-        """Test validate_events with None input."""
-        with self.assertRaises(ValueError) as cm:
-            self.validator.validate_events(None)
-        self.assertIn("not a valid EventsTable instance", str(cm.exception))
-
-    def test_validate_events_invalid_type(self):
-        """Test validate_events with invalid type input."""
-        invalid_input = DynamicTable(
-            name="test", description="test", columns=[VectorData(name="test", description="test", data=["test"])]
-        )
-        with self.assertRaises(ValueError) as cm:
-            self.validator.validate_events(invalid_input)
-        self.assertIn("not a valid EventsTable instance", str(cm.exception))
-
-    def test_validate_events_conversion_integration(self):
-        """Test that validate_events properly calls get_bids_tabular."""
-        # This test verifies the integration with get_bids_tabular
-        # Even though validation logic is not implemented yet,
-        # it should successfully convert to BIDS format
-        issues = self.validator.validate_events(self.valid_events_table)
-
-        # Should return a list (even if empty for now)
-        self.assertIsInstance(issues, list)
-
-        # Test with events table that has both HED tags and categorical data
-        issues = self.validator.validate_events(self.valid_events_table)
-        self.assertIsInstance(issues, list)
+    def test_validate_events_no_assembly(self):
+        """Test validate_table(assemble=False) on an EventsTable reports the three distinct bad cells."""
+        issues = self.validator.validate_table(self.invalid_events_table, assemble=False)
+        self.assertEqual(sorted(issue["ec_row"] for issue in issues), [0, 1, 2])
+        self.assertTrue(all(issue["row_count"] == 1 for issue in issues))
 
 
 class TestValidateHedValueVector(unittest.TestCase):
@@ -735,10 +1009,9 @@ class TestValidateHedValueVector(unittest.TestCase):
 class TestValidateWithDefinitions(unittest.TestCase):
     """Test class for validating HED tags that reference definitions.
 
-    All validation methods (validate_vector, validate_table, validate_value_vector,
-    and validate_events) now support external definition dictionaries by passing
-    def_dict parameter to HedString during validation. This allows HED tags to
-    reference definitions defined in HedLabMetaData.
+    validate_table and validate_file resolve Def/ references against the HedLabMetaData
+    definitions, which travel to hedtools in the exported sidecar; validate_vector and
+    validate_value_vector pass the DefinitionDict to HedString directly.
     """
 
     def setUp(self):
@@ -857,7 +1130,7 @@ class TestValidateWithDefinitions(unittest.TestCase):
         self.assertIn("response-time", defs_string.lower())
 
     def test_validate_events_with_definition_references(self):
-        """Test validate_events with EventsTable containing definition references."""
+        """Test validate_table with EventsTable containing definition references."""
         # Create EventsTable with definition references
         events_df = pd.DataFrame({
             "onset": [1.0, 2.0, 3.0, 4.0],
@@ -877,14 +1150,14 @@ class TestValidateWithDefinitions(unittest.TestCase):
             meanings={"categorical": {}, "value": {}},
         )
 
-        issues = self.validator_with_defs.validate_events(events_table)
+        issues = self.validator_with_defs.validate_table(events_table)
 
         # Should have no issues since all definitions exist
         self.assertIsInstance(issues, list)
         self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
 
     def test_validate_events_with_invalid_definition_references(self):
-        """Test validate_events with invalid definition references."""
+        """Test validate_table with invalid definition references."""
         # Create EventsTable with invalid definition references
         events_df = pd.DataFrame({
             "onset": [1.0, 2.0],
@@ -902,7 +1175,7 @@ class TestValidateWithDefinitions(unittest.TestCase):
             meanings={"categorical": {}, "value": {}},
         )
 
-        issues = self.validator_with_defs.validate_events(events_table)
+        issues = self.validator_with_defs.validate_table(events_table)
 
         # Should have issues for non-existent definitions
         self.assertIsInstance(issues, list)
@@ -929,10 +1202,7 @@ class TestValidateWithDefinitions(unittest.TestCase):
         self.assertEqual(len(issues), 0, f"Expected no issues but got: {issues}")
 
     def test_validate_events_mixed_definitions_and_regular_tags(self):
-        """Test validate_events with a mix of definition references and regular HED tags.
-
-        NOTE: This is the original test using validate_events.
-        """
+        """Test validate_table with an EventsTable mixing definition references and regular HED tags."""
         events_df = pd.DataFrame({
             "onset": [1.0, 2.0, 3.0, 4.0],
             "duration": [0.5, 0.5, 0.5, 0.5],
@@ -951,7 +1221,7 @@ class TestValidateWithDefinitions(unittest.TestCase):
             meanings={"categorical": {}, "value": {}},
         )
 
-        issues = self.validator_with_defs.validate_events(events_table)
+        issues = self.validator_with_defs.validate_table(events_table)
 
         # Should have no issues - all definitions exist and regular tags are valid
         self.assertIsInstance(issues, list)
@@ -976,10 +1246,7 @@ class TestValidateWithDefinitions(unittest.TestCase):
         self.assertGreater(len(issues), 0, "Expected validation issues for invalid regular tags")
 
     def test_validate_events_definition_with_invalid_regular_tags(self):
-        """Test that invalid regular HED tags are caught even when definitions are valid.
-
-        Uses validate_events to properly support definitions.
-        """
+        """Test that invalid regular HED tags in an EventsTable are caught even when definitions are valid."""
         events_df = pd.DataFrame({
             "onset": [1.0, 2.0],
             "duration": [0.5, 0.5],
@@ -996,14 +1263,14 @@ class TestValidateWithDefinitions(unittest.TestCase):
             meanings={"categorical": {}, "value": {}},
         )
 
-        issues = self.validator_with_defs.validate_events(events_table)
+        issues = self.validator_with_defs.validate_table(events_table)
 
         # Should have issues for invalid regular tags
         self.assertIsInstance(issues, list)
         self.assertGreater(len(issues), 0, "Expected validation issues for invalid regular tags")
 
     def test_validate_events_uses_definitions(self):
-        """Test that validate_events actually uses the definitions when validating."""
+        """Test that validate_table on an EventsTable uses the definitions when validating."""
         # This test verifies that definitions are passed to the underlying validation
         # Create an EventsTable that would fail without definitions but passes with them
         events_df = pd.DataFrame({
@@ -1023,13 +1290,13 @@ class TestValidateWithDefinitions(unittest.TestCase):
         )
 
         # Validate with definitions - should pass
-        issues_with_defs = self.validator_with_defs.validate_events(events_table)
+        issues_with_defs = self.validator_with_defs.validate_table(events_table)
         self.assertEqual(
             len(issues_with_defs), 0, f"Should have no issues with definitions, but got: {issues_with_defs}"
         )
 
         # Validate without definitions - should fail
-        issues_no_defs = self.validator_no_defs.validate_events(events_table)
+        issues_no_defs = self.validator_no_defs.validate_table(events_table)
         self.assertGreater(len(issues_no_defs), 0, "Should have issues without definitions")
 
     def test_validate_table_with_definition_references(self):
@@ -1206,13 +1473,14 @@ class TestValidateWithDefinitions(unittest.TestCase):
         # Create HedTags with definitions
         hed_tags = HedTags(
             data=[
-                "Def/Go-stimulus",
                 "Def/Stop-stimulus",
                 "Def/Correct-response",
+                "Def/Stop-stimulus",
             ]
         )
 
-        # Create HedValueVector with definitions
+        # Create HedValueVector with definitions. Its template must not repeat a tag of the HED column,
+        # since the two are assembled into one annotation per row.
         hed_values = HedValueVector(
             name="stimulus_sizes",
             description="Stimulus sizes",
@@ -1395,7 +1663,7 @@ class TestValidateFile(unittest.TestCase):
         bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
         self.assertEqual(len(bad), 1, f"expected one TAG_INVALID issue, got {len(bad)}: {issues}")
         self.assertEqual(bad[0].get("ec_table_name"), "events")
-        self.assertEqual(bad[0].get("ec_filename"), "events")
+        self.assertEqual(bad[0].get("ec_filename"), self.nwbfile.identifier)
         self.assertEqual(bad[0].get("ec_sidecarColumnName"), "event_type")
         self.assertEqual(bad[0].get("ec_sidecarKeyName"), "stop")
         self.assertNotIn("ec_row", bad[0])
@@ -1427,7 +1695,7 @@ class TestValidateFile(unittest.TestCase):
         bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
         self.assertEqual(len(bad), 1, f"expected one TAG_INVALID issue, got {len(bad)}: {issues}")
         self.assertEqual(bad[0].get("ec_table_name"), "trials")
-        self.assertEqual(bad[0].get("ec_filename"), "trials")
+        self.assertEqual(bad[0].get("ec_filename"), self.nwbfile.identifier)
         self.assertEqual(bad[0].get("ec_sidecarColumnName"), "condition")
         self.assertEqual(bad[0].get("ec_sidecarKeyName"), "b")
         self.assertNotIn("ec_row", bad[0])
@@ -1458,7 +1726,7 @@ class TestValidateFile(unittest.TestCase):
         issues = self.validator.validate_file(self.nwbfile)
         bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
         self.assertEqual(len(bad), 1, f"expected the unused level's invalid tag to be caught: {issues}")
-        self.assertEqual(bad[0].get("ec_filename"), "events")
+        self.assertEqual(bad[0].get("ec_filename"), self.nwbfile.identifier)
         self.assertEqual(bad[0].get("ec_sidecarColumnName"), "event_type")
         self.assertEqual(bad[0].get("ec_sidecarKeyName"), "stop")
 
@@ -1489,7 +1757,7 @@ class TestValidateFile(unittest.TestCase):
         self.assertIn("SIDECAR_BRACES_INVALID", codes, f"expected a structural sidecar error, got: {issues}")
 
     def test_validate_file_rejects_hedvaluevector_in_meanings(self):
-        """R5: a HedValueVector column in a MeaningsTable raises ValueError during validate_file."""
+        """R5: a HedValueVector column in a MeaningsTable is reported as MEANINGS_VALUE_VECTOR_INVALID."""
         from hdmf.common import MeaningsTable
 
         table = DynamicTable(
@@ -1511,10 +1779,12 @@ class TestValidateFile(unittest.TestCase):
         table.add_meanings_table(meanings)
         self.nwbfile.add_acquisition(table)
 
-        with self.assertRaises(ValueError) as cm:
-            self.validator.validate_file(self.nwbfile)
-        self.assertIn("HedValueVector", str(cm.exception))
-        self.assertIn("bad_template", str(cm.exception))
+        issues = self.validator.validate_file(self.nwbfile)
+        self.assertEqual([issue["code"] for issue in issues], ["MEANINGS_VALUE_VECTOR_INVALID"])
+        self.assertIn("HedValueVector", issues[0]["message"])
+        self.assertIn("bad_template", issues[0]["message"])
+        self.assertEqual(issues[0]["ec_table_name"], "trials")
+        self.assertEqual(issues[0]["ec_filename"], self.nwbfile.identifier)
 
     def test_validate_file_value_column_error_in_plain_table(self):
         """A HedValueVector value column in a non-EventsTable table is validated (assembled)."""
@@ -1536,7 +1806,7 @@ class TestValidateFile(unittest.TestCase):
         issues = self.validator.validate_file(self.nwbfile)
         bad = [i for i in issues if i.get("code") == "TAG_INVALID"]
         self.assertGreaterEqual(len(bad), 1, f"expected the invalid value template to be caught: {issues}")
-        self.assertEqual(bad[0].get("ec_filename"), "trials")
+        self.assertEqual(bad[0].get("ec_filename"), self.nwbfile.identifier)
 
     def test_validate_file_valid_eventstable_timeline(self):
         """An EventsTable (time-anchored) with valid HED validates with no errors (assembled)."""

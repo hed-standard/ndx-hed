@@ -135,7 +135,7 @@ def validate_individual_components(validator, nwbfile):
 
 
 def validate_tables(validator, nwbfile):
-    """Demonstrate table-level validation"""
+    """Demonstrate table-level validation: assembled by default, cell by cell with assemble=False"""
     print("\n2. Validating complete tables...")
 
     tables = [
@@ -147,6 +147,8 @@ def validate_tables(validator, nwbfile):
 
     for table_name, description in tables:
         table = nwbfile.acquisition[table_name]
+        # validate_table checks the structure, the column metadata (templates, categorical HED, definitions),
+        # the values of each HedValueVector, and then assembles each row's HED and validates it as a whole.
         issues = validator.validate_table(table)
         print(f"   - {description}: {len(issues)} issues found")
 
@@ -155,6 +157,15 @@ def validate_tables(validator, nwbfile):
             error_count = sum(1 for issue in issues if issue.get("severity", 0) == 1)
             warning_count = len(issues) - error_count
             print(f"     (Errors: {error_count}, Warnings: {warning_count})")
+
+    # Without assembly (what nwbinspector runs): the same checks up to the row assembly, then the HED column
+    # cell by cell. Each distinct annotation is validated once and reported at its first row with the number
+    # of rows that hold it, so a misspelled tag repeated down a column is one issue, not one per row.
+    invalid_table = nwbfile.acquisition["invalid_events"]
+    issues = validator.validate_table(invalid_table, assemble=False)
+    print(f"   - Invalid table without assembly: {len(issues)} distinct issues")
+    for issue in issues[:2]:
+        print(f"     Row {issue.get('ec_row')} ({issue.get('row_count')} rows): {issue.get('message')}")
 
 
 def validate_events_table(validator):
@@ -176,8 +187,9 @@ def validate_events_table(validator):
     for event in events:
         events_table.add_row(event)
 
-    # Validate EventsTable
-    issues = validator.validate_events(events_table)
+    # An EventsTable is validated with validate_table like any other table; its timestamp column makes
+    # it a timeline, so HED's temporal constructs are checked across rows as well.
+    issues = validator.validate_table(events_table)
     print(f"   - EventsTable: {len(issues)} issues found")
 
     if issues:
@@ -205,10 +217,10 @@ def validate_entire_file(validator, nwbfile):
         print(f"     Errors: {error_count}")
         print(f"     Warnings: {warning_count}")
 
-        # Show issues by table
+        # Show issues by table (ec_filename is the file identifier; the table is in ec_table_name)
         table_issues = {}
         for issue in all_issues:
-            table_name = issue.get("ec_filename", "unknown")
+            table_name = issue.get("ec_table_name", "unknown")
             if table_name not in table_issues:
                 table_issues[table_name] = []
             table_issues[table_name].append(issue)

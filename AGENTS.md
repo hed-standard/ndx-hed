@@ -57,18 +57,21 @@ The rules, documented in `docs/source/hed_validation.md`:
 2. R2 - at most one `HedTags` column per `DynamicTable` (follows from R1).
 3. R3 - a `HedTags` column inside a `MeaningsTable` is categorical (per-value) HED for the column that table targets.
 4. R4 - a `HedTags` column in any other `DynamicTable` is per-row HED.
-5. R5 - a `HedValueVector` must not appear in a `MeaningsTable` (`validate_file` raises `ValueError`).
+5. R5 - a `HedValueVector` must not appear in a `MeaningsTable` (`validate_table` reports `MEANINGS_VALUE_VECTOR_INVALID`).
+6. R6 - a column named `HED` must be a `HedTags`, in a `DynamicTable` and in a `MeaningsTable` alike (`validate_table` reports `HED_COLUMN_TYPE_INVALID`).
+7. R7 - the values of a `HedValueVector` must satisfy the value class of its `#` tag; no value class means `textClass`.
 
 So three HED shapes coexist: per-row (`HedTags`), value template (`HedValueVector`, `#` substituted per row), and categorical (plain `VectorData` plus a `MeaningsTable` holding a `HED` column).
 
 ## Rules that are easy to get wrong
 
 - `src/pynwb/ndx_hed/__init__.py` loads the namespace from the installed `ndx_hed/spec/` and falls back to the repo's `spec/` in a checkout. Keep both paths working.
-- `HedNWBValidator.validate_file` does assembled, BIDS-style validation, not tag-by-tag checks: each table becomes `(dataframe, sidecar)` through `get_bids_tabular`; `Sidecar.validate()` runs first and any sidecar error stops that table; then `TabularInput.validate()` merges each row's per-row, categorical, and value HED and validates temporally when an `onset` column is present, otherwise per row. `get_bids_tabular` renames a `TimestampVectorData` column to `onset` precisely so an `EventsTable` is validated as a timeline.
-- A `MeaningsTable` is skipped in the file walk (its HED is validated with the table it annotates) and checked only against R5.
-- `validate_table`, `validate_vector`, and `validate_value_vector` are per-column helpers that neither assemble rows nor validate temporally.
+- `HedNWBValidator.validate_table` is the table validator and `validate_file` calls it per table. Its order: structural rules R5 and R6 (reported as issues, stop the table); nothing to do for a HED-free table; `get_json_hed_dict` (reads no data); `Sidecar.validate()` (any error stops the table); the R7 value check on each `HedValueVector` (dtype shortcut, else each distinct value substituted and validated); then the assembly gate. With `assemble=True` the table becomes a dataframe through `get_bids_dataframe` and `TabularInput.validate()` merges each row's per-row, categorical, and value HED and validates temporally when an `onset` column is present. With `assemble=False` (nwbinspector) the table is never read as a whole: the `HED` column is validated by distinct string and categorical values are checked against their levels. Rows are table indices in both modes; hedtools' header-first line numbers are converted.
+- A `MeaningsTable` is skipped in the file walk (its HED is validated with the table it annotates); `validate_table` refuses one and raises `ValueError`.
+- `validate_vector` and `validate_value_vector` are single-column helpers that neither assemble rows nor validate temporally. `validate_events` no longer exists.
+- The ndx-hed error codes live in `src/pynwb/ndx_hed/utils/hed_nwb_errors.py`, registered with hedtools' `hed_error`. An extra issue key must not start with `ec_`: hedtools treats every `ec_` key as an error context and `get_printable_issue_string` fails on one it does not know. The row-count key is `row_count`.
 - The spec harness builds its NWB objects with `extract_meanings`, `get_categorical_meanings`, and `get_events_table`, so a change to those converters changes what `spec_tests` tests; run `python -m pytest spec_tests` after touching them.
-- Validation reuses `get_bids_tabular`, so a change to that converter changes validation behavior. `get_bids_tabular` emits nothing for the `HED` column (`HED` is a reserved sidecar key) and reads categorical levels through `DynamicTable.get_meanings_for_column`.
+- Validation reuses `get_json_hed_dict` and `get_bids_dataframe` (the two halves of `get_bids_tabular`), so a change to either changes validation behavior. `get_json_hed_dict` emits nothing for the `HED` column (`HED` is a reserved sidecar key) and reads categorical levels through `DynamicTable.get_meanings_for_column`; `get_bids_dataframe` writes NaN, None, and `""` as `n/a`, as a BIDS TSV would.
 - `extract_meanings` keeps categorical sidecar entries raw because a PyNWB 4 `MeaningsTable` needs the target `VectorData`, which does not exist until `get_events_table` builds it.
 - `hedtools` currently installs from the hed-python `main` branch, not PyPI (`pyproject.toml` dependencies, with `allow-direct-references`), because hed-python is gaining the support ndx-hed needs. Installing needs git on PATH. The constraints files carry no hedtools pin for the same reason. Before a release this reverts to a PyPI version; do not add a hedtools pin anywhere until it does.
 - Tests load real HED schemas from the network on first use.

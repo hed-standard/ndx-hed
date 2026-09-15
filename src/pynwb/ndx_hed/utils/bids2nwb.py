@@ -341,14 +341,44 @@ def get_json_hed_dict(table: DynamicTable, hed_metadata: HedLabMetaData = None) 
     return json_data
 
 
+def get_bids_dataframe(table: DynamicTable) -> pd.DataFrame:
+    """
+    Converts the data of a DynamicTable to a BIDS-style dataframe, the TSV half of get_bids_tabular().
+
+    This reads every column of the table. A ``TimestampVectorData`` column is renamed to ``onset``
+    so that downstream BIDS-HED validation treats the table as a timeline (temporal) file. Missing
+    cells (NaN, None, the empty string) become the text ``n/a``, as in a BIDS TSV file, so every
+    column of the returned dataframe has dtype object.
+
+    Parameters:
+        table (DynamicTable): The table to convert.
+
+    Returns:
+        pd.DataFrame: The table data with BIDS column names (onset, duration, etc.)
+    """
+    df = table.to_dataframe()
+
+    # Rename the timestamp column back to onset so the table reads as a BIDS timeline file. The
+    # "timestamp" column must itself be a TimestampVectorData -- an unrelated column that merely
+    # happens to be named "timestamp" is left alone.
+    if "timestamp" in table.colnames and isinstance(table["timestamp"], TimestampVectorData):
+        df = df.rename(columns={"timestamp": "onset"})
+
+    # hedtools reads BIDS TSV files, where a missing cell is the text "n/a". to_dataframe() holds NaN,
+    # None, or "" instead; hedtools would turn NaN into the text "nan" ("Delay/nan s") and substitute ""
+    # into a value template ("Delay/ s"). hedtools converts every column to text on input, so the
+    # numeric dtype is not needed downstream.
+    return df.astype(object).where(df.notna() & (df != ""), "n/a")
+
+
 def get_bids_tabular(table: DynamicTable, hed_metadata: HedLabMetaData = None) -> tuple:
     """
     Converts a DynamicTable to a BIDS-style tabular representation (DataFrame and JSON sidecar).
 
     Works for any DynamicTable (an EventsTable or a plain DynamicTable). It is not meant for a
-    MeaningsTable, whose HED is consumed while assembling the table whose column it annotates. A
-    ``TimestampVectorData`` column is renamed to ``onset`` so that downstream BIDS-HED validation
-    treats the table as a timeline (temporal) file.
+    MeaningsTable, whose HED is consumed while assembling the table whose column it annotates. The
+    dataframe is get_bids_dataframe(table) and the sidecar is get_json_hed_dict(table, hed_metadata);
+    call those directly to get only one half (the sidecar half does not read the table's data).
 
     Parameters:
         table (DynamicTable): The table to convert.
@@ -361,14 +391,4 @@ def get_bids_tabular(table: DynamicTable, hed_metadata: HedLabMetaData = None) -
             - pd.DataFrame: The table data with BIDS column names (onset, duration, etc.)
             - dict: The JSON sidecar data as returned by get_json_hed_dict().
     """
-
-    # Get DataFrame from the table
-    df = table.to_dataframe()
-
-    # Rename the timestamp column back to onset so the table reads as a BIDS timeline file. The
-    # "timestamp" column must itself be a TimestampVectorData -- an unrelated column that merely
-    # happens to be named "timestamp" is left alone.
-    if "timestamp" in table.colnames and isinstance(table["timestamp"], TimestampVectorData):
-        df = df.rename(columns={"timestamp": "onset"})
-
-    return df, get_json_hed_dict(table, hed_metadata)
+    return get_bids_dataframe(table), get_json_hed_dict(table, hed_metadata)
