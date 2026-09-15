@@ -22,6 +22,7 @@ from ndx_hed.utils.bids2nwb import (
     DEFINITIONS_KEY,
     extract_definitions,
     extract_meanings,
+    get_bids_dataframe,
     get_bids_tabular,
     get_categorical_meanings,
     get_events_table,
@@ -1187,6 +1188,29 @@ class TestGetBidsTabular(unittest.TestCase):
         self.events_table = get_events_table(
             name="test_events", description="Test events for conversion", df=sample_df, meanings=meanings
         )
+
+    def test_get_bids_dataframe_missing_values_become_na(self):
+        """Test that NaN, None, and the empty string are written as n/a, as in a BIDS TSV, and other cells keep their text."""
+        table = DynamicTable(
+            name="trials",
+            description="Table with missing cells",
+            columns=[
+                HedValueVector(name="delay", description="d", data=[0.5, float("nan"), 0.7], hed="Delay/# s"),
+                VectorData(name="label", description="l", data=["a", None, ""]),
+                HedTags(data=["Sensory-event", "n/a", ""]),
+            ],
+        )
+        df = get_bids_dataframe(table)
+
+        self.assertEqual(df["delay"].tolist(), [0.5, "n/a", 0.7])
+        self.assertEqual(df["label"].tolist(), ["a", "n/a", "n/a"])
+        self.assertEqual(df["HED"].tolist(), ["Sensory-event", "n/a", "n/a"])
+        self.assertTrue(all(dtype.kind == "O" for dtype in df.dtypes))
+
+        # get_bids_tabular returns the same dataframe next to the sidecar
+        df_tabular, json_data = get_bids_tabular(table)
+        pd.testing.assert_frame_equal(df_tabular, df)
+        self.assertEqual(json_data["delay"]["HED"], "Delay/# s")
 
     def test_get_bids_tabular_basic(self):
         """Test basic conversion from EventsTable to BIDS format."""

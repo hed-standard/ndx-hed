@@ -123,6 +123,10 @@ class HedLabMetaData(LabMetaData):
         def_list = []
         for def_name, def_entry in self._definition_dict.items():
             takes_value = "/#" if def_entry.takes_value else ""
-            def_str = f"(Definition/{def_name}{takes_value},{def_entry.contents})"
-            def_list.append(def_str)
+            # A namespaced schema (for example "ts:8.5.0") needs the prefix on the Definition tag as well as
+            # on the contents, or the exported string does not validate against that schema.
+            tags = def_entry.contents.get_all_tags() if def_entry.contents is not None else []
+            prefix = tags[0].schema_namespace if tags else ""
+            contents = f",{def_entry.contents}" if def_entry.contents is not None else ""
+            def_list.append(f"({prefix}Definition/{def_name}{takes_value}{contents})")
         return ",".join(def_list)

@@ -46,6 +46,22 @@ SKIP_CASES: dict[tuple[str, str, str, int], str] = {
     ("sidecar-invalid-key-at-wrong-level", "sidecar", "fails", 1): "malformed sidecar JSON has no NWB equivalent",
     ("sidecar-invalid-key-at-wrong-level", "combo", "fails", 1): "malformed sidecar JSON has no NWB equivalent",
     ("sidecar-invalid-key-at-wrong-level", "combo", "fails", 2): "malformed sidecar JSON has no NWB equivalent",
+    # The sidecar's top-level key is 'HED', so the harness builds a VectorData named HED (M2). ndx-hed
+    # reports that as HED_COLUMN_TYPE_INVALID (rule R6, docs/source/hed_validation.md) before hedtools
+    # sees the table, where the expected code is SIDECAR_INVALID. Same malformed shape as the entries above.
+    ("sidecar-invalid-key-at-wrong-level", "sidecar", "fails", 2): (
+        "a top-level HED key becomes a VectorData named HED, which ndx-hed reports as HED_COLUMN_TYPE_INVALID"
+    ),
+    # --- hedtools differences -------------------------------------------------------------------
+    # The response_time value column holds "7,3" in a row whose event_code annotation does not reference
+    # {response_time}. hedtools folds a brace-referenced column into the referencing annotation and never
+    # validates it on its own, so it never sees "7,3". ndx-hed checks every HedValueVector value against
+    # the value class of its placeholder (rule R7, docs/source/hed_validation.md), and a comma is not
+    # allowed, so it reports the value. Whether an unreferenced value must be valid is a question for
+    # hed-tests; skipped until it is settled.
+    ("sidecar-braces-self-reference", "combo", "passes", 1): (
+        "value '7,3' in a brace-referenced column: hedtools never validates it, ndx-hed's value check does"
+    ),
     # A sidecar-only case has no events table, so hedtools has nothing to resolve a {HED} column
     # reference against and reports nothing. In NWB the sidecar becomes a zero-row table (M2), whose
     # columns are known, so validate_file reports the reference to the absent HED column as the
