@@ -10,7 +10,7 @@
 # branch for now, and a version constraint here would conflict with that direct reference.
 # Restore a hedtools pin when pyproject.toml goes back to a PyPI version.
 typos==1.50.1
-coverage==7.16.0
+coverage==7.16.1
 hdmf==6.2.0
 hdmf-docutils==0.4.10
 linkify-it-py==2.2.0
