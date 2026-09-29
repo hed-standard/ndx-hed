@@ -622,8 +622,46 @@ class TestValueVectorCheck(unittest.TestCase):
 
         column = HedValueVector(name="acc", description="d", data=["1.5", "x"], hed="Def/Acc/#")
         issues = self.validator.validate_table(self._table(column))
-        self.assertEqual({issue["code"] for issue in issues}, {"VALUE_INVALID", "DEF_INVALID"})
-        self.assertTrue(all((issue["ec_column"], issue["ec_row"]) == ("acc", 1) for issue in issues))
+        self.assertEqual(self._summary(issues), [("VALUE_INVALID", "acc", 1, 1)])
+        self.assertIn("Age/x s", issues[0]["message"])  # the placeholder tag inside the definition
+
+    def test_template_with_column_reference_checks_only_the_value(self):
+        """Test that a {column} reference in the template is the sidecar's business and the value check ignores it."""
+        table = DynamicTable(
+            name="trials",
+            description="d",
+            columns=[
+                VectorData(name="event_type", description="e", data=["go", "stop"]),
+                HedValueVector(name="rt", description="r", data=["0.5", "x"], hed="(Age/# s, {event_type})"),
+            ],
+        )
+        meanings = MeaningsTable(target=table["event_type"], description="m")
+        meanings.add_row(value="go", meaning="G")
+        meanings.add_row(value="stop", meaning="S")
+        meanings.add_column(name="HED", description="h", col_cls=HedTags, data=["Sensory-event", "Agent-action"])
+        table.add_meanings_table(meanings)
+
+        for assemble in (True, False):
+            issues = self.validator.validate_table(table, assemble=assemble)
+            self.assertEqual(self._summary(issues), [("VALUE_INVALID", "rt", 1, 1)], f"assemble={assemble}")
+            self.assertIn("Age/x s", issues[0]["message"])
+
+        table["rt"].data[1] = "0.7"
+        for assemble in (True, False):
+            self.assertEqual(self.validator.validate_table(table, assemble=assemble), [], f"assemble={assemble}")
+
+    def test_validate_value_vector_helper_matches_the_table_check(self):
+        """Test that validate_value_vector strips references from the template and checks the values the same way."""
+        column = HedValueVector(name="rt", description="r", data=["0.5", "x", "x"], hed="(Age/# s, {event_type})")
+        issues = self.validator.validate_value_vector(column)
+        self.assertEqual(self._summary(issues), [("VALUE_INVALID", None, 1, 2)])
+
+        good = HedValueVector(name="rt", description="r", data=[0.5, 0.7], hed="(Age/# s, {event_type})")
+        self.assertEqual(self.validator.validate_value_vector(good), [])
+
+        bad_template = HedValueVector(name="rt", description="r", data=["0.5"], hed="(InvalidTag123/# s, {event_type})")
+        codes = [issue["code"] for issue in self.validator.validate_value_vector(bad_template)]
+        self.assertIn("TAG_INVALID", codes)
 
     def test_missing_values_are_skipped(self):
         """Test that None, NaN, an empty string, and n/a in a value column are not substituted."""

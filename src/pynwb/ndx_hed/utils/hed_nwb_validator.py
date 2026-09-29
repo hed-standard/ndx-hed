@@ -4,7 +4,6 @@ HedNWBValidator: validation of the HED annotations in NWB DynamicTable objects.
 
 import io
 import json
-import math
 from typing import Any
 
 import numpy as np
@@ -12,7 +11,8 @@ from hdmf.common import MeaningsTable
 from hed.errors import ErrorContext, ErrorHandler, HedExceptions, HedFileError
 from hed.errors.error_reporter import check_for_any_errors
 from hed.errors.error_types import ValidationErrors
-from hed.models import HedString, Sidecar, TabularInput
+from hed.models import HedString, HedTag, Sidecar, TabularInput
+from hed.validator import HedValidator
 from pynwb import NWBFile
 from pynwb.core import DynamicTable
 
@@ -62,6 +62,8 @@ class HedNWBValidator:
         self.hed_metadata = hed_metadata
         self.hed_schema = hed_metadata.get_hed_schema()
         self.def_dict = hed_metadata.get_definition_dict()
+        # For the units and value-class check of a single tag (validate_units); definitions play no part there.
+        self._hed_validator = HedValidator(self.hed_schema)
 
     # ------------------------------------------------------------------------------------------
     # The table validator
@@ -86,11 +88,13 @@ class HedNWBValidator:
         4. The sidecar (HedValueVector templates, MeaningsTable HED, definitions) is validated with
            hedtools ``Sidecar.validate``. Any error stops: such an error would repeat on every row that
            uses it, and the row annotations assembled from it cannot be trusted. Warnings do not stop.
-        5. The values of every HedValueVector column are checked against the value class of the
-           template's ``#`` tag. A numeric column passes without being read when the class is text,
-           and an integer column when it is numeric or a name; a float column under a numeric class is
-           scanned once for infinities, which are not numeric values; otherwise the column is read once
-           and each distinct value is substituted into the template and validated once. Any error stops.
+        5. The values of every HedValueVector column are checked against the units and value class of
+           the template's ``#`` tag, and nothing else: each distinct value is checked as that one tag
+           with the value in place, so ``{column}`` references and the other tags of the template, already
+           validated in step 4, play no part. A numeric column passes without being read when the class
+           is text, and an integer column when it is numeric or a name; a float column under a numeric
+           class is scanned once for infinities, which are not numeric values; otherwise the column is
+           read once. Any error stops.
         6. The assembly gate. With ``assemble=True`` (the default) the whole table is read into a BIDS
            dataframe with ``get_bids_dataframe`` and hedtools ``TabularInput.validate`` runs: each cell
            on its own, the categorical values against their levels, each row's HED assembled from its
@@ -231,14 +235,17 @@ class HedNWBValidator:
         return issues
 
     def _check_value_vector(self, column: HedValueVector, error_handler: ErrorHandler) -> list[dict[str, Any]]:
-        """Check the values of one HedValueVector; see validate_table step 5."""
+        """Check the values of one HedValueVector against the class of its ``#`` tag; see validate_table step 5."""
+        placeholder = self._placeholder_tag(column.hed)
+        if placeholder is None:
+            return []
+        classes = set(placeholder.value_classes) or {_TEXT_CLASS}
         dtype = _column_dtype(column)
-        classes = self._placeholder_value_classes(column.hed)
         if _dtype_settles(dtype, classes):
             return []
         if dtype is not None and dtype.kind == "f" and _NUMERIC_CLASS in classes:
             # A finite float is a numeric value, but inf is not ("Age/inf s" fails numericClass). One
-            # vectorized pass over the column finds the infinities; only those are substituted.
+            # vectorized pass over the column finds the infinities; only those are checked.
             values = np.asarray(column.data[:], dtype=float)
             infinite = np.isinf(values)
             if not infinite.any():
@@ -246,32 +253,55 @@ class HedNWBValidator:
             distinct = _distinct_values(np.where(infinite, values, np.nan))
         else:
             distinct = _distinct_values(column.data[:])
+        return self._check_values(placeholder, distinct, error_handler)
+
+    def _check_values(
+        self, placeholder: HedTag, distinct: dict[str, list[int]], error_handler: ErrorHandler
+    ) -> list[dict[str, Any]]:
+        """
+        Check each distinct value as the ``#`` tag alone with the value in place: its units and value class.
+
+        Only that one tag is checked, with hedtools' ``validate_units``, so the rest of the template (other
+        tags, ``{column}`` references) plays no part: the template was validated as a whole by the sidecar
+        step. The tag is built with ``HedTag`` directly, not parsed as a HED string, so a comma or brace
+        inside the value is an invalid character rather than a split annotation. Issues are hedtools'
+        ``VALUE_INVALID`` and ``CHARACTER_INVALID`` (or a units code), reported at the first row holding the
+        value with the number of rows in ``row_count``.
+        """
+        template = str(placeholder)  # "Delay/# s"; for Def/Name/# the placeholder tag inside the definition
         issues = []
         for value, rows in distinct.items():
-            issues += self._validate_once(column.hed.replace("#", value), rows, error_handler)
+            error_handler.push_error_context(ErrorContext.ROW, rows[0])
+            try:
+                tag = HedTag(template.replace("#", value), self.hed_schema)
+                value_issues = self._hed_validator.validate_units(tag, allow_placeholders=False)
+                error_handler.add_context_and_filter(value_issues)
+            finally:
+                error_handler.pop_error_context()
+            for issue in value_issues:
+                issue[ROW_COUNT_KEY] = len(rows)
+            issues += value_issues
         return issues
 
-    def _placeholder_value_classes(self, template: str) -> set[str]:
+    def _placeholder_tag(self, template: str) -> HedTag | None:
         """
-        Return the value classes of the ``#`` tag of a template, or {textClass} if it declares none.
+        Return the tag of a template whose value portion is ``#``, or None if the template has none.
 
-        For a ``Def/Name/#`` template the ``#`` fills the placeholder inside the definition, so the
-        classes are those of the placeholder tag in the definition's body.
+        For a ``Def/Name/#`` template the ``#`` fills the placeholder inside the definition, so the tag
+        returned is the placeholder tag in the definition's body (None if the definition is unknown or
+        takes no value; the sidecar step has already reported that).
         """
         hed_string = HedString(template, self.hed_schema, def_dict=self.def_dict)
         for tag in hed_string.get_all_tags():
             if "#" not in tag.extension:
                 continue
-            if tag.short_base_tag.lower() == "def":
-                entry = self.def_dict.get(tag.extension.split("/")[0])
-                if entry is None or not entry.takes_value:
-                    break
-                tag = next((inner for inner in entry.contents.get_all_tags() if "#" in inner.extension), None)
-                if tag is None:
-                    break
-            classes = set(tag.value_classes)
-            return classes if classes else {_TEXT_CLASS}
-        return {_TEXT_CLASS}
+            if tag.short_base_tag.lower() != "def":
+                return tag
+            entry = self.def_dict.get(tag.extension.split("/")[0])
+            if entry is None or not entry.takes_value or entry.contents is None:
+                return None
+            return next((inner for inner in entry.contents.get_all_tags() if "#" in inner.extension), None)
+        return None
 
     # ------------------------------------------------------------------------------------------
     # Step 6 without assembly: the HED column cell by cell, categorical values against their levels
@@ -468,10 +498,15 @@ class HedNWBValidator:
         self, hed_values: HedValueVector, error_handler: ErrorHandler | None = None
     ) -> list[dict[str, Any]]:
         """
-        Validates a HedValueVector column in isolation: the template, then each substituted value.
+        Validates a HedValueVector column in isolation: the template on its own, then the values.
 
-        This checks the template and each substituted string on their own; use ``validate_table`` for
-        a table.
+        The template is validated with placeholders allowed and with any ``{column}`` references
+        removed first: a reference is resolved against the table's other columns by ``validate_table``
+        (hedtools' sidecar validation), which this single-column helper cannot do. If the template has
+        an error the values are not checked. Otherwise each distinct non-missing value is checked as the
+        ``#`` tag alone with the value in place, for its units and value class, exactly as
+        ``validate_table`` does (rule R7); an issue is reported at the first row holding the value with
+        the number of rows in ``row_count``.
 
         Parameters:
             hed_values (HedValueVector): The HedValueVector column to validate
@@ -480,48 +515,26 @@ class HedNWBValidator:
 
         Returns:
             list[dict[str, Any]]: A list of validation issues found in the HedValueVector column
-
-        Notes:
-            As in validate_vector, a substituted annotation that has already been validated in this
-            column and found to have no issues is not validated again on the rows that repeat it.
         """
         if hed_values is None or not isinstance(hed_values, HedValueVector) or hed_values.hed is None:
             raise ValueError("The provided hed_values is not a valid HedValueVector instance.")
         if error_handler is None:
             error_handler = ErrorHandler(check_for_warnings=False)
 
-        issues = []
-        # Validate the HED template first
-        hed_template = HedString(hed_values.hed, self.hed_schema, def_dict=self.def_dict)
-        issues += hed_template.validate(allow_placeholders=True, error_handler=error_handler)
+        # The template on its own, references removed. remove_refs() edits the parsed string in place; the
+        # character check runs on the original text, so the stripped text is parsed again.
+        stripped = HedString(hed_values.hed, self.hed_schema, def_dict=self.def_dict)
+        stripped.remove_refs()
+        hed_template = HedString(str(stripped), self.hed_schema, def_dict=self.def_dict)
+        issues = hed_template.validate(allow_placeholders=True, error_handler=error_handler)
         if check_for_any_errors(issues):
             return issues
 
-        validated_without_issues = set()
+        placeholder = self._placeholder_tag(hed_values.hed)
+        if placeholder is None:
+            return issues
         # Slice once: on a file-backed column, iterating the dataset directly is one HDF5 read per row.
-        # For an in-memory list the slice is a shallow copy of references (about 4 ms and 8 MB per
-        # million rows, the cost of validating a few rows); for a numpy array it is a view.
-        for index, tag in enumerate(hed_values.data[:]):
-            if tag is None or tag == "" or tag == "n/a" or (isinstance(tag, float) and math.isnan(tag)):
-                continue
-
-            # Substitute the tag value into the template in place of #
-            eval_tag = hed_values.hed.replace("#", str(tag))
-            if eval_tag in validated_without_issues:
-                continue
-
-            error_handler.push_error_context(ErrorContext.ROW, index)
-            try:
-                hed_obj = HedString(eval_tag, self.hed_schema, def_dict=self.def_dict)
-                row_issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
-            finally:
-                error_handler.pop_error_context()
-            issues += row_issues
-
-            if not row_issues:
-                validated_without_issues.add(eval_tag)
-
-        return issues
+        return issues + self._check_values(placeholder, _distinct_values(hed_values.data[:]), error_handler)
 
 
 # ----------------------------------------------------------------------------------------------

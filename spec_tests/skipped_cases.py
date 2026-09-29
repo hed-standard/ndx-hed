@@ -52,15 +52,16 @@ SKIP_CASES: dict[tuple[str, str, str, int], str] = {
     ("sidecar-invalid-key-at-wrong-level", "sidecar", "fails", 2): (
         "a top-level HED key becomes a VectorData named HED, which ndx-hed reports as HED_COLUMN_TYPE_INVALID"
     ),
-    # --- hedtools differences -------------------------------------------------------------------
-    # The response_time value column holds "7,3" in a row whose event_code annotation does not reference
-    # {response_time}. hedtools folds a brace-referenced column into the referencing annotation and never
-    # validates it on its own, so it never sees "7,3". ndx-hed checks every HedValueVector value against
-    # the value class of its placeholder (rule R7, docs/source/hed_validation.md), and a comma is not
-    # allowed, so it reports the value. Whether an unreferenced value must be valid is a question for
-    # hed-tests; skipped until it is settled.
-    ("sidecar-braces-self-reference", "combo", "passes", 1): (
-        "value '7,3' in a brace-referenced column: hedtools never validates it, ndx-hed's value check does"
+    # --- hed-tests expected code ----------------------------------------------------------------
+    # hed-tests cf6a611 added this case: the value "7,3" in the response_time value column, in a row whose
+    # event_code annotation does not reference {response_time}. hedtools reports nothing (it folds a
+    # brace-referenced column into the reference and never validates the value on its own; issue filed
+    # on hed-python 2026-09-15). ndx-hed's rule R7 (docs/source/hed_validation.md) rejects the comma as a
+    # textClass character, so the case fails as it should, but with CHARACTER_INVALID, not the record's
+    # SIDECAR_BRACES_INVALID. Remove this entry when hed-tests lists CHARACTER_INVALID among the record's
+    # alt_codes.
+    ("sidecar-braces-self-reference", "combo", "fails", 2): (
+        "value '7,3' fails with CHARACTER_INVALID; the record expects SIDECAR_BRACES_INVALID and hedtools reports nothing"
     ),
     # A sidecar-only case has no events table, so hedtools has nothing to resolve a {HED} column
     # reference against and reports nothing. In NWB the sidecar becomes a zero-row table (M2), whose
