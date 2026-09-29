@@ -289,23 +289,19 @@ class TestValidateTable(unittest.TestCase):
         self.assertEqual(self.validator.validate_table(table, assemble=False), [])
 
     def test_validate_table_sidecar_warnings_reported_once(self):
-        """Test that a categorical-level warning is reported per row that uses the level, once for an unused level."""
+        """Test that a categorical-level warning is reported once per level, used or unused, in both modes."""
         table = self._categorical_table(
             "trials", ["a", "a", "b"], ["a", "b", "c"], ["Item/Extended-a", "Sensory-event", "Item/Extended-c"]
         )
 
-        assembled = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True))
-        self.assertEqual([i["code"] for i in assembled], ["TAG_EXTENDED"] * 3, assembled)
-        self.assertEqual(sorted(i.get("ec_row", -1) for i in assembled), [-1, 0, 1])
-        unused = [i for i in assembled if "ec_row" not in i]
-        self.assertEqual(unused[0]["ec_sidecarKeyName"], "c")
-
-        collapsed = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True), assemble=False)
-        self.assertEqual(
-            sorted((i["code"], i["ec_sidecarKeyName"]) for i in collapsed),
-            [("TAG_EXTENDED", "a"), ("TAG_EXTENDED", "c")],
-        )
-        self.assertTrue(all("ec_row" not in i for i in collapsed))
+        for assemble in (True, False):
+            issues = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True), assemble=assemble)
+            self.assertEqual(
+                sorted((i["code"], i["ec_sidecarKeyName"]) for i in issues),
+                [("TAG_EXTENDED", "a"), ("TAG_EXTENDED", "c")],
+                f"assemble={assemble}: {issues}",
+            )
+            self.assertTrue(all("ec_row" not in i for i in issues), f"assemble={assemble}")
 
     def test_validate_table_warnings_only_with_a_warning_handler(self):
         """Test that a warning is dropped by the default handler and kept by one that checks for warnings."""
@@ -370,9 +366,9 @@ class TestValidateTableNoAssembly(unittest.TestCase):
         self.assertEqual(collapsed[0]["row_count"], 3)
         self.assertEqual(collapsed[0]["ec_table_name"], "events")
 
+        # The assembled path reports the same: hedtools validates the HED column by distinct string too.
         assembled = self.validator.validate_table(table)
-        self.assertEqual([issue["ec_row"] for issue in assembled], [0, 2, 4])
-        self.assertTrue(all("row_count" not in issue for issue in assembled))
+        self.assertEqual([(issue["ec_row"], issue["row_count"]) for issue in assembled], [(0, 3)])
 
     def test_categorical_value_without_a_level_in_both_modes(self):
         """Test that a value the MeaningsTable does not annotate is the same warning in both modes."""
@@ -622,8 +618,63 @@ class TestValueVectorCheck(unittest.TestCase):
 
         column = HedValueVector(name="acc", description="d", data=["1.5", "x"], hed="Def/Acc/#")
         issues = self.validator.validate_table(self._table(column))
-        self.assertEqual({issue["code"] for issue in issues}, {"VALUE_INVALID", "DEF_INVALID"})
-        self.assertTrue(all((issue["ec_column"], issue["ec_row"]) == ("acc", 1) for issue in issues))
+        self.assertEqual(self._summary(issues), [("VALUE_INVALID", "acc", 1, 1)])
+        self.assertIn("Age/x s", issues[0]["message"])  # the placeholder tag inside the definition
+
+    def test_template_with_column_reference_checks_only_the_value(self):
+        """Test that a {column} reference in the template is the sidecar's business and the value check ignores it."""
+        table = DynamicTable(
+            name="trials",
+            description="d",
+            columns=[
+                VectorData(name="event_type", description="e", data=["go", "stop"]),
+                HedValueVector(name="rt", description="r", data=["0.5", "x"], hed="(Age/# s, {event_type})"),
+            ],
+        )
+        meanings = MeaningsTable(target=table["event_type"], description="m")
+        meanings.add_row(value="go", meaning="G")
+        meanings.add_row(value="stop", meaning="S")
+        meanings.add_column(name="HED", description="h", col_cls=HedTags, data=["Sensory-event", "Agent-action"])
+        table.add_meanings_table(meanings)
+
+        for assemble in (True, False):
+            issues = self.validator.validate_table(table, assemble=assemble)
+            self.assertEqual(self._summary(issues), [("VALUE_INVALID", "rt", 1, 1)], f"assemble={assemble}")
+            self.assertIn("Age/x s", issues[0]["message"])
+
+        table["rt"].data[1] = "0.7"
+        for assemble in (True, False):
+            self.assertEqual(self.validator.validate_table(table, assemble=assemble), [], f"assemble={assemble}")
+
+    def test_validate_value_vector_helper_matches_the_table_check(self):
+        """Test that validate_value_vector strips references from the template and checks the values the same way."""
+        column = HedValueVector(name="rt", description="r", data=["0.5", "x", "x"], hed="(Age/# s, {event_type})")
+        issues = self.validator.validate_value_vector(column)
+        self.assertEqual(self._summary(issues), [("VALUE_INVALID", None, 1, 2)])
+
+        good = HedValueVector(name="rt", description="r", data=[0.5, 0.7], hed="(Age/# s, {event_type})")
+        self.assertEqual(self.validator.validate_value_vector(good), [])
+
+        bad_template = HedValueVector(name="rt", description="r", data=["0.5"], hed="(InvalidTag123/# s, {event_type})")
+        codes = [issue["code"] for issue in self.validator.validate_value_vector(bad_template)]
+        self.assertIn("TAG_INVALID", codes)
+
+    def test_validate_value_vector_reports_a_malformed_template(self):
+        """Test that a template whose parentheses do not balance is reported, with or without a reference."""
+        for hed in ("(Parameter-value/#, {event_type}", "(Parameter-value/#"):
+            column = HedValueVector(name="pv", description="p", data=["ok"], hed=hed)
+            codes = [issue["code"] for issue in self.validator.validate_value_vector(column)]
+            self.assertEqual(codes, ["PARENTHESES_MISMATCH"], hed)
+
+    def test_value_that_breaks_hed_syntax_is_rejected_in_every_mode(self):
+        """Test that a value its class allows but that breaks the HED string it lands in is rejected without assembly."""
+        for value, code in (("a)", "PARENTHESES_MISMATCH"), ("a#b", "PLACEHOLDER_INVALID")):
+            column = HedValueVector(name="pv", description="p", data=["ok", value, value], hed="Parameter-value/#")
+            table = DynamicTable(name="trials", description="d", columns=[column])
+            for assemble in (True, False):
+                issues = self.validator.validate_table(table, assemble=assemble)
+                self.assertEqual(self._summary(issues), [(code, "pv", 1, 2)], f"{value!r} assemble={assemble}")
+            self.assertEqual(self._summary(self.validator.validate_value_vector(column)), [(code, None, 1, 2)], value)
 
     def test_missing_values_are_skipped(self):
         """Test that None, NaN, an empty string, and n/a in a value column are not substituted."""
@@ -2088,8 +2139,9 @@ class TestValidateRepeatedAnnotations(unittest.TestCase):
             issues = self.validator.validate_value_vector(repeated_values)
 
         self.assertEqual(len(issues), 0)
-        # One call for the template itself, then one for each of the two distinct substituted values
-        self.assertEqual(hed_string_spy.call_count, 3)
+        # One parse of the template, one to find its placeholder tag, then one substituted string per
+        # distinct value (two), for the syntax check that follows the units check
+        self.assertEqual(hed_string_spy.call_count, 4)
 
 
 class TestValidateFromDisk(unittest.TestCase):
@@ -2151,8 +2203,8 @@ class TestValidateFromDisk(unittest.TestCase):
 
         self.assertGreater(len(in_memory), 0)
         self.assertEqual(self._summary(from_disk), self._summary(in_memory))
-        # Every invalid row is reported (50 rows hold the invalid annotation); the values column is clean
-        self.assertEqual(sum(1 for issue in from_disk if issue["code"] == "TAG_INVALID"), 50)
+        # The invalid annotation is reported once with the 50 rows holding it; the values column is clean
+        self.assertEqual([(issue["code"], issue["row_count"]) for issue in from_disk], [("TAG_INVALID", 50)])
         self.assertTrue(all(issue.get("ec_column") == "HED" for issue in from_disk))
         self.assertTrue(all(issue.get("ec_table_name") == "events" for issue in from_disk))
 
