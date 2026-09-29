@@ -289,23 +289,19 @@ class TestValidateTable(unittest.TestCase):
         self.assertEqual(self.validator.validate_table(table, assemble=False), [])
 
     def test_validate_table_sidecar_warnings_reported_once(self):
-        """Test that a categorical-level warning is reported per row that uses the level, once for an unused level."""
+        """Test that a categorical-level warning is reported once per level, used or unused, in both modes."""
         table = self._categorical_table(
             "trials", ["a", "a", "b"], ["a", "b", "c"], ["Item/Extended-a", "Sensory-event", "Item/Extended-c"]
         )
 
-        assembled = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True))
-        self.assertEqual([i["code"] for i in assembled], ["TAG_EXTENDED"] * 3, assembled)
-        self.assertEqual(sorted(i.get("ec_row", -1) for i in assembled), [-1, 0, 1])
-        unused = [i for i in assembled if "ec_row" not in i]
-        self.assertEqual(unused[0]["ec_sidecarKeyName"], "c")
-
-        collapsed = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True), assemble=False)
-        self.assertEqual(
-            sorted((i["code"], i["ec_sidecarKeyName"]) for i in collapsed),
-            [("TAG_EXTENDED", "a"), ("TAG_EXTENDED", "c")],
-        )
-        self.assertTrue(all("ec_row" not in i for i in collapsed))
+        for assemble in (True, False):
+            issues = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True), assemble=assemble)
+            self.assertEqual(
+                sorted((i["code"], i["ec_sidecarKeyName"]) for i in issues),
+                [("TAG_EXTENDED", "a"), ("TAG_EXTENDED", "c")],
+                f"assemble={assemble}: {issues}",
+            )
+            self.assertTrue(all("ec_row" not in i for i in issues), f"assemble={assemble}")
 
     def test_validate_table_warnings_only_with_a_warning_handler(self):
         """Test that a warning is dropped by the default handler and kept by one that checks for warnings."""
@@ -370,9 +366,9 @@ class TestValidateTableNoAssembly(unittest.TestCase):
         self.assertEqual(collapsed[0]["row_count"], 3)
         self.assertEqual(collapsed[0]["ec_table_name"], "events")
 
+        # The assembled path reports the same: hedtools validates the HED column by distinct string too.
         assembled = self.validator.validate_table(table)
-        self.assertEqual([issue["ec_row"] for issue in assembled], [0, 2, 4])
-        self.assertTrue(all("row_count" not in issue for issue in assembled))
+        self.assertEqual([(issue["ec_row"], issue["row_count"]) for issue in assembled], [(0, 3)])
 
     def test_categorical_value_without_a_level_in_both_modes(self):
         """Test that a value the MeaningsTable does not annotate is the same warning in both modes."""
@@ -2189,8 +2185,8 @@ class TestValidateFromDisk(unittest.TestCase):
 
         self.assertGreater(len(in_memory), 0)
         self.assertEqual(self._summary(from_disk), self._summary(in_memory))
-        # Every invalid row is reported (50 rows hold the invalid annotation); the values column is clean
-        self.assertEqual(sum(1 for issue in from_disk if issue["code"] == "TAG_INVALID"), 50)
+        # The invalid annotation is reported once with the 50 rows holding it; the values column is clean
+        self.assertEqual([(issue["code"], issue["row_count"]) for issue in from_disk], [("TAG_INVALID", 50)])
         self.assertTrue(all(issue.get("ec_column") == "HED" for issue in from_disk))
         self.assertTrue(all(issue.get("ec_table_name") == "events" for issue in from_disk))
 

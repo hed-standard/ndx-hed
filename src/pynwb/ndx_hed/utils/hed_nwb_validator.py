@@ -96,21 +96,22 @@ class HedNWBValidator:
            class is scanned once for infinities, which are not numeric values; otherwise the column is
            read once. Any error stops.
         6. The assembly gate. With ``assemble=True`` (the default) the whole table is read into a BIDS
-           dataframe with ``get_bids_dataframe`` and hedtools ``TabularInput.validate`` runs: each cell
-           on its own, the categorical values against their levels, each row's HED assembled from its
-           ``HED`` cell, its categorical HED, and its value templates, and, when the table has a
+           dataframe with ``get_bids_dataframe`` and hedtools ``TabularInput.validate`` runs its stages
+           after the sidecar one, which step 4 already ran: the value columns and the categorical values
+           against their levels, each distinct ``HED`` string once, then each row's HED assembled from
+           its ``HED`` cell, its categorical HED, and its value templates, and, when the table has a
            ``TimestampVectorData`` column (exported as ``onset``), the temporal checks over the rows.
            With ``assemble=False`` the table is never converted to a dataframe: ndx-hed reads the ``HED``
-           column and validates it cell by cell, reads each categorical column to check its values
-           against their levels, and runs nothing that needs the other tags of a row or the other rows.
+           column and validates each distinct string once, reads each categorical column to check its
+           values against their levels, and runs nothing that needs the other tags of a row or the
+           other rows.
 
         Every issue carries the table name in ``ec_table_name``. A sidecar issue carries the column in
         ``ec_sidecarColumnName`` and, for categorical HED, the value in ``ec_sidecarKeyName``, and has no
         row. A row issue carries ``ec_column`` and ``ec_row``, the table row index (the first data row is
-        0) in both modes. Where ndx-hed validates distinct values itself (the HedValueVector values in
-        step 5, and the ``HED`` column with ``assemble=False``), each distinct annotation is validated
-        once, reported at the first row holding it, with the number of rows that hold it in
-        ``row_count``.
+        0) in both modes. The values of a HedValueVector (step 5) and the strings of the ``HED`` column
+        (in both modes) are validated by distinct value: each is validated once, reported at the first
+        row holding it, with the number of rows that hold it in ``row_count``.
 
         Parameters:
             table (DynamicTable): The table to validate. Not a MeaningsTable: its HED is validated as
@@ -157,11 +158,9 @@ class HedNWBValidator:
         # the table's data is read only where a step below needs it.
         json_data = get_json_hed_dict(table, self.hed_metadata)
 
-        # Steps 4 and 5 stop the table on any error. Their warnings are kept only where nothing later
-        # would report them: in the no-assembly path, and when a step stops the table. In the assembled
-        # path TabularInput re-reports a sidecar or value warning on every row that uses the annotation,
-        # so adding them here as well would report each twice; only the warnings for categorical levels
-        # that no row uses are added back after assembly.
+        # Steps 4 and 5 stop the table on any error. Their warnings are reported once: on the assembled
+        # path hedtools is told not to validate the sidecar again, and its value-column stage repeats
+        # step 5, so the value warnings are taken from it rather than added here as well.
         sidecar = None
         sidecar_issues = []
         if json_data:
@@ -182,16 +181,13 @@ class HedNWBValidator:
             issues += self._check_categorical_coverage(table, error_handler)
             return issues
 
-        # Assembly needs every column of the table as a BIDS dataframe.
+        # Assembly needs every column of the table as a BIDS dataframe. The sidecar was validated in
+        # step 4, used and unused levels alike, so hedtools skips its sidecar stage.
         df = get_bids_dataframe(table)
         tab_input = TabularInput(file=df, sidecar=sidecar, name=table.name)
-        tab_issues = tab_input.validate(self.hed_schema, name="", error_handler=error_handler)
+        tab_issues = tab_input.validate(self.hed_schema, name="", error_handler=error_handler, validate_sidecar=False)
         _shift_rows(tab_issues, -_BIDS_ROW_OFFSET)
-        issues += tab_issues
-        # TabularInput only sees categorical values that occur in the data, so add the sidecar warnings
-        # for categorical levels that never appear (otherwise they would be missed).
-        issues += self._unused_categorical_level_issues(sidecar_issues, df, json_data)
-        return issues
+        return issues + sidecar_issues + tab_issues
 
     # ------------------------------------------------------------------------------------------
     # Step 1: structural rules
@@ -361,27 +357,6 @@ class HedNWBValidator:
         for issue in issues:
             issue[ROW_COUNT_KEY] = len(rows)
         return issues
-
-    @staticmethod
-    def _unused_categorical_level_issues(sidecar_issues, df, json_data):
-        """Return the sidecar issues for categorical levels that do not occur in the data.
-
-        TabularInput validates only values present in the data, so a bad HED annotation on a
-        categorical level that is never used would be missed. Those sidecar issues are added back.
-        Value-column (template) and data-column errors are excluded because TabularInput reports them.
-        """
-        extra = []
-        for issue in sidecar_issues:
-            col = issue.get(ErrorContext.SIDECAR_COLUMN_NAME)
-            key = issue.get(ErrorContext.SIDECAR_KEY_NAME)
-            if not col or key is None or col not in df.columns:
-                continue
-            if "Levels" not in json_data.get(col, {}):  # only categorical columns have levels
-                continue
-            present = {str(v) for v in df[col].tolist()}
-            if str(key) not in present:
-                extra.append(issue)
-        return extra
 
     # ------------------------------------------------------------------------------------------
     # The file validator
