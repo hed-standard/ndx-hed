@@ -62,8 +62,9 @@ class HedNWBValidator:
         self.hed_metadata = hed_metadata
         self.hed_schema = hed_metadata.get_hed_schema()
         self.def_dict = hed_metadata.get_definition_dict()
-        # For the units and value-class check of a single tag (validate_units); definitions play no part there.
-        self._hed_validator = HedValidator(self.hed_schema)
+        # For the single-tag and single-string checks: validate_units on a substituted tag, the basic and
+        # full-string checks on a template or a substituted string (definitions matter for the latter).
+        self._hed_validator = HedValidator(self.hed_schema, def_dicts=self.def_dict)
 
     # ------------------------------------------------------------------------------------------
     # The table validator
@@ -89,12 +90,14 @@ class HedNWBValidator:
            hedtools ``Sidecar.validate``. Any error stops: such an error would repeat on every row that
            uses it, and the row annotations assembled from it cannot be trusted. Warnings do not stop.
         5. The values of every HedValueVector column are checked against the units and value class of
-           the template's ``#`` tag, and nothing else: each distinct value is checked as that one tag
-           with the value in place, so ``{column}`` references and the other tags of the template, already
-           validated in step 4, play no part. A numeric column passes without being read when the class
-           is text, and an integer column when it is numeric or a name; a float column under a numeric
-           class is scanned once for infinities, which are not numeric values; otherwise the column is
-           read once. Any error stops.
+           the template's ``#`` tag: each distinct value is checked as that one tag with the value in
+           place, so ``{column}`` references and the other tags of the template, already validated in
+           step 4, play no part. A value that passes is then parsed as the substituted tag and given the
+           basic single-string checks, so a value that would break the HED string it lands in (an
+           unbalanced parenthesis, a pound sign) is rejected too. A numeric column passes without being
+           read when the class is text, and an integer column when it is numeric or a name; a float
+           column under a numeric class is scanned once for infinities, which are not numeric values;
+           otherwise the column is read once. Any error stops.
         6. The assembly gate. With ``assemble=True`` (the default) the whole table is read into a BIDS
            dataframe with ``get_bids_dataframe`` and hedtools ``TabularInput.validate`` runs its stages
            after the sidecar one, which step 4 already ran: the value columns and the categorical values
@@ -255,22 +258,28 @@ class HedNWBValidator:
         self, placeholder: HedTag, distinct: dict[str, list[int]], error_handler: ErrorHandler
     ) -> list[dict[str, Any]]:
         """
-        Check each distinct value as the ``#`` tag alone with the value in place: its units and value class.
+        Check each distinct value as the ``#`` tag alone with the value in place, as hedtools' value stage does.
 
-        Only that one tag is checked, with hedtools' ``validate_units``, so the rest of the template (other
-        tags, ``{column}`` references) plays no part: the template was validated as a whole by the sidecar
-        step. The tag is built with ``HedTag`` directly, not parsed as a HED string, so a comma or brace
-        inside the value is an invalid character rather than a split annotation. Issues are hedtools'
-        ``VALUE_INVALID`` and ``CHARACTER_INVALID`` (or a units code), reported at the first row holding the
-        value with the number of rows in ``row_count``.
+        Only that one tag is checked, so the rest of the template (other tags, ``{column}`` references)
+        plays no part: the template was validated as a whole by the sidecar step. First hedtools'
+        ``validate_units`` on the tag built with ``HedTag`` directly, not parsed, so a comma or brace inside
+        the value is an invalid character rather than a split annotation (``VALUE_INVALID``,
+        ``CHARACTER_INVALID``, or a units code). A value that passes may still break the HED string it will
+        be spliced into ("a)", "a#b"), so the substituted tag is then parsed and given the basic
+        single-string checks (``PARENTHESES_MISMATCH``, ``PLACEHOLDER_INVALID``, ...). Each issue is reported
+        at the first row holding the value with the number of rows in ``row_count``.
         """
         template = str(placeholder)  # "Delay/# s"; for Def/Name/# the placeholder tag inside the definition
         issues = []
         for value, rows in distinct.items():
+            substituted = template.replace("#", value, 1)
             error_handler.push_error_context(ErrorContext.ROW, rows[0])
             try:
-                tag = HedTag(template.replace("#", value), self.hed_schema)
+                tag = HedTag(substituted, self.hed_schema)
                 value_issues = self._hed_validator.validate_units(tag, allow_placeholders=False)
+                if not value_issues:
+                    substituted_string = HedString(substituted, self.hed_schema, def_dict=self.def_dict)
+                    value_issues = self._hed_validator.run_basic_checks(substituted_string, allow_placeholders=False)
                 error_handler.add_context_and_filter(value_issues)
             finally:
                 error_handler.pop_error_context()
@@ -496,12 +505,13 @@ class HedNWBValidator:
         if error_handler is None:
             error_handler = ErrorHandler(check_for_warnings=False)
 
-        # The template on its own, references removed. remove_refs() edits the parsed string in place; the
-        # character check runs on the original text, so the stripped text is parsed again.
-        stripped = HedString(hed_values.hed, self.hed_schema, def_dict=self.def_dict)
-        stripped.remove_refs()
-        hed_template = HedString(str(stripped), self.hed_schema, def_dict=self.def_dict)
-        issues = hed_template.validate(allow_placeholders=True, error_handler=error_handler)
+        # The template on its own, with the references removed from the parsed string and the object
+        # validated, as hedtools' sidecar validator does. The text is not parsed again: a template whose
+        # parentheses do not balance parses to an empty tree whose text is "", and the structural checks
+        # report on the raw string the object still carries.
+        hed_template = HedString(hed_values.hed, self.hed_schema, def_dict=self.def_dict)
+        hed_template.remove_refs()
+        issues = self._hed_validator.validate(hed_template, allow_placeholders=True, error_handler=error_handler)
         if check_for_any_errors(issues):
             return issues
 

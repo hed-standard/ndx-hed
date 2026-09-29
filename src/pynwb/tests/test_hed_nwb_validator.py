@@ -659,6 +659,23 @@ class TestValueVectorCheck(unittest.TestCase):
         codes = [issue["code"] for issue in self.validator.validate_value_vector(bad_template)]
         self.assertIn("TAG_INVALID", codes)
 
+    def test_validate_value_vector_reports_a_malformed_template(self):
+        """Test that a template whose parentheses do not balance is reported, with or without a reference."""
+        for hed in ("(Parameter-value/#, {event_type}", "(Parameter-value/#"):
+            column = HedValueVector(name="pv", description="p", data=["ok"], hed=hed)
+            codes = [issue["code"] for issue in self.validator.validate_value_vector(column)]
+            self.assertEqual(codes, ["PARENTHESES_MISMATCH"], hed)
+
+    def test_value_that_breaks_hed_syntax_is_rejected_in_every_mode(self):
+        """Test that a value its class allows but that breaks the HED string it lands in is rejected without assembly."""
+        for value, code in (("a)", "PARENTHESES_MISMATCH"), ("a#b", "PLACEHOLDER_INVALID")):
+            column = HedValueVector(name="pv", description="p", data=["ok", value, value], hed="Parameter-value/#")
+            table = DynamicTable(name="trials", description="d", columns=[column])
+            for assemble in (True, False):
+                issues = self.validator.validate_table(table, assemble=assemble)
+                self.assertEqual(self._summary(issues), [(code, "pv", 1, 2)], f"{value!r} assemble={assemble}")
+            self.assertEqual(self._summary(self.validator.validate_value_vector(column)), [(code, None, 1, 2)], value)
+
     def test_missing_values_are_skipped(self):
         """Test that None, NaN, an empty string, and n/a in a value column are not substituted."""
         column = HedValueVector(name="age", description="d", data=["1.5", None, float("nan"), "", "n/a"], hed="Age/# s")
@@ -2122,8 +2139,9 @@ class TestValidateRepeatedAnnotations(unittest.TestCase):
             issues = self.validator.validate_value_vector(repeated_values)
 
         self.assertEqual(len(issues), 0)
-        # One call for the template itself, then one for each of the two distinct substituted values
-        self.assertEqual(hed_string_spy.call_count, 3)
+        # One parse of the template, one to find its placeholder tag, then one substituted string per
+        # distinct value (two), for the syntax check that follows the units check
+        self.assertEqual(hed_string_spy.call_count, 4)
 
 
 class TestValidateFromDisk(unittest.TestCase):
