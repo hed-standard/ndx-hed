@@ -320,10 +320,15 @@ class HedNWBValidator:
         # The template on its own, with the references removed from the parsed string and the object
         # validated, as hedtools' sidecar validator does. The text is not parsed again: a template whose
         # parentheses do not balance parses to an empty tree whose text is "", and the structural checks
-        # report on the raw string the object still carries.
+        # report on the raw string the object still carries. Under the column context, like the value
+        # check that follows, so every issue of the helper names the column.
         hed_template = HedString(hed_values.hed, self.hed_schema, def_dict=self.def_dict)
         hed_template.remove_refs()
-        issues = self._hed_validator.validate(hed_template, allow_placeholders=True, error_handler=error_handler)
+        error_handler.push_error_context(ErrorContext.COLUMN, hed_values.name)
+        try:
+            issues = self._hed_validator.validate(hed_template, allow_placeholders=True, error_handler=error_handler)
+        finally:
+            error_handler.pop_error_context()
         if check_for_any_errors(issues):
             return issues
 
@@ -355,6 +360,7 @@ class _DynamicTableSource:
         self._def_dict = def_dict
         self._assemble = assemble
         self._sidecar = sidecar
+        self._distinct: dict[str, dict[str, list[int]]] = {}  # BIDS column name -> distinct values, once read
         self._table_names: dict[str, str] = {}  # BIDS column name -> table column name
         for name in table.colnames:
             bids_name = "onset" if name == "timestamp" and isinstance(table[name], TimestampVectorData) else name
@@ -367,11 +373,16 @@ class _DynamicTableSource:
         table_name = self._table_names.get(column_name)
         if table_name is None:
             return {}
-        column = self._table[table_name]
-        if isinstance(column, HedValueVector):
-            return _value_column_distinct(column, self._hed_schema, self._def_dict)
-        # Slice once: on a file-backed column, iterating the dataset directly is one HDF5 read per row.
-        return _distinct_values(column.data[:])
+        # Each column is read once per validation: without assembly hedtools asks for the HED column
+        # twice, for the basic checks and then for the group-level checks on the same strings.
+        if column_name not in self._distinct:
+            column = self._table[table_name]
+            if isinstance(column, HedValueVector):
+                self._distinct[column_name] = _value_column_distinct(column, self._hed_schema, self._def_dict)
+            else:
+                # Slice once: on a file-backed column, iterating the dataset directly is one HDF5 read per row.
+                self._distinct[column_name] = _distinct_values(column.data[:])
+        return self._distinct[column_name]
 
     def column_mapper(self):
         return None  # hedtools builds the TabularInput-style mapper from the sidecar

@@ -549,6 +549,36 @@ class TestDynamicTableSource(unittest.TestCase):
             table = DynamicTable(name="t", description="d", columns=[column])
             self.assertEqual(self._source(table).distinct_values("v"), expected, hed)
 
+    def test_distinct_values_are_read_once_per_column(self):
+        """Test that a second request for a column, which hedtools makes for HED without assembly, is answered
+        from the first read."""
+        table = DynamicTable(name="t", description="d", columns=[HedTags(data=["Red", "Blue", "Red"])])
+        source = self._source(table)
+        first = source.distinct_values("HED")
+        with patch.object(HedTags, "data", PropertyMock(return_value=_UnreadableData("O", 3))):
+            self.assertIs(source.distinct_values("HED"), first)
+        self.assertEqual(first, {"Red": [0, 2], "Blue": [1]})
+
+    def test_validate_table_without_assembly_reads_the_hed_column_once(self):
+        """Test that a HED column that passes the basic checks is read once, although hedtools asks for its
+        distinct values twice without assembly: for the basic checks, then for the group-level checks."""
+        table = DynamicTable(
+            name="t",
+            description="d",
+            columns=[
+                HedTags(data=["Red", "(Onset)", "Red"]),
+                HedValueVector(name="age", description="d", data=np.array([1, 2, 3]), hed="Age/# s"),  # settled
+            ],
+        )
+        with patch.object(
+            hed_nwb_validator, "_distinct_values", side_effect=hed_nwb_validator._distinct_values
+        ) as reads:
+            issues = self.validator.validate_table(table, assemble=False)
+
+        self.assertEqual(reads.call_count, 1)
+        # The group-level pass did run on the same strings: Onset without its Def
+        self.assertEqual([(i["code"], i["ec_row"], i["row_count"]) for i in issues], [("TEMPORAL_TAG_ERROR", 1, 1)])
+
     def test_as_base_input_only_when_assembling(self):
         """Test that the dataframe is built only for assembly, with the sidecar the table was validated with."""
         from hed.models import TabularInput
@@ -733,8 +763,9 @@ class TestValueVectorCheck(unittest.TestCase):
         """Test that a template whose parentheses do not balance is reported, with or without a reference."""
         for hed in ("(Parameter-value/#, {event_type}", "(Parameter-value/#"):
             column = HedValueVector(name="pv", description="p", data=["ok"], hed=hed)
-            codes = [issue["code"] for issue in self.validator.validate_value_vector(column)]
-            self.assertEqual(codes, ["PARENTHESES_MISMATCH"], hed)
+            issues = self.validator.validate_value_vector(column)
+            self.assertEqual([issue["code"] for issue in issues], ["PARENTHESES_MISMATCH"], hed)
+            self.assertEqual(issues[0]["ec_column"], "pv", hed)  # a template issue names the column too
 
     def test_value_that_breaks_hed_syntax_is_rejected_in_every_mode(self):
         """Test that a value its class allows but that breaks the HED string it lands in is rejected without assembly."""
