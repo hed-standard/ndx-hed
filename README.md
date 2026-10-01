@@ -60,7 +60,7 @@ HED annotations in NWB follow a small set of rules so that a table's HED can be 
 1. A `HedTags` column must be named `HED`. Because column names within a table are unique, a `DynamicTable` therefore holds at most one `HedTags` column.
 2. A `HedTags` column inside a `MeaningsTable` supplies categorical (per-value) HED for the annotated column. In any other `DynamicTable` it supplies per-row HED for that table.
 3. A `HedValueVector` column carries one HED template with a single `#` placeholder that applies to every value in the column. It may have any name and is identified by its type.
-4. A `HedValueVector` may not appear in a `MeaningsTable` (a value template has no meaning for categorical values); `HedNWBValidator.validate_file` raises `ValueError` if it finds one.
+4. A `HedValueVector` may not appear in a `MeaningsTable` (a value template has no meaning for categorical values); `HedNWBValidator.validate_table` reports one as `MEANINGS_VALUE_VECTOR_INVALID`.
 
 ## Examples
 

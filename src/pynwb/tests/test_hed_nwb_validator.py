@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 from hdmf.common import MeaningsTable
 from hed.errors import ErrorContext, ErrorHandler, ErrorSeverity, get_printable_issue_string
-from hed.models import HedString
 from pynwb.core import DynamicTable, VectorData
 
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
@@ -497,6 +496,77 @@ class TestStructuralRules(unittest.TestCase):
         )
 
 
+class TestDynamicTableSource(unittest.TestCase):
+    """Test class for the column source validate_table hands to hedtools: names, distinct values, assembly."""
+
+    def setUp(self):
+        self.validator = HedNWBValidator(
+            HedLabMetaData(hed_schema_version="8.4.0", definitions="(Definition/Acc/#, (Age/# s, Red))")
+        )
+
+    def _source(self, table, assemble=False):
+        from ndx_hed.utils.hed_nwb_validator import _DynamicTableSource
+
+        return _DynamicTableSource(table, self.validator.hed_schema, self.validator.def_dict, assemble, None)
+
+    def test_column_names_use_the_bids_onset_name(self):
+        """Test that a TimestampVectorData named timestamp is reported as onset, and its values found under it."""
+        events = get_events_table(
+            "events", "d", pd.DataFrame({"onset": [1.0, 2.0], "HED": ["Red", "Blue"]}), {"categorical": {}, "value": {}}
+        )
+        source = self._source(events)
+        self.assertEqual(source.column_names(), ["onset", "HED"])
+        self.assertEqual(source.distinct_values("onset"), {"1.0": [0], "2.0": [1]})
+        self.assertEqual(source.distinct_values("timestamp"), {})
+
+        plain = DynamicTable(
+            name="t", description="d", columns=[VectorData(name="timestamp", description="not a timestamp", data=[1])]
+        )
+        self.assertEqual(self._source(plain).column_names(), ["timestamp"])
+
+    def test_distinct_values_skip_missing_and_keep_first_rows(self):
+        """Test that None, NaN of any width, the empty string, and n/a are missing and rows are 0-based."""
+        hed = HedTags(data=["Red", None, "Red", "", "n/a", "Blue"])
+        age = HedValueVector(
+            name="age", description="d", data=np.array([1.5, np.nan, 1.5], dtype=np.float32), hed="Label/#"
+        )
+        table = DynamicTable(name="t", description="d", columns=[hed])
+        self.assertEqual(self._source(table).distinct_values("HED"), {"Red": [0, 2], "Blue": [5]})
+        table = DynamicTable(name="t", description="d", columns=[age])
+        self.assertEqual(self._source(table).distinct_values("age"), {"1.5": [0, 2]})
+
+    def test_value_column_dtype_shortcuts(self):
+        """Test that a value column is not read when its dtype settles the class, and scanned for infinities."""
+        cases = [
+            (np.array([1, 2, 3]), "Age/# s", {}),  # integer under numericClass
+            (np.array([1.5, 2.5]), "Parameter-value/#", {}),  # float under textClass (no value class declared)
+            (np.array([1.5, np.inf, 1.5, -np.inf]), "Age/# s", {"inf": [1], "-inf": [3]}),
+            (["1.5", "x", "x"], "Age/# s", {"1.5": [0], "x": [1, 2]}),  # text is read
+            (["a", "b"], "Def/Unknown/#", {}),  # unknown definition: no checkable placeholder, not read
+        ]
+        for data, hed, expected in cases:
+            column = HedValueVector(name="v", description="d", data=data, hed=hed)
+            table = DynamicTable(name="t", description="d", columns=[column])
+            self.assertEqual(self._source(table).distinct_values("v"), expected, hed)
+
+    def test_as_base_input_only_when_assembling(self):
+        """Test that the dataframe is built only for assembly, with the sidecar the table was validated with."""
+        from hed.models import TabularInput
+
+        table = DynamicTable(name="t", description="d", columns=[HedTags(data=["Red"])])
+        self.assertIsNone(self._source(table, assemble=False).as_base_input())
+        base_input = self._source(table, assemble=True).as_base_input()
+        self.assertIsInstance(base_input, TabularInput)
+        self.assertEqual(list(base_input.dataframe.columns), ["HED"])
+
+    def test_row_count_key_is_hedtools_key(self):
+        """Test that the module re-exports hedtools' row-count key under its old name."""
+        from hed.errors.error_reporter import ROW_COUNT_KEY
+
+        self.assertEqual(hed_nwb_validator.ROW_COUNT_KEY, ROW_COUNT_KEY)
+        self.assertEqual(ROW_COUNT_KEY, "row_count")
+
+
 class _UnreadableData:
     """Stand-in for a column's data that exposes a dtype and fails on any read, like an unread HDF5 dataset."""
 
@@ -650,7 +720,7 @@ class TestValueVectorCheck(unittest.TestCase):
         """Test that validate_value_vector strips references from the template and checks the values the same way."""
         column = HedValueVector(name="rt", description="r", data=["0.5", "x", "x"], hed="(Age/# s, {event_type})")
         issues = self.validator.validate_value_vector(column)
-        self.assertEqual(self._summary(issues), [("VALUE_INVALID", None, 1, 2)])
+        self.assertEqual(self._summary(issues), [("VALUE_INVALID", "rt", 1, 2)])
 
         good = HedValueVector(name="rt", description="r", data=[0.5, 0.7], hed="(Age/# s, {event_type})")
         self.assertEqual(self.validator.validate_value_vector(good), [])
@@ -674,7 +744,7 @@ class TestValueVectorCheck(unittest.TestCase):
             for assemble in (True, False):
                 issues = self.validator.validate_table(table, assemble=assemble)
                 self.assertEqual(self._summary(issues), [(code, "pv", 1, 2)], f"{value!r} assemble={assemble}")
-            self.assertEqual(self._summary(self.validator.validate_value_vector(column)), [(code, None, 1, 2)], value)
+            self.assertEqual(self._summary(self.validator.validate_value_vector(column)), [(code, "pv", 1, 2)], value)
 
     def test_missing_values_are_skipped(self):
         """Test that None, NaN, an empty string, and n/a in a value column are not substituted."""
@@ -2089,59 +2159,55 @@ class TestValidateFile(unittest.TestCase):
 
 
 class TestValidateRepeatedAnnotations(unittest.TestCase):
-    """Test class for the reuse of validation results across rows that repeat an annotation."""
+    """Test class for the single-column helpers on columns that repeat an annotation: distinct reporting."""
 
     def setUp(self):
         """Set up test data."""
         self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
         self.validator = HedNWBValidator(self.hed_metadata)
 
-    def test_validate_vector_validates_each_distinct_annotation_once(self):
-        """Test that a repeated valid annotation is only validated on its first row."""
-        repeated_tags = HedTags(data=["Sensory-event", "Agent-action", "Sensory-event", "Agent-action"] * 25)
-
-        with patch.object(hed_nwb_validator, "HedString", side_effect=HedString) as hed_string_spy:
-            issues = self.validator.validate_vector(repeated_tags)
-
-        self.assertEqual(len(issues), 0)
-        self.assertEqual(hed_string_spy.call_count, 2)
-
-    def test_validate_vector_reports_every_row_of_a_repeated_invalid_annotation(self):
-        """Test that an invalid annotation is still reported on each row that has it."""
-        repeated_tags = HedTags(data=["NonExistentEvent", "Sensory-event", "NonExistentEvent"])
+    def test_validate_vector_reports_a_repeated_annotation_once_with_row_count(self):
+        """Test that an invalid annotation is one issue at its first row with the number of rows holding it."""
+        repeated_tags = HedTags(data=["NonExistentEvent", "Sensory-event", "NonExistentEvent", "n/a", ""])
 
         issues = self.validator.validate_vector(repeated_tags)
 
-        self.assertEqual(len(issues), 2)
-        self.assertEqual([issue["ec_row"] for issue in issues], [0, 2])
+        self.assertEqual([issue["code"] for issue in issues], ["TAG_INVALID"])
+        self.assertEqual((issues[0]["ec_column"], issues[0]["ec_row"], issues[0]["row_count"]), ("HED", 0, 2))
 
     def test_validate_vector_result_does_not_depend_on_repetition(self):
-        """Test that repeating the rows of a column does not change the issues that are reported."""
+        """Test that repeating the rows of a column changes only the row count of the issues reported."""
         distinct_issues = self.validator.validate_vector(HedTags(data=["Sensory-event", "NonExistentEvent"]))
         repeated_issues = self.validator.validate_vector(
-            HedTags(data=["Sensory-event", "NonExistentEvent", "Sensory-event"])
+            HedTags(data=["Sensory-event", "NonExistentEvent", "Sensory-event", "NonExistentEvent"])
         )
 
-        self.assertEqual(len(distinct_issues), 1)
-        self.assertEqual(len(repeated_issues), 1)
-        self.assertEqual(distinct_issues[0]["code"], repeated_issues[0]["code"])
+        self.assertEqual([issue["code"] for issue in distinct_issues], ["TAG_INVALID"])
+        self.assertEqual([issue["code"] for issue in repeated_issues], ["TAG_INVALID"])
+        self.assertEqual((distinct_issues[0]["row_count"], repeated_issues[0]["row_count"]), (1, 2))
 
-    def test_validate_value_vector_validates_each_distinct_value_once(self):
-        """Test that a repeated value of a HedValueVector is only validated on its first row."""
+    def test_validate_vector_runs_the_group_level_checks(self):
+        """Test that a cell-level group error is found without a table: the helper never assembles rows."""
+        issues = self.validator.validate_vector(HedTags(data=["Red", "(Onset)", "(Onset)"]))
+        self.assertEqual([issue["code"] for issue in issues], ["TEMPORAL_TAG_ERROR"])
+        self.assertEqual((issues[0]["ec_row"], issues[0]["row_count"]), (1, 2))
+
+    def test_validate_value_vector_reports_a_repeated_value_once_with_row_count(self):
+        """Test that the values of a HedValueVector are reported by distinct value."""
         repeated_values = HedValueVector(
             name="duration",
             description="Duration values with HED template",
-            data=[0.5, 1.0, 0.5, 1.0] * 25,
+            data=["0.5", "1.0", "0.5", "1.0"] * 25,
             hed="(Duration/# s, (Sensory-event))",
         )
+        self.assertEqual(self.validator.validate_value_vector(repeated_values), [])
 
-        with patch.object(hed_nwb_validator, "HedString", side_effect=HedString) as hed_string_spy:
-            issues = self.validator.validate_value_vector(repeated_values)
-
-        self.assertEqual(len(issues), 0)
-        # One parse of the template, one to find its placeholder tag, then one substituted string per
-        # distinct value (two), for the syntax check that follows the units check
-        self.assertEqual(hed_string_spy.call_count, 4)
+        bad_values = HedValueVector(name="duration", description="d", data=["0.5", "x", "x"], hed="Age/# s")
+        issues = self.validator.validate_value_vector(bad_values)
+        self.assertEqual(
+            [(i["code"], i["ec_column"], i["ec_row"], i["row_count"]) for i in issues],
+            [("VALUE_INVALID", "duration", 1, 2)],
+        )
 
 
 class TestValidateFromDisk(unittest.TestCase):
@@ -2221,7 +2287,31 @@ class TestValidateFromDisk(unittest.TestCase):
             issues = self.validator.validate_vector(hed_column)
 
         self.assertEqual(reads.call_count, 1)
-        self.assertEqual(sum(1 for issue in issues if issue["code"] == "TAG_INVALID"), 50)
+        self.assertEqual([(issue["code"], issue["row_count"]) for issue in issues], [("TAG_INVALID", 50)])
+
+    def test_dynamic_table_source_from_disk(self):
+        """Test the column source on a file-backed table: distinct values read once, assembly on request."""
+        from hed.models import ColumnSource, TabularInput
+
+        from ndx_hed.utils.hed_nwb_validator import _DynamicTableSource
+
+        source = _DynamicTableSource(
+            self.read_table, self.validator.hed_schema, self.validator.def_dict, assemble=False, sidecar=None
+        )
+        self.assertIsInstance(source, ColumnSource)
+        self.assertEqual(source.column_names(), ["onset", "HED", "age"])
+        hed_distinct = source.distinct_values("HED")
+        self.assertEqual(sorted(hed_distinct), sorted(set(self.table["HED"].data[2:])))
+        self.assertEqual(hed_distinct["InvalidTagXYZ"][:2], [2, 6])
+        self.assertEqual(len(hed_distinct["InvalidTagXYZ"]), 50)
+        self.assertEqual(source.distinct_values("age"), {})  # float dtype under textClass: not read
+        self.assertEqual(source.distinct_values("no_such_column"), {})
+        self.assertIsNone(source.as_base_input())
+
+        assembling = _DynamicTableSource(
+            self.read_table, self.validator.hed_schema, self.validator.def_dict, assemble=True, sidecar=None
+        )
+        self.assertIsInstance(assembling.as_base_input(), TabularInput)
 
 
 if __name__ == "__main__":
