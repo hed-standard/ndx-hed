@@ -9,32 +9,28 @@ from typing import Any
 import numpy as np
 from hdmf.common import MeaningsTable
 from hed.errors import ErrorContext, ErrorHandler, HedExceptions, HedFileError
-from hed.errors.error_reporter import check_for_any_errors
-from hed.errors.error_types import ValidationErrors
-from hed.models import HedString, HedTag, Sidecar, TabularInput
-from hed.validator import HedValidator
+from hed.errors.error_reporter import ROW_COUNT_KEY, check_for_any_errors
+from hed.models import HedString, Sidecar, TabularInput
+from hed.validator import HedValidator, SpreadsheetValidator
+from hed.validator.util import placeholder_tag
 from pynwb import NWBFile
 from pynwb.core import DynamicTable
+from pynwb.event import TimestampVectorData
 
 from ..hed_lab_metadata import HedLabMetaData
 from ..hed_tags import HedTags, HedValueVector
 from .bids2nwb import _is_missing, get_bids_dataframe, get_json_hed_dict
 from .hed_nwb_errors import HED_COLUMN_TYPE_INVALID, MEANINGS_VALUE_VECTOR_INVALID
 
-# hedtools reports the line of the BIDS TSV file, where the header is line 1, so data row i is
-# reported as i + 2 (hed/validator/spreadsheet_validator.py, row_adj). ndx-hed reports the table
-# row index instead, so the assembled path subtracts this.
-_BIDS_ROW_OFFSET = 2
+# ROW_COUNT_KEY ("row_count") is hedtools' key for the number of rows holding a distinct value that an
+# issue reports. It is imported above so that ``from ndx_hed.utils.hed_nwb_validator import ROW_COUNT_KEY``
+# keeps working. Not an "ec_" key: hedtools treats every "ec_" key as an error context.
+__all__ = ["HedNWBValidator", "ROW_COUNT_KEY"]
 
 # The value class hedtools assumes for a placeholder whose tag declares none.
 _TEXT_CLASS = "textClass"
 _NUMERIC_CLASS = "numericClass"
 _NAME_CLASS = "nameClass"
-
-# Extra key on an issue from a distinct-value pass: how many rows hold the annotation reported. Not an
-# "ec_" key: hedtools treats every "ec_" key as an error context and get_printable_issue_string would
-# fail on one it does not know.
-ROW_COUNT_KEY = "row_count"
 
 
 class HedNWBValidator:
@@ -62,9 +58,12 @@ class HedNWBValidator:
         self.hed_metadata = hed_metadata
         self.hed_schema = hed_metadata.get_hed_schema()
         self.def_dict = hed_metadata.get_definition_dict()
-        # For the single-tag and single-string checks: validate_units on a substituted tag, the basic and
-        # full-string checks on a template or a substituted string (definitions matter for the latter).
+        # For the single-column helpers: the template check of validate_value_vector, and hedtools' stage
+        # methods, which take the definitions from the constructor when called on their own. validate_table
+        # builds its own SpreadsheetValidator per call, since validate() replaces the definitions with the
+        # sidecar's for the run.
         self._hed_validator = HedValidator(self.hed_schema, def_dicts=self.def_dict)
+        self._column_validator = SpreadsheetValidator(self.hed_schema, def_dicts=self.def_dict)
 
     # ------------------------------------------------------------------------------------------
     # The table validator
@@ -86,35 +85,31 @@ class HedNWBValidator:
         3. The table's column metadata is converted to a BIDS sidecar dict with ``get_json_hed_dict``,
            which reads no table data. The definitions of the HedLabMetaData travel in the sidecar, as
            BIDS carries them.
-        4. The sidecar (HedValueVector templates, MeaningsTable HED, definitions) is validated with
-           hedtools ``Sidecar.validate``. Any error stops: such an error would repeat on every row that
-           uses it, and the row annotations assembled from it cannot be trusted. Warnings do not stop.
-        5. The values of every HedValueVector column are checked against the units and value class of
-           the template's ``#`` tag: each distinct value is checked as that one tag with the value in
-           place, so ``{column}`` references and the other tags of the template, already validated in
-           step 4, play no part. A value that passes is then parsed as the substituted tag and given the
-           basic single-string checks, so a value that would break the HED string it lands in (an
-           unbalanced parenthesis, a pound sign) is rejected too. A numeric column passes without being
-           read when the class is text, and an integer column when it is numeric or a name; a float
-           column under a numeric class is scanned once for infinities, which are not numeric values;
-           otherwise the column is read once. Any error stops.
-        6. The assembly gate. With ``assemble=True`` (the default) the whole table is read into a BIDS
-           dataframe with ``get_bids_dataframe`` and hedtools ``TabularInput.validate`` runs its stages
-           after the sidecar one, which step 4 already ran: the value columns and the categorical values
-           against their levels, each distinct ``HED`` string once, then each row's HED assembled from
-           its ``HED`` cell, its categorical HED, and its value templates, and, when the table has a
-           ``TimestampVectorData`` column (exported as ``onset``), the temporal checks over the rows.
-           With ``assemble=False`` the table is never converted to a dataframe: ndx-hed reads the ``HED``
-           column and validates each distinct string once, reads each categorical column to check its
-           values against their levels, and runs nothing that needs the other tags of a row or the
-           other rows.
+        4. hedtools' staged tabular validation (``SpreadsheetValidator.validate``) runs on the table
+           through a column source that reads one column at a time, each stage stopping on an error:
+           the sidecar (HedValueVector templates, MeaningsTable HED, definitions, ``{column}``
+           references); the column values, that is each HedValueVector's distinct values against the
+           units and value class of its template's ``#`` tag (rule R7, with the value in place, then the
+           basic syntax checks on the substituted tag) and each categorical column's distinct values
+           against its levels (``SIDECAR_KEY_MISSING``, a warning); the ``HED`` column, each distinct
+           string once with the basic checks; then the assembly gate. With ``assemble=True`` (the
+           default) the whole table is read into a BIDS dataframe with ``get_bids_dataframe`` and each
+           row's HED is assembled from its ``HED`` cell, its categorical HED, and its value templates
+           and validated as a whole, with the temporal checks over the rows when the table has a
+           ``TimestampVectorData`` column (exported as ``onset``). With ``assemble=False`` the table is
+           never converted to a dataframe: the group-level checks run on each distinct ``HED`` string
+           instead, and nothing that needs the other tags of a row or the other rows is checked.
+
+        A HedValueVector whose dtype settles the value class is not read at all: a numeric column passes
+        textClass, an integer column passes numericClass and nameClass, and a float column under
+        numericClass is scanned once for infinities, which are not numeric values.
 
         Every issue carries the table name in ``ec_table_name``. A sidecar issue carries the column in
         ``ec_sidecarColumnName`` and, for categorical HED, the value in ``ec_sidecarKeyName``, and has no
         row. A row issue carries ``ec_column`` and ``ec_row``, the table row index (the first data row is
-        0) in both modes. The values of a HedValueVector (step 5) and the strings of the ``HED`` column
-        (in both modes) are validated by distinct value: each is validated once, reported at the first
-        row holding it, with the number of rows that hold it in ``row_count``.
+        0) in both modes. The values of a HedValueVector and the strings of the ``HED`` column are
+        validated by distinct value in both modes: each is validated once, reported at the first row
+        holding it, with the number of rows that hold it in ``row_count``.
 
         Parameters:
             table (DynamicTable): The table to validate. Not a MeaningsTable: its HED is validated as
@@ -158,39 +153,23 @@ class HedNWBValidator:
             return []
 
         # The sidecar half of the BIDS conversion reads only the column metadata and the MeaningsTables;
-        # the table's data is read only where a step below needs it.
+        # the table's data is read column by column where a hedtools stage needs it.
         json_data = get_json_hed_dict(table, self.hed_metadata)
+        sidecar = Sidecar(io.StringIO(json.dumps(json_data)), name=table.name) if json_data else None
+        source = _DynamicTableSource(table, self.hed_schema, self.def_dict, assemble, sidecar)
 
-        # Steps 4 and 5 stop the table on any error. Their warnings are reported once: on the assembled
-        # path hedtools is told not to validate the sidecar again, and its value-column stage repeats
-        # step 5, so the value warnings are taken from it rather than added here as well.
-        sidecar = None
-        sidecar_issues = []
-        if json_data:
-            # name="" keeps hedtools from pushing its own FILE_NAME context: the table's location is the
-            # TABLE_NAME context already pushed, plus the FILE_NAME that validate_file pushes.
-            sidecar = Sidecar(io.StringIO(json.dumps(json_data)), name=table.name)
-            sidecar_issues = sidecar.validate(self.hed_schema, name="", error_handler=error_handler)
-            if check_for_any_errors(sidecar_issues):
-                return sidecar_issues
-
-        value_issues = self._check_value_vectors(table, error_handler)
-        if check_for_any_errors(value_issues):
-            return sidecar_issues + value_issues
-
-        if not assemble:
-            issues += sidecar_issues + value_issues
-            issues += self._validate_hed_column(table, error_handler)
-            issues += self._check_categorical_coverage(table, error_handler)
-            return issues
-
-        # Assembly needs every column of the table as a BIDS dataframe. The sidecar was validated in
-        # step 4, used and unused levels alike, so hedtools skips its sidecar stage.
-        df = get_bids_dataframe(table)
-        tab_input = TabularInput(file=df, sidecar=sidecar, name=table.name)
-        tab_issues = tab_input.validate(self.hed_schema, name="", error_handler=error_handler, validate_sidecar=False)
-        _shift_rows(tab_issues, -_BIDS_ROW_OFFSET)
-        return issues + sidecar_issues + tab_issues
+        # The definitions travel in the sidecar; a table whose sidecar dict is empty (a bare HED column
+        # and no definitions) gets them directly. name="" keeps hedtools from pushing its own FILE_NAME
+        # context: the table's location is the TABLE_NAME context already pushed, plus the FILE_NAME that
+        # validate_file pushes. row_offset=0 reports table row indices rather than BIDS file lines.
+        return SpreadsheetValidator(self.hed_schema).validate(
+            source,
+            sidecar=sidecar,
+            extra_def_dicts=None if sidecar is not None else self.def_dict,
+            name="",
+            error_handler=error_handler,
+            row_offset=0,
+        )
 
     # ------------------------------------------------------------------------------------------
     # Step 1: structural rules
@@ -217,155 +196,6 @@ class HedNWBValidator:
         if any(isinstance(column, (HedTags, HedValueVector)) for column in table.columns):
             return True
         return any("HED" in meanings.colnames for meanings in table.meanings_tables.values())
-
-    # ------------------------------------------------------------------------------------------
-    # Step 5: HedValueVector values against the value class of the placeholder
-
-    def _check_value_vectors(self, table: DynamicTable, error_handler: ErrorHandler) -> list[dict[str, Any]]:
-        issues = []
-        for column in table.columns:
-            if not isinstance(column, HedValueVector):
-                continue
-            error_handler.push_error_context(ErrorContext.COLUMN, column.name)
-            try:
-                issues += self._check_value_vector(column, error_handler)
-            finally:
-                error_handler.pop_error_context()
-        return issues
-
-    def _check_value_vector(self, column: HedValueVector, error_handler: ErrorHandler) -> list[dict[str, Any]]:
-        """Check the values of one HedValueVector against the class of its ``#`` tag; see validate_table step 5."""
-        placeholder = self._placeholder_tag(column.hed)
-        if placeholder is None:
-            return []
-        classes = set(placeholder.value_classes) or {_TEXT_CLASS}
-        dtype = _column_dtype(column)
-        if _dtype_settles(dtype, classes):
-            return []
-        if dtype is not None and dtype.kind == "f" and _NUMERIC_CLASS in classes:
-            # A finite float is a numeric value, but inf is not ("Age/inf s" fails numericClass). One
-            # vectorized pass over the column finds the infinities; only those are checked.
-            values = np.asarray(column.data[:], dtype=float)
-            infinite = np.isinf(values)
-            if not infinite.any():
-                return []
-            distinct = _distinct_values(np.where(infinite, values, np.nan))
-        else:
-            distinct = _distinct_values(column.data[:])
-        return self._check_values(placeholder, distinct, error_handler)
-
-    def _check_values(
-        self, placeholder: HedTag, distinct: dict[str, list[int]], error_handler: ErrorHandler
-    ) -> list[dict[str, Any]]:
-        """
-        Check each distinct value as the ``#`` tag alone with the value in place, as hedtools' value stage does.
-
-        Only that one tag is checked, so the rest of the template (other tags, ``{column}`` references)
-        plays no part: the template was validated as a whole by the sidecar step. First hedtools'
-        ``validate_units`` on the tag built with ``HedTag`` directly, not parsed, so a comma or brace inside
-        the value is an invalid character rather than a split annotation (``VALUE_INVALID``,
-        ``CHARACTER_INVALID``, or a units code). A value that passes may still break the HED string it will
-        be spliced into ("a)", "a#b"), so the substituted tag is then parsed and given the basic
-        single-string checks (``PARENTHESES_MISMATCH``, ``PLACEHOLDER_INVALID``, ...). Each issue is reported
-        at the first row holding the value with the number of rows in ``row_count``.
-        """
-        template = str(placeholder)  # "Delay/# s"; for Def/Name/# the placeholder tag inside the definition
-        issues = []
-        for value, rows in distinct.items():
-            substituted = template.replace("#", value, 1)
-            error_handler.push_error_context(ErrorContext.ROW, rows[0])
-            try:
-                tag = HedTag(substituted, self.hed_schema)
-                value_issues = self._hed_validator.validate_units(tag, allow_placeholders=False)
-                if not value_issues:
-                    substituted_string = HedString(substituted, self.hed_schema, def_dict=self.def_dict)
-                    value_issues = self._hed_validator.run_basic_checks(substituted_string, allow_placeholders=False)
-                error_handler.add_context_and_filter(value_issues)
-            finally:
-                error_handler.pop_error_context()
-            for issue in value_issues:
-                issue[ROW_COUNT_KEY] = len(rows)
-            issues += value_issues
-        return issues
-
-    def _placeholder_tag(self, template: str) -> HedTag | None:
-        """
-        Return the tag of a template whose value portion is ``#``, or None if the template has none.
-
-        For a ``Def/Name/#`` template the ``#`` fills the placeholder inside the definition, so the tag
-        returned is the placeholder tag in the definition's body (None if the definition is unknown or
-        takes no value; the sidecar step has already reported that).
-        """
-        hed_string = HedString(template, self.hed_schema, def_dict=self.def_dict)
-        for tag in hed_string.get_all_tags():
-            if "#" not in tag.extension:
-                continue
-            if tag.short_base_tag.lower() != "def":
-                return tag
-            entry = self.def_dict.get(tag.extension.split("/")[0])
-            if entry is None or not entry.takes_value or entry.contents is None:
-                return None
-            return next((inner for inner in entry.contents.get_all_tags() if "#" in inner.extension), None)
-        return None
-
-    # ------------------------------------------------------------------------------------------
-    # Step 6 without assembly: the HED column cell by cell, categorical values against their levels
-
-    def _validate_hed_column(self, table: DynamicTable, error_handler: ErrorHandler) -> list[dict[str, Any]]:
-        """Validate each distinct annotation of the table's HedTags column once."""
-        issues = []
-        for column in table.columns:
-            if not isinstance(column, HedTags):
-                continue
-            error_handler.push_error_context(ErrorContext.COLUMN, column.name)
-            try:
-                for annotation, rows in _distinct_values(column.data[:]).items():
-                    issues += self._validate_once(annotation, rows, error_handler)
-            finally:
-                error_handler.pop_error_context()
-        return issues
-
-    @staticmethod
-    def _check_categorical_coverage(table: DynamicTable, error_handler: ErrorHandler) -> list[dict[str, Any]]:
-        """
-        Report the values of a categorical column that its MeaningsTable does not annotate.
-
-        Mirrors what hedtools reports during assembled validation (``SIDECAR_KEY_MISSING``, a warning), so
-        the two modes agree. A MeaningsTable without a HED column carries no HED and is not checked.
-        """
-        issues = []
-        for meanings in table.meanings_tables.values():
-            if "HED" not in meanings.colnames:
-                continue
-            column = meanings.target
-            levels = [str(value) for value in meanings["value"].data[:]]
-            present = list(_distinct_values(column.data[:]))
-            missing = [value for value in present if value not in levels]
-            if not missing:
-                continue
-            error_handler.push_error_context(ErrorContext.COLUMN, column.name)
-            try:
-                issues += error_handler.format_error_with_context(
-                    ValidationErrors.SIDECAR_KEY_MISSING,
-                    invalid_keys=str(missing),
-                    category_keys=levels,
-                    column_name=column.name,
-                )
-            finally:
-                error_handler.pop_error_context()
-        return issues
-
-    def _validate_once(self, annotation: str, rows: list[int], error_handler: ErrorHandler) -> list[dict[str, Any]]:
-        """Validate one annotation under the ROW context of the first row holding it; stamp the row count."""
-        error_handler.push_error_context(ErrorContext.ROW, rows[0])
-        try:
-            hed_obj = HedString(annotation, self.hed_schema, def_dict=self.def_dict)
-            issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
-        finally:
-            error_handler.pop_error_context()
-        for issue in issues:
-            issue[ROW_COUNT_KEY] = len(rows)
-        return issues
 
     # ------------------------------------------------------------------------------------------
     # The file validator
@@ -432,10 +262,14 @@ class HedNWBValidator:
 
     def validate_vector(self, hed_tags: HedTags, error_handler: ErrorHandler | None = None) -> list[dict[str, Any]]:
         """
-        Validates the annotations of a HedTags column one cell at a time, in isolation.
+        Validates the annotations of a HedTags column in isolation, each distinct string once.
 
-        This checks each HED string on its own. It does not see the other columns of the row, the
-        categorical HED of a MeaningsTable, or the other rows, so use ``validate_table`` for a table.
+        Each distinct HED string of the column is checked on its own: the basic checks and the
+        group-level checks (hedtools ``validate_hed_column`` with ``full_string=True``). The required-tag
+        check needs the assembled row and does not run. The helper does not see the other columns of the
+        row, the categorical HED of a MeaningsTable, or the other rows, so use ``validate_table`` for a
+        table. An issue is reported at the first row holding the string, with the number of rows that
+        hold it in ``row_count``.
 
         Parameters:
             hed_tags (HedTags): The HedTags column to validate
@@ -444,39 +278,16 @@ class HedNWBValidator:
 
         Returns:
             list[dict[str, Any]]: A list of validation issues found in the HedTags column
-
-        Notes:
-            An annotation that has already been validated in this column and found to have no issues
-            is not validated again on the rows that repeat it. Such a row contributes nothing to the
-            result, so the issues returned are the same as if every row were validated. A row whose
-            annotation does have issues is still validated, so that each affected row is reported.
         """
         if hed_tags is None or not isinstance(hed_tags, HedTags):
             raise ValueError("The provided hed_tags is not a valid HedTags instance.")
         if error_handler is None:
             error_handler = ErrorHandler(check_for_warnings=False)
-        issues = []
-        validated_without_issues = set()
-
         # Slice once: on a file-backed column, iterating the dataset directly is one HDF5 read per row.
-        # For an in-memory list the slice is a shallow copy of references (about 4 ms and 8 MB per
-        # million rows, the cost of validating a few rows); for a numpy array it is a view.
-        for index, tag in enumerate(hed_tags.data[:]):
-            if tag is None or tag == "" or tag == "n/a" or tag in validated_without_issues:
-                continue
-
-            error_handler.push_error_context(ErrorContext.ROW, index)
-            try:
-                hed_obj = HedString(tag, self.hed_schema, def_dict=self.def_dict)
-                row_issues = hed_obj.validate(allow_placeholders=False, error_handler=error_handler)
-            finally:
-                error_handler.pop_error_context()
-            issues += row_issues
-
-            if not row_issues:
-                validated_without_issues.add(tag)
-
-        return issues
+        distinct = _distinct_values(hed_tags.data[:])
+        return self._column_validator.validate_hed_column(
+            hed_tags.name, distinct, error_handler, row_offset=0, full_string=True
+        )
 
     def validate_value_vector(
         self, hed_values: HedValueVector, error_handler: ErrorHandler | None = None
@@ -488,9 +299,10 @@ class HedNWBValidator:
         removed first: a reference is resolved against the table's other columns by ``validate_table``
         (hedtools' sidecar validation), which this single-column helper cannot do. If the template has
         an error the values are not checked. Otherwise each distinct non-missing value is checked as the
-        ``#`` tag alone with the value in place, for its units and value class, exactly as
-        ``validate_table`` does (rule R7); an issue is reported at the first row holding the value with
-        the number of rows in ``row_count``.
+        ``#`` tag alone with the value in place, for its units and value class and then the basic syntax
+        checks on the substituted tag, exactly as ``validate_table`` does (rule R7, hedtools
+        ``validate_value_column``); an issue is reported at the first row holding the value with the
+        number of rows in ``row_count``. A column whose dtype settles the value class is not read.
 
         Parameters:
             hed_values (HedValueVector): The HedValueVector column to validate
@@ -508,22 +320,109 @@ class HedNWBValidator:
         # The template on its own, with the references removed from the parsed string and the object
         # validated, as hedtools' sidecar validator does. The text is not parsed again: a template whose
         # parentheses do not balance parses to an empty tree whose text is "", and the structural checks
-        # report on the raw string the object still carries.
+        # report on the raw string the object still carries. Under the column context, like the value
+        # check that follows, so every issue of the helper names the column.
         hed_template = HedString(hed_values.hed, self.hed_schema, def_dict=self.def_dict)
         hed_template.remove_refs()
-        issues = self._hed_validator.validate(hed_template, allow_placeholders=True, error_handler=error_handler)
+        error_handler.push_error_context(ErrorContext.COLUMN, hed_values.name)
+        try:
+            issues = self._hed_validator.validate(hed_template, allow_placeholders=True, error_handler=error_handler)
+        finally:
+            error_handler.pop_error_context()
         if check_for_any_errors(issues):
             return issues
 
-        placeholder = self._placeholder_tag(hed_values.hed)
-        if placeholder is None:
-            return issues
-        # Slice once: on a file-backed column, iterating the dataset directly is one HDF5 read per row.
-        return issues + self._check_values(placeholder, _distinct_values(hed_values.data[:]), error_handler)
+        distinct = _value_column_distinct(hed_values, self.hed_schema, self.def_dict)
+        return issues + self._column_validator.validate_value_column(
+            hed_values.name, hed_values.hed, distinct, error_handler, row_offset=0
+        )
+
+
+# ----------------------------------------------------------------------------------------------
+# The column source hedtools reads the table through
+
+
+class _DynamicTableSource:
+    """
+    A hedtools ``ColumnSource`` over a DynamicTable: the table as hedtools' staged validator reads it.
+
+    The validator asks for the column names, then for the distinct values of one column at a time (the
+    value columns, the categorical columns, the ``HED`` column), and only at the assembly stage for a
+    ``TabularInput``. So a column is read only when a stage needs it, a HedValueVector whose dtype
+    settles its value class is not read at all, and without assembly no dataframe is ever built.
+    Columns are named as BIDS names them: a ``TimestampVectorData`` named ``timestamp`` is ``onset``,
+    the rename ``get_bids_dataframe`` makes.
+    """
+
+    def __init__(self, table: DynamicTable, hed_schema, def_dict, assemble: bool, sidecar: Sidecar | None):
+        self._table = table
+        self._hed_schema = hed_schema
+        self._def_dict = def_dict
+        self._assemble = assemble
+        self._sidecar = sidecar
+        self._distinct: dict[str, dict[str, list[int]]] = {}  # BIDS column name -> distinct values, once read
+        self._table_names: dict[str, str] = {}  # BIDS column name -> table column name
+        for name in table.colnames:
+            bids_name = "onset" if name == "timestamp" and isinstance(table[name], TimestampVectorData) else name
+            self._table_names[bids_name] = name
+
+    def column_names(self) -> list[str]:
+        return list(self._table_names)
+
+    def distinct_values(self, column_name: str) -> dict[str, list[int]]:
+        table_name = self._table_names.get(column_name)
+        if table_name is None:
+            return {}
+        # Each column is read once per validation: without assembly hedtools asks for the HED column
+        # twice, for the basic checks and then for the group-level checks on the same strings.
+        if column_name not in self._distinct:
+            column = self._table[table_name]
+            if isinstance(column, HedValueVector):
+                self._distinct[column_name] = _value_column_distinct(column, self._hed_schema, self._def_dict)
+            else:
+                # Slice once: on a file-backed column, iterating the dataset directly is one HDF5 read per row.
+                self._distinct[column_name] = _distinct_values(column.data[:])
+        return self._distinct[column_name]
+
+    def column_mapper(self):
+        return None  # hedtools builds the TabularInput-style mapper from the sidecar
+
+    def as_base_input(self) -> TabularInput | None:
+        if not self._assemble:
+            return None
+        # Assembly needs every column of the table as a BIDS dataframe; built here so that it exists
+        # only for the assembly stage, after the column stages have passed.
+        return TabularInput(file=get_bids_dataframe(self._table), sidecar=self._sidecar, name=self._table.name)
 
 
 # ----------------------------------------------------------------------------------------------
 # Module helpers
+
+
+def _value_column_distinct(column: HedValueVector, hed_schema, def_dict) -> dict[str, list[int]]:
+    """
+    Return the distinct values of a HedValueVector that need checking against its template's ``#`` tag.
+
+    The column is not read when its dtype settles the question: a numeric column satisfies textClass and
+    an integer column numericClass and nameClass (``_dtype_settles``). A float column under numericClass
+    is scanned once for infinities, which are not numeric values ("Age/inf s" fails), and only those are
+    returned. A template without a checkable placeholder has nothing to check. Otherwise the column is
+    read once.
+    """
+    placeholder = placeholder_tag(column.hed, hed_schema, def_dict)
+    if placeholder is None:
+        return {}
+    classes = set(placeholder.value_classes) or {_TEXT_CLASS}
+    dtype = _column_dtype(column)
+    if _dtype_settles(dtype, classes):
+        return {}
+    if dtype is not None and dtype.kind == "f" and _NUMERIC_CLASS in classes:
+        values = np.asarray(column.data[:], dtype=float)
+        infinite = np.isinf(values)
+        if not infinite.any():
+            return {}
+        return _distinct_values(np.where(infinite, values, np.nan))
+    return _distinct_values(column.data[:])
 
 
 def _column_dtype(column) -> np.dtype | None:
@@ -554,7 +453,12 @@ def _dtype_settles(dtype: np.dtype | None, value_classes: set[str]) -> bool:
 
 
 def _distinct_values(values) -> dict[str, list[int]]:
-    """Map each distinct non-missing value, as text, to the rows holding it. Missing is None, NaN, "", "n/a"."""
+    """
+    Map each distinct non-missing value, as text, to the rows holding it. Missing is None, NaN, "", "n/a".
+
+    The same mapping as hedtools' ``distinct_values``, with ndx-hed's ``_is_missing`` for the NaN test:
+    an NWB column may hold numpy float32 or float16 NaNs, which are not instances of Python's float.
+    """
     distinct: dict[str, list[int]] = {}
     for row, value in enumerate(values):
         if _is_missing(value):
@@ -566,11 +470,3 @@ def _distinct_values(values) -> dict[str, list[int]]:
             continue
         distinct.setdefault(text, []).append(row)
     return distinct
-
-
-def _shift_rows(issues: list[dict[str, Any]], offset: int) -> None:
-    """Add offset to the ROW context of every issue that has an integer one."""
-    for issue in issues:
-        row = issue.get(ErrorContext.ROW)
-        if isinstance(row, int) and not isinstance(row, bool):
-            issue[ErrorContext.ROW] = row + offset
