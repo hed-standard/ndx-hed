@@ -13,6 +13,8 @@ plain ``DynamicTable`` rather than an ``EventsTable``).
 The mapping rules are numbered M1-M7 in ``spec_tests/README.md``.
 """
 
+import json
+import os
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -27,17 +29,37 @@ LEVELS_KEY = "Levels"
 DEFINITION_MARKER = "Definition/"
 EMPTY_MEANINGS = {"categorical": {}, "value": {}}
 
+# Test-only libraries, and the vendored standard version, that hed-tests resolves against
+# json_test_data/test_schemas/hedxml (the loading convention in that folder's README; hed-python's
+# spec_tests/test_errors.py applies the same rule). The harness points hedtools' cache directory there
+# for a case that names one (run_cases.test_schema_cache). Drop "8.5.0" once HED 8.5.0 is released.
+TEST_SCHEMA_LIBRARIES = ("testconflict", "testclash", "testminimal", "testaux")
+TEST_SCHEMA_STANDARD_VERSIONS = ("8.5.0",)
+TEST_SCHEMAS_DIR = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "hed-tests", "json_test_data", "test_schemas", "hedxml"
+)
+
 
 def schema_version_string(schema) -> str:
-    """Return the record's ``schema`` field as the single string HedLabMetaData takes (M1).
+    """Return the record's ``schema`` field as the string HedLabMetaData takes (M1).
 
-    A list is joined with commas, which hedtools accepts when every version shares one namespace.
-    A list mixing namespaces (``['8.5.0', 'sc:testconflict_2.1.0']``) cannot be expressed this way;
-    HedLabMetaData then fails to load it and the harness skips the record.
+    A string passes through. A list becomes the JSON array string, the form hedtools reads for a
+    mixed-namespace group such as ``['8.5.0', 'sc:testconflict_2.1.0']`` (a comma join would make
+    hedtools read ``8.5.0,sc`` as the namespace).
     """
     if isinstance(schema, list):
-        return ",".join(str(version).strip() for version in schema)
+        return json.dumps([str(version).strip() for version in schema])
     return str(schema).strip()
+
+
+def uses_test_schemas(schema) -> bool:
+    """Return True when a record's ``schema`` names a test-only library or a vendored standard version."""
+    versions = schema if isinstance(schema, list) else str(schema).split(",")
+    for version in versions:
+        name = str(version).strip().split(":", 1)[-1]  # drop a namespace prefix
+        if name.startswith(TEST_SCHEMA_LIBRARIES) or name in TEST_SCHEMA_STANDARD_VERSIONS:
+            return True
+    return False
 
 
 def join_definitions(*definition_lists) -> str | None:

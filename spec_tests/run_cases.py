@@ -23,14 +23,17 @@ import json
 import os
 import sys
 import traceback
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from hed.errors import ErrorHandler, SchemaWarnings, get_printable_issue_string
+from hed.schema import hed_cache
 
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 
 from .nwb_case_builder import (
     SCHEMA_LOAD_PREFIX,
+    TEST_SCHEMAS_DIR,
     absent_hed_columns,
     build_combo_table,
     build_events_table,
@@ -39,6 +42,7 @@ from .nwb_case_builder import (
     build_sidecar_table,
     is_ragged,
     split_definition_entries,
+    uses_test_schemas,
 )
 from .skipped_cases import SKIP_CASES, SKIP_RECORDS
 
@@ -120,12 +124,38 @@ def run_kind(records, kind, *, only=None, include_skipped=False):
     return result
 
 
+@contextmanager
+def test_schema_cache(schema):
+    """Point hedtools' schema cache at hed-tests' vendored test schemas while a case that needs them runs.
+
+    hedtools resolves a version string to a file in its cache directory, and HedLabMetaData has no folder
+    argument (hed-python's harness passes ``xml_folder`` instead), so the cache directory itself is swapped
+    for the case and restored afterwards. The swap is global to the process, which is fine for this
+    single-process harness and is why it lives here rather than in the library. hedtools memoizes each
+    version string once per process, so every ``8.5.0`` in the run comes from the vendored snapshot.
+    """
+    if not uses_test_schemas(schema):
+        yield
+        return
+    previous = hed_cache.get_cache_directory()
+    hed_cache.set_cache_directory(TEST_SCHEMAS_DIR)
+    try:
+        yield
+    finally:
+        hed_cache.set_cache_directory(previous)
+
+
 def run_case(record, kind, expected, index, case, *, include_skipped=False):
     """Return (outcome, detail) for one case. detail is a skip reason, a failure reason, or the codes."""
     skip = named_skip(record["name"], kind, expected, index, include_skipped)
     if skip:
         return SKIPPED, skip
+    with test_schema_cache(record["schema"]):
+        return _run_case(record, kind, expected, index, case)
 
+
+def _run_case(record, kind, expected, index, case):
+    """Build and validate one case that is not a named skip; see run_case."""
     # Rule-based skips and the M5 split of definitions entries.
     extra_definitions = []
     sidecar = None

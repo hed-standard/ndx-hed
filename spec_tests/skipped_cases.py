@@ -16,26 +16,15 @@ Run ``python -m spec_tests.run_cases --include-skipped`` to run the listed cases
 to re-check the list after a fix. Every entry needs a reason; when a reason no longer holds, remove
 the entry.
 
-Groups: ndx-hed limits, hedtools differences, representation limits, hed-tests data bugs.
+Groups, when an entry needs one: ndx-hed limits, hedtools differences, representation limits, hed-tests
+data bugs. Test-only schema libraries are not a reason to skip: the harness resolves them against the
+vendored hed-tests folder (run_cases.test_schema_cache).
 """
 
-SKIP_RECORDS: dict[str, str] = {
-    # --- ndx-hed limits ---------------------------------------------------------------------
-    # HedLabMetaData.hed_schema_version is one string, and hedtools accepts a comma-joined string
-    # only when every version shares one namespace, so a mixed-namespace merge group such as
-    # ['8.5.0', 'sc:testconflict_2.1.0'] cannot be represented (plan spec_tests_harness.md, F1).
-    "tag-namespace_prefix-invalid-characters": "mixed-namespace schema list not representable in HedLabMetaData (F1)",
-    "tag-with-namespace-has-no-schema": "mixed-namespace schema list not representable in HedLabMetaData (F1)",
-    # --- hedtools differences -------------------------------------------------------------------
-    # The record needs the Quantity tag and the anyUnits unit class of the HED 8.5.0 prerelease.
-    # HedLabMetaData loads 8.5.0 through hedtools' cache, which holds whatever prerelease snapshot
-    # was downloaded first (the one on the authoring machine has no Quantity), and the installed
-    # hedtools may predate anyUnits support; the case then fails with CHARACTER_INVALID and
-    # TAG_INVALID instead of UNITS_INVALID. Re-check once HED 8.5.0 is released and a hedtools
-    # release bundles it with anyUnits support. hed-tests vendors a current snapshot in
-    # json_test_data/test_schemas/hedxml/HED8.5.0.xml, which HedLabMetaData cannot be pointed at.
-    "units-invalid-any-units": "Quantity/anyUnits need the released HED 8.5.0 and a hedtools that supports anyUnits",
-}
+# No whole record is skipped today. The last entries were the two mixed-namespace schema records (lifted
+# 2026-10 when HedLabMetaData's JSON-array form reached the harness) and units-invalid-any-units (lifted
+# when hedtools gained anyUnits and the harness started resolving 8.5.0 against the vendored snapshot).
+SKIP_RECORDS: dict[str, str] = {}
 
 SKIP_CASES: dict[tuple[str, str, str, int], str] = {
     # --- representation limits ------------------------------------------------------------------

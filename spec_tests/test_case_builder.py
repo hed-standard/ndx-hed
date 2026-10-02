@@ -26,6 +26,7 @@ from .nwb_case_builder import (
     join_definitions,
     schema_version_string,
     split_definition_entries,
+    uses_test_schemas,
 )
 
 DEFS = ["(Definition/Acc/#, (Acceleration/# m-per-s^2, Red))", "(Definition/MyColor, (Label/Pie))"]
@@ -34,7 +35,22 @@ DEFS = ["(Definition/Acc/#, (Acceleration/# m-per-s^2, Red))", "(Definition/MyCo
 class TestRecordLevel(unittest.TestCase):
     def test_schema_version_string(self):
         self.assertEqual(schema_version_string("8.4.0"), "8.4.0")
-        self.assertEqual(schema_version_string([" 8.4.0", "score_2.1.0"]), "8.4.0,score_2.1.0")
+        self.assertEqual(schema_version_string([" 8.4.0", "score_2.1.0"]), '["8.4.0", "score_2.1.0"]')
+        self.assertEqual(
+            schema_version_string(["8.5.0", "sc:testconflict_2.1.0"]), '["8.5.0", "sc:testconflict_2.1.0"]'
+        )
+
+    def test_build_metadata_from_list(self):
+        metadata = build_metadata(["8.4.0", "sc:score_2.1.0"], None)
+        self.assertEqual(metadata.get_hed_schema_version(), '["8.4.0", "sc:score_2.1.0"]')
+        self.assertEqual(metadata.get_hed_schema().valid_prefixes, ["", "sc:"])
+
+    def test_uses_test_schemas(self):
+        self.assertTrue(uses_test_schemas(["8.4.0", "sc:testconflict_2.1.0"]))
+        self.assertTrue(uses_test_schemas("8.5.0"))
+        self.assertTrue(uses_test_schemas("8.4.0, testminimal_1.0.0"))
+        self.assertFalse(uses_test_schemas("8.4.0"))
+        self.assertFalse(uses_test_schemas(["8.4.0", "score_2.1.0"]))
 
     def test_join_definitions(self):
         self.assertIsNone(join_definitions(None, []))

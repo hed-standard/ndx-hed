@@ -25,7 +25,7 @@ HedLabMetaData
 **Extends**: ``LabMetaData``
 
 **Key Properties**:
-- ``hed_schema_version`` (required): HED schema version (e.g., "8.4.0")
+- ``hed_schema_version`` (required): the HED schema version(s), either one version string such as ``"8.4.0"``, a comma-joined string of versions in one namespace such as ``"8.4.0,score_2.1.0"``, or a list of version strings such as ``["8.4.0", "sc:score_2.1.0"]`` (stored in the file as the JSON array string, the form hedtools itself uses for a schema group)
 - ``hed_definitions`` (optional): Custom HED definitions as string
 
 **Usage**: Must be added to NWBFile before using any HED annotations.

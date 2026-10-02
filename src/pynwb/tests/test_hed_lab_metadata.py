@@ -115,6 +115,25 @@ class TestHedLabMetaDataConstructor(TestCase):
         schema = labdata.get_hed_schema()
         self.assertIsInstance(schema, HedSchemaGroup)
 
+    def test_constructor_with_schema_list(self):
+        """A list of versions is stored as the JSON array string hedtools uses for a schema group."""
+        labdata = HedLabMetaData(hed_schema_version=["8.4.0", " sc:score_2.1.0 "])
+        self.assertEqual(labdata.get_hed_schema_version(), '["8.4.0", "sc:score_2.1.0"]')
+        schema = labdata.get_hed_schema()
+        self.assertIsInstance(schema, HedSchemaGroup)
+        self.assertEqual(schema.valid_prefixes, ["", "sc:"])
+        # The stored string names the same group hedtools formats
+        self.assertEqual(labdata.get_hed_schema_version(), schema.get_formatted_version())
+        # A tuple works the same way; a one-element list is a plain schema
+        self.assertEqual(HedLabMetaData(hed_schema_version=("8.4.0",)).get_hed_schema_version(), '["8.4.0"]')
+        self.assertIsInstance(HedLabMetaData(hed_schema_version=["8.4.0"]).get_hed_schema(), HedSchema)
+
+    def test_constructor_with_empty_schema_list(self):
+        """An empty list names no schema and is refused before hedtools sees it."""
+        with self.assertRaises(ValueError) as cm:
+            HedLabMetaData(hed_schema_version=[])
+        self.assertIn("at least one HED schema version", str(cm.exception))
+
     def test_get_definition_dict(self):
         """Test getting the DefinitionDict from HedLabMetaData."""
         test_definitions = "Red, Blue"
@@ -265,6 +284,22 @@ class TestHedLabMetaDataRoundTrip(TestCase):
             schema = read_hed_info.get_hed_schema()
             self.assertIsInstance(schema, HedSchemaGroup)
 
+    def test_roundtrip_lab_metadata_with_schema_list(self):
+        """A list given to the constructor reads back as the JSON array string and the same group."""
+        nwbfile = NWBFile(
+            session_description="Testing HedLabMetaData with a schema list",
+            identifier="Testing schema list",
+            session_start_time=datetime.now(tzlocal()),
+        )
+        nwbfile.add_lab_meta_data(HedLabMetaData(hed_schema_version=["8.4.0", "sc:score_2.1.0"]))
+        with NWBHDF5IO(self.test_nwb_file_path, "w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(self.test_nwb_file_path, "r") as io:
+            read_hed_info = io.read().lab_meta_data["hed_schema"]
+            self.assertEqual(read_hed_info.get_hed_schema_version(), '["8.4.0", "sc:score_2.1.0"]')
+            self.assertIsInstance(read_hed_info.get_hed_schema(), HedSchemaGroup)
+            self.assertEqual(read_hed_info.get_hed_schema().valid_prefixes, ["", "sc:"])
+
     def test_add_two(self):
         # Create an NWB file and an instance of HedLabMetaData
         session_start = datetime.now(tzlocal())
@@ -362,6 +397,19 @@ class TestHedLabMetaDataDefinitions(TestCase):
         self.assertEqual(metadata.definitions, "(ts:Definition/empty),(ts:Definition/full,(ts:Red))")
         # The exported string constructs a new metadata object against the same schema without issues
         HedLabMetaData(hed_schema_version="ts:8.4.0", definitions=metadata.definitions)
+
+    def test_definitions_schema_group_without_body(self):
+        """A bodiless definition under a schema group exports (the group's prefixes are a property)."""
+        # One prefix in the group: the exported Definition tag carries it
+        one_prefix = HedLabMetaData(
+            hed_schema_version=["ts:8.4.0", "ts:score_2.1.0"], definitions="(ts:Definition/Empty)"
+        )
+        self.assertEqual(one_prefix.definitions, "(ts:Definition/empty)")
+        HedLabMetaData(hed_schema_version=one_prefix.get_hed_schema_version(), definitions=one_prefix.definitions)
+        # Mixed prefixes: the unprefixed standard schema owns Definition, so no prefix is added
+        mixed = HedLabMetaData(hed_schema_version=["8.4.0", "sc:score_2.1.0"], definitions="(Definition/Empty)")
+        self.assertEqual(mixed.definitions, "(Definition/empty)")
+        HedLabMetaData(hed_schema_version=mixed.get_hed_schema_version(), definitions=mixed.definitions)
 
     def test_multiple_definitions(self):
         """List of definitions."""
