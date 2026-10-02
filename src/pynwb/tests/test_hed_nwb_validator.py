@@ -2137,6 +2137,49 @@ class TestValidateFile(unittest.TestCase):
             self.validator.validate_file(nwbfile_different)
         self.assertIn("does not match validator schema version", str(cm.exception))
 
+    @staticmethod
+    def _file_with_schema(version, identifier):
+        """An NWB file carrying a HedLabMetaData for version and one table with a per-row HED column."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from pynwb import NWBFile
+
+        nwbfile = NWBFile(
+            session_description="Schema version comparison",
+            identifier=identifier,
+            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+        )
+        nwbfile.add_lab_meta_data(HedLabMetaData(hed_schema_version=version))
+        table = DynamicTable(name="events", description="d", columns=[HedTags(data=["Red", "Blech"])])
+        nwbfile.add_acquisition(table)
+        return nwbfile
+
+    def test_validate_file_schema_group(self):
+        """A file whose metadata is a schema group validates; the comparison does not read .version."""
+        metadata = HedLabMetaData(hed_schema_version=["8.4.0", "sc:score_2.1.0"])
+        nwbfile = self._file_with_schema(["8.4.0", "sc:score_2.1.0"], "group_file")
+        issues = HedNWBValidator(metadata).validate_file(nwbfile)
+        self.assertEqual([issue["code"] for issue in issues], ["TAG_INVALID"])
+
+    def test_validate_file_schema_versions_compared_as_loaded(self):
+        """Two spellings that load the same merged schema agree; a comma string is not a false mismatch."""
+        from hed.errors import HedFileError
+
+        comma = HedLabMetaData(hed_schema_version="8.4.0,score_2.1.0")
+        # The merged schema's own version is "score_2.1.0", which is not the stored string
+        self.assertNotEqual(comma.get_hed_schema().version, comma.get_hed_schema_version())
+        issues = HedNWBValidator(comma).validate_file(self._file_with_schema("8.4.0,score_2.1.0", "comma_file"))
+        self.assertEqual([issue["code"] for issue in issues], ["TAG_INVALID"])
+        json_list = HedLabMetaData(hed_schema_version='["8.4.0","score_2.1.0"]')
+        issues = HedNWBValidator(json_list).validate_file(self._file_with_schema("8.4.0,score_2.1.0", "mixed_file"))
+        self.assertEqual([issue["code"] for issue in issues], ["TAG_INVALID"])
+        # A different group is still a mismatch, and the message names both stored strings
+        with self.assertRaises(HedFileError) as cm:
+            HedNWBValidator(json_list).validate_file(self._file_with_schema(["8.4.0", "sc:score_2.1.0"], "other"))
+        self.assertIn('["8.4.0", "sc:score_2.1.0"]', str(cm.exception))
+        self.assertIn('["8.4.0","score_2.1.0"]', str(cm.exception))
+
     def test_validate_file_none_input(self):
         """Test validate_file with None input."""
         with self.assertRaises(ValueError) as cm:

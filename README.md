@@ -32,7 +32,8 @@ nwbfile = NWBFile(
     session_start_time=datetime.now(),
 )
 
-# Add HED schema metadata (required)
+# Add HED schema metadata (required). A library schema merged with its partner is
+# "8.4.0,score_2.1.0"; schemas in separate namespaces are a list, ["8.4.0", "sc:score_2.1.0"].
 hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
 nwbfile.add_lab_meta_data(hed_metadata)
 

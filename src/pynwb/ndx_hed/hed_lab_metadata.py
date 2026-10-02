@@ -1,5 +1,7 @@
 """The HED Lab Metadata class for storing HED (Hierarchical Event Descriptors) information."""
 
+import json
+
 from hdmf.utils import docval, popargs
 from hed.errors import ErrorSeverity, get_printable_issue_string
 from hed.models import DefinitionDict
@@ -18,7 +20,15 @@ class HedLabMetaData(LabMetaData):
     __nwbfields__ = ("_hed_schema", "hed_schema_version", "_definition_dict")
 
     @docval(
-        {"name": "hed_schema_version", "type": "str", "doc": "The version of HED used by this data."},
+        {
+            "name": "hed_schema_version",
+            "type": (str, list, tuple),
+            "doc": "The HED schema version(s) used by this data: one version string such as '8.4.0', a "
+            "comma-joined string of versions in one namespace such as '8.4.0,score_2.1.0', a JSON array string "
+            'such as \'["8.4.0", "sc:score_2.1.0"]\', or a list of version strings. Each version is '
+            "'[namespace:]X.Y.Z' for the standard schema or '[namespace:]library_X.Y.Z' for a library schema. A list "
+            "is stored as the JSON array string.",
+        },
         {
             "name": "definitions",
             "type": "str",
@@ -31,8 +41,22 @@ class HedLabMetaData(LabMetaData):
         definitions = popargs("definitions", kwargs)
         kwargs["name"] = "hed_schema"
         super().__init__(**kwargs)
-        self.hed_schema_version = hed_schema_version
+        self.hed_schema_version = self._version_string(hed_schema_version)
         self._init_internal(definitions)
+
+    @staticmethod
+    def _version_string(versions) -> str:
+        """Return the stored form of ``hed_schema_version``: a string as given, a list as the JSON array string.
+
+        The JSON array is the form hedtools reads and writes for a schema group (``get_formatted_version``),
+        so the string stored in the file goes back to ``load_schema_version`` unchanged. The NWB attribute
+        stays one text value, which is what every file written so far holds.
+        """
+        if isinstance(versions, str):
+            return versions
+        if not versions:
+            raise ValueError("hed_schema_version must name at least one HED schema version")
+        return json.dumps([str(version).strip() for version in versions])
 
     @property
     def definitions(self):
@@ -100,7 +124,8 @@ class HedLabMetaData(LabMetaData):
         Get the HED schema version string.
 
         Returns:
-            str: The HED schema version used by this metadata object.
+            str: The HED schema version string as stored: the string given to the constructor, or the JSON
+            array string when the constructor was given a list.
         """
         return self.hed_schema_version
 
@@ -120,7 +145,7 @@ class HedLabMetaData(LabMetaData):
         "" and hedtools then reports the missing prefix, which is honest.
         """
         if isinstance(self._hed_schema, HedSchemaGroup):
-            prefixes = self._hed_schema.valid_prefixes()
+            prefixes = self._hed_schema.valid_prefixes
             return prefixes[0] if len(prefixes) == 1 else ""
         return self._hed_schema.schema_namespace
 

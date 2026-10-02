@@ -33,8 +33,8 @@ HedLabMetaData
 
 **Key Features**:
 
-* Stores HED schema version for the entire NWB file
-* Supports both standard and library schemas  
+* Stores the HED schema version(s) for the entire NWB file
+* Supports standard and library schemas, alone or combined, with optional namespace prefixes
 * Manages custom HED definitions
 * Must be added to ``NWBFile`` before using any HED annotations
 * Must be named "hed_schema" (enforced by constructor)
@@ -52,6 +52,19 @@ HedLabMetaData
    # With custom definitions
    definitions = "(Definition/Fixation-task, (Task, Fixate))"
    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0", definitions=definitions)
+
+   # A library schema merged with its standard partner (one namespace, comma-joined)
+   hed_metadata = HedLabMetaData(hed_schema_version="8.4.0,score_2.1.0")
+
+   # Several schemas in separate namespaces: pass a list; tags from the prefixed
+   # schema are written as sc:Tag. The list is stored as a JSON array string.
+   hed_metadata = HedLabMetaData(hed_schema_version=["8.4.0", "sc:score_2.1.0"])
+   hed_metadata.get_hed_schema_version()   # '["8.4.0", "sc:score_2.1.0"]'
+
+``hed_schema_version`` takes one version string, a comma-joined string of versions that share one
+namespace, a JSON array string, or a list of version strings. Each version is ``[namespace:]X.Y.Z``
+for the standard schema or ``[namespace:]library_X.Y.Z`` for a library schema. The value stored in the
+file is always one string, which hedtools' ``load_schema_version`` reads back unchanged.
 
 HedTags
 ~~~~~~~

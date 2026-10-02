@@ -234,12 +234,14 @@ class HedNWBValidator:
                 HedExceptions.SCHEMA_INVALID, f"NWB file {nwbfile.identifier} does not have a valid HED schema", ""
             )
 
-        if hed_metadata.get_hed_schema_version() != self.hed_schema.version:
+        # Compare the loaded schemas, not the stored strings: "8.4.0,score_2.1.0" and '["8.4.0","score_2.1.0"]'
+        # load the same merged schema, and a HedSchemaGroup has get_formatted_version but no version.
+        if hed_metadata.get_hed_schema().get_formatted_version() != self.hed_schema.get_formatted_version():
             raise HedFileError(
                 HedExceptions.SCHEMA_VERSION_INVALID,
                 f"HED schema version in NWB file ({hed_metadata.get_hed_schema_version()})"
                 + " does not match validator schema version"
-                + f"({self.hed_schema.version})",
+                + f" ({self.hed_metadata.get_hed_schema_version()})",
                 "",
             )
 

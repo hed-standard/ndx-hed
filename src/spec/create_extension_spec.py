@@ -57,8 +57,11 @@ def main():
         attributes=[
             NWBAttributeSpec(
                 name="hed_schema_version",
-                doc="The HED schema version(s) used in this NWB file, e.g., '8.4.0' or"
-                + ' \'["score_2.1.0","lang_1.1.0"]\'.',
+                doc="The HED schema version(s) used in this NWB file, either one version string such as '8.4.0', a "
+                + "comma-joined string of versions that share one namespace such as '8.4.0,score_2.1.0', or a JSON "
+                + 'array of version strings such as \'["8.4.0", "sc:score_2.1.0"]\' (the form that hedtools '
+                + "get_formatted_version returns). Each version is '[namespace:]X.Y.Z' for the standard schema or "
+                + "'[namespace:]library_X.Y.Z' for a library schema.",
                 dtype="text",
                 required=True,
             ),
