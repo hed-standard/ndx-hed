@@ -27,7 +27,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from hed.errors import ErrorHandler, SchemaWarnings, get_printable_issue_string
-from hed.schema import hed_cache
+from hed.schema import hed_cache, hed_schema_io
 
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 
@@ -99,59 +99,90 @@ def run_kind(records, kind, *, only=None, include_skipped=False):
         raise ValueError(f"unknown kind {kind!r}; expected one of {KINDS}")
     only = set(only or ())
     result = KindResult(kind)
-    for record in records:
-        if only and record["name"] not in only and record["error_code"] not in only:
-            continue
-        tests = record["tests"].get(KIND_KEYS[kind]) or {}
-        for expected in ("passes", "fails"):
-            for index, case in enumerate(tests.get(expected) or [], 1):
-                outcome, detail = run_case(record, kind, expected, index, case, include_skipped=include_skipped)
-                result.counts[outcome] += 1
-                label = f"{record['name']} {kind}[{expected} {index}]"
-                result.outcomes.append({
-                    "record": record["name"],
-                    "error_code": record["error_code"],
-                    "kind": kind,
-                    "result": expected,
-                    "index": index,
-                    "outcome": outcome,
-                    "detail": detail,
-                })
-                if outcome == SKIPPED:
-                    result.skip_reasons[detail] = result.skip_reasons.get(detail, 0) + 1
-                elif outcome == FAILED:
-                    result.failures.append((label, record, case, detail))
+    with schema_cache_switch() as cache_switch:
+        for record in records:
+            if only and record["name"] not in only and record["error_code"] not in only:
+                continue
+            tests = record["tests"].get(KIND_KEYS[kind]) or {}
+            for expected in ("passes", "fails"):
+                for index, case in enumerate(tests.get(expected) or [], 1):
+                    outcome, detail = run_case(
+                        record, kind, expected, index, case, include_skipped=include_skipped, cache_switch=cache_switch
+                    )
+                    _record_outcome(result, record, kind, expected, index, case, outcome, detail)
     return result
 
 
-@contextmanager
-def test_schema_cache(schema):
-    """Point hedtools' schema cache at hed-tests' vendored test schemas while a case that needs them runs.
+def _record_outcome(result, record, kind, expected, index, case, outcome, detail):
+    """Count one case's outcome in result and keep what the summary and the report need."""
+    result.counts[outcome] += 1
+    result.outcomes.append({
+        "record": record["name"],
+        "error_code": record["error_code"],
+        "kind": kind,
+        "result": expected,
+        "index": index,
+        "outcome": outcome,
+        "detail": detail,
+    })
+    if outcome == SKIPPED:
+        result.skip_reasons[detail] = result.skip_reasons.get(detail, 0) + 1
+    elif outcome == FAILED:
+        label = f"{record['name']} {kind}[{expected} {index}]"
+        result.failures.append((label, record, case, detail))
+
+
+class SchemaCacheSwitch:
+    """Switch hedtools' schema cache between the user's cache and hed-tests' vendored test schemas.
 
     hedtools resolves a version string to a file in its cache directory, and HedLabMetaData has no folder
-    argument (hed-python's harness passes ``xml_folder`` instead), so the cache directory itself is swapped
-    for the case and restored afterwards. The swap is global to the process, which is fine for this
-    single-process harness and is why it lives here rather than in the library. hedtools memoizes each
-    version string once per process, so every ``8.5.0`` in the run comes from the vendored snapshot.
+    argument (hed-python's harness passes ``xml_folder`` instead), so the cache directory itself is
+    switched for a case that names a test-only library or the vendored ``8.5.0``. hedtools also memoizes
+    each loaded version by its string alone, not by directory, so a version loaded from one directory
+    would be served again after a switch; the memo is cleared whenever the directory actually changes
+    (8 times over the suite in file order, at 0.05-0.1 s per cold load). The switch is global to the
+    process, which is fine for this single-process harness and is why it lives here, not in the library.
     """
-    if not uses_test_schemas(schema):
-        yield
-        return
-    previous = hed_cache.get_cache_directory()
-    hed_cache.set_cache_directory(TEST_SCHEMAS_DIR)
+
+    def __init__(self):
+        self._user_cache = hed_cache.get_cache_directory()
+
+    def select(self, schema):
+        """Make the cache directory the one a record's ``schema`` needs, clearing the memo on a change."""
+        wanted = TEST_SCHEMAS_DIR if uses_test_schemas(schema) else self._user_cache
+        if hed_cache.get_cache_directory() != wanted:
+            hed_cache.set_cache_directory(wanted)
+            hed_schema_io._load_schema_version.cache_clear()  # noqa: SLF001 - hedtools exposes no public clear
+
+    def restore(self):
+        """Put the user's cache back (and clear the memo of anything loaded from the test folder)."""
+        self.select("")
+
+
+@contextmanager
+def schema_cache_switch():
+    """Yield a SchemaCacheSwitch for one run and restore the user's cache when the run ends."""
+    switch = SchemaCacheSwitch()
     try:
-        yield
+        yield switch
     finally:
-        hed_cache.set_cache_directory(previous)
+        switch.restore()
 
 
-def run_case(record, kind, expected, index, case, *, include_skipped=False):
-    """Return (outcome, detail) for one case. detail is a skip reason, a failure reason, or the codes."""
+def run_case(record, kind, expected, index, case, *, include_skipped=False, cache_switch=None):
+    """Return (outcome, detail) for one case. detail is a skip reason, a failure reason, or the codes.
+
+    :param cache_switch: the run's SchemaCacheSwitch; None makes a one-case switch that restores afterwards.
+    """
     skip = named_skip(record["name"], kind, expected, index, include_skipped)
     if skip:
         return SKIPPED, skip
-    with test_schema_cache(record["schema"]):
-        return _run_case(record, kind, expected, index, case)
+    if cache_switch is None:
+        with schema_cache_switch() as cache_switch:
+            cache_switch.select(record["schema"])
+            return _run_case(record, kind, expected, index, case)
+    cache_switch.select(record["schema"])
+    return _run_case(record, kind, expected, index, case)
 
 
 def _run_case(record, kind, expected, index, case):
