@@ -1,6 +1,6 @@
 import io
 import json
-import math
+import numbers
 
 import numpy as np
 import pandas as pd
@@ -193,18 +193,18 @@ def _is_missing(value) -> bool:
     """
     Returns True if a HED value is missing (None, the empty string, or a NaN of any float width).
 
-    The NaN test converts rather than checking isinstance(value, float): numpy's float32 and float16
-    do not subclass Python's float (only float64 does), so an isinstance check would silently treat
-    those NaNs as present.
+    The NaN test is self-inequality on any real number, as hedtools' ``is_missing`` does: numpy's
+    float32 and float16 do not subclass Python's float (only float64 does), so an isinstance check
+    would treat those NaNs as present, and ``math.isnan`` converts its argument to float, so an integer
+    too large for a float would raise OverflowError. NaN is the one number that is not equal to itself.
     """
     if value is None:
         return True
     if isinstance(value, str):
         return value == ""
-    try:
-        return bool(math.isnan(value))
-    except (TypeError, ValueError):  # not a number at all, so not a NaN
-        return False
+    if isinstance(value, numbers.Real):
+        return bool(value != value)
+    return False
 
 
 def get_levels_and_hed(meanings_table: MeaningsTable) -> tuple:

@@ -535,6 +535,22 @@ class TestDynamicTableSource(unittest.TestCase):
         table = DynamicTable(name="t", description="d", columns=[age])
         self.assertEqual(self._source(table).distinct_values("age"), {"1.5": [0, 2]})
 
+    def test_missing_test_converts_nothing(self):
+        """Test that a real value too large for a float, or a Fraction, is a value and not an error: the NaN
+        test is self-inequality, as in hedtools, so nothing is converted to float."""
+        from fractions import Fraction
+
+        from ndx_hed.utils.bids2nwb import _is_missing
+
+        huge = 10**1000
+        self.assertFalse(_is_missing(huge))
+        self.assertFalse(_is_missing(Fraction(1, 3)))
+        self.assertTrue(_is_missing(np.float16("nan")))
+        self.assertFalse(_is_missing(b"bytes"))
+        column = HedValueVector(name="n", description="d", data=[huge, None, huge], hed="Parameter-value/#")
+        table = DynamicTable(name="t", description="d", columns=[column])
+        self.assertEqual(self._source(table).distinct_values("n"), {str(huge): [0, 2]})
+
     def test_value_column_dtype_shortcuts(self):
         """Test that a value column is not read when its dtype settles the class, and scanned for infinities."""
         cases = [
