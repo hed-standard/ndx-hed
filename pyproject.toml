@@ -34,8 +34,8 @@ keywords = [
     'ndx-extension',
 ]
 dependencies = [
-    "pynwb>=4.1.0",
-    "hdmf>=6.1.0",
+    "pynwb>=4.2.0",
+    "hdmf>=6.2.0",
     # hedtools is installed from the hed-python main branch while hed-python gains
     # the support ndx-hed needs. Before a release this reverts to a PyPI pin
     # (hedtools>=<version>), and constraints/*.txt get their hedtools lines back.

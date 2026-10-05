@@ -113,8 +113,8 @@ Extension Dependencies
 ----------------------
 
 **Required**:
-- ``pynwb >= 4.0.0`` (provides the core ``EventsTable`` and ``MeaningsTable`` from NWBEP001)
-- ``hdmf >= 6.1.0``
+- ``pynwb >= 4.2.0`` (provides the core ``EventsTable`` and ``MeaningsTable`` from NWBEP001)
+- ``hdmf >= 6.2.0``
 - ``hedtools >= 1.2.0``
 
 Development and Contribution
