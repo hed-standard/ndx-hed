@@ -384,7 +384,7 @@ Compatibility
 -------------
 
 * **Python**: 3.10+
-* **Dependencies**: pynwb>=4.0.0, hdmf>=6.1.0, hedtools>=1.2.0
+* **Dependencies**: pynwb>=4.2.0, hdmf>=6.2.0, hedtools>=1.2.0
 * **EventsTable**: Provided by PyNWB core (NWBEP001) as of PyNWB 4.0.0
 * **MATLAB**: Under development (not yet available)
 

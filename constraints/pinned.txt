@@ -9,7 +9,7 @@
 # hedtools is deliberately absent: pyproject.toml installs it from the hed-python main
 # branch for now, and a version constraint here would conflict with that direct reference.
 # Restore a hedtools pin when pyproject.toml goes back to a PyPI version.
-typos==1.50.2
+typos==1.50.3
 coverage==7.16.2
 hdmf==6.2.0
 hdmf-docutils==0.4.10
@@ -21,7 +21,7 @@ pytest==9.1.1
 pytest-cov==7.1.0
 python-dateutil==2.9.0.post0
 pytest-subtests==0.15.0
-ruff==0.16.9
+ruff==0.16.10
 sphinx==9.1.0
 sphinx-book-theme==1.4.0
 sphinx-design==0.7.0
