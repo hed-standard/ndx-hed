@@ -18,7 +18,8 @@ import os
 from datetime import datetime, timezone
 
 import pandas as pd
-from hed.models import HedString
+from hed.errors import check_for_any_errors
+from hed.models import DefinitionDict, HedString
 from hed.schema import load_schema_version
 from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
@@ -70,19 +71,21 @@ def join_definitions(*definition_lists, hed_schema=None) -> str | None:
 
     With a schema, a definition repeated with the same contents in any tag order is kept once, as it
     first appears. Two sidecar entries holding one definition mean that definition, which hedtools
-    accepts, but one string holding the same group twice is TAG_EXPRESSION_REPEATED. Two texts count as
-    the same only when their sorted parse matches and they have the same characters apart from case and
-    whitespace, so a parse that drops a malformed part (an empty tag, an unclosed parenthesis) never
-    merges two different texts.
+    accepts, but one string holding the same group twice is TAG_EXPRESSION_REPEATED. Only a text that is
+    a valid definition on its own takes part: the parse drops what makes a text malformed (a missing or
+    extra comma, an empty tag), so a malformed text could match a valid one, and it is always kept for
+    HedLabMetaData to reject, whatever the order of the entries.
     """
     definitions = [text for group in definition_lists if group for text in group]
     if not definitions:
         return None
     if hed_schema is not None:
         kept = {}
-        for text in definitions:
-            folded = "".join(text.split()).casefold()
-            key = (str(HedString(text, hed_schema).sorted()).casefold(), "".join(sorted(folded)))
+        for index, text in enumerate(definitions):
+            if check_for_any_errors(DefinitionDict(text, hed_schema).issues):
+                key = index  # malformed: never merged with another text
+            else:
+                key = str(HedString(text, hed_schema).sorted()).casefold()
             kept.setdefault(key, text)
         definitions = list(kept.values())
     return ", ".join(definitions)

@@ -69,6 +69,11 @@ class TestRecordLevel(unittest.TestCase):
         self.assertEqual(join_definitions(differ, hed_schema=schema), ", ".join(differ))
         malformed = ["(Definition/Apple, (Red))", "(Definition/Apple, (Red)),,"]  # parses the same, texts differ
         self.assertEqual(join_definitions(malformed, hed_schema=schema), ", ".join(malformed))
+        # Displaced commas: the same sorted parse and the same characters as the valid text. The malformed
+        # text is kept in either order.
+        displaced = ["(Definition/Apple, (Red))", "(Definition/Apple (Red),)"]
+        for texts in (displaced, displaced[::-1]):
+            self.assertEqual(join_definitions(texts, hed_schema=schema), ", ".join(texts))
 
     def test_build_metadata_with_a_repeated_identical_definition(self):
         metadata = build_metadata("8.4.0", ["(Definition/Apple, (Red, Blue))", "(Definition/Apple, (Blue, Red))"])
