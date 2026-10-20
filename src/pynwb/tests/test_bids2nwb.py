@@ -525,6 +525,29 @@ class TestGetEventsTable(unittest.TestCase):
         self.assertEqual(duration_data[1], 1.0)
         self.assertTrue(pd.isna(duration_data[2]))
 
+    def test_get_events_table_with_numeric_strings(self):
+        """Test that numeric strings in onset and duration become numbers."""
+        df = pd.DataFrame({"onset": ["0.5", "1.5", "n/a"], "duration": ["1", "0.25", "NA"]})
+
+        result = get_events_table(name="t", description="d", df=df, meanings={"categorical": {}, "value": {}})
+
+        timestamp_data = list(result["timestamp"].data)
+        duration_data = list(result["duration"].data)
+        self.assertEqual(timestamp_data[:2], [0.5, 1.5])
+        self.assertTrue(pd.isna(timestamp_data[2]))
+        self.assertEqual(duration_data[:2], [1.0, 0.25])
+        self.assertTrue(pd.isna(duration_data[2]))
+        self.assertTrue(all(isinstance(value, float) for value in timestamp_data + duration_data))
+
+    def test_get_events_table_rejects_non_numeric_text(self):
+        """Test that text other than a number or an n/a spelling in onset or duration raises ValueError."""
+        for column in ("onset", "duration"):
+            df = pd.DataFrame({"onset": [0.0, 1.0], "duration": [1.0, 1.0]})
+            df[column] = df[column].astype(object)
+            df.loc[1, column] = "soon"
+            with self.subTest(column=column), self.assertRaises(ValueError):
+                get_events_table(name="t", description="d", df=df, meanings={"categorical": {}, "value": {}})
+
     def test_get_events_table_minimal_columns(self):
         """Test get_events_table with minimal required columns."""
         minimal_df = pd.DataFrame({"onset": [1.0, 2.0], "duration": [0.5, 0.7]})
@@ -1211,6 +1234,21 @@ class TestGetBidsTabular(unittest.TestCase):
         df_tabular, json_data = get_bids_tabular(table)
         pd.testing.assert_frame_equal(df_tabular, df)
         self.assertEqual(json_data["delay"]["HED"], "Delay/# s")
+
+    def test_get_bids_dataframe_refuses_a_repeated_onset(self):
+        """Test that a column named onset next to the TimestampVectorData timestamp raises instead of two onsets."""
+        table = DynamicTable(
+            name="events",
+            description="d",
+            columns=[
+                TimestampVectorData(name="timestamp", description="t", data=[0.0, 1.0]),
+                VectorData(name="onset", description="o", data=["a", "b"]),
+            ],
+        )
+        with self.assertRaisesRegex(ValueError, "'onset'"):
+            get_bids_dataframe(table)
+        with self.assertRaises(ValueError):
+            get_bids_tabular(table)
 
     def test_get_bids_tabular_basic(self):
         """Test basic conversion from EventsTable to BIDS format."""

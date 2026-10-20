@@ -13,7 +13,7 @@ Test framework: unittest. The suite is written as `pynwb.testing.TestCase` class
 - Coverage: `python -m pytest --cov=src/pynwb/ndx_hed --cov-report=term`
 - Lint and format: `ruff check .` and `ruff format --check .` (`ruff format .` to fix)
 - Spelling: `typos .`
-- Markdown: `python -m mdformat --check README.md CHANGELOG.md AGENTS.md docs/source/hed_validation.md examples/README.md spec_tests/README.md` (settings in `.mdformat.toml`)
+- Markdown: `python -m mdformat --check README.md CHANGELOG.md AGENTS.md docs/source/hed_validation.md examples/README.md spec_tests/README.md docs/source/release_notes.md` (settings in `.mdformat.toml`)
 - Examples: run from inside `examples/` - `cd examples` then `python run_all_examples.py` or one script; they resolve paths relative to the working directory
 - Docs: `make html` in `docs/` (`make.bat html` on Windows); output in `docs/_build/html`
 - Regenerate the spec: `python src/spec/create_extension_spec.py`, then reinstall so the namespace reloads
@@ -60,6 +60,7 @@ The rules, documented in `docs/source/hed_validation.md`:
 5. R5 - a `HedValueVector` must not appear in a `MeaningsTable` (`validate_table` reports `MEANINGS_VALUE_VECTOR_INVALID`).
 6. R6 - a column named `HED` must be a `HedTags`, in a `DynamicTable` and in a `MeaningsTable` alike (`validate_table` reports `HED_COLUMN_TYPE_INVALID`).
 7. R7 - the values of a `HedValueVector` must satisfy the value class of its `#` tag; no value class means `textClass`.
+8. R9 - a table that carries HED must not repeat a column name as BIDS names its columns: a column named `onset` next to the `TimestampVectorData` `timestamp` (exported as `onset`) is the spec's `TABULAR_INVALID` (`validate_table`, both modes; `get_bids_dataframe` raises `ValueError`). R8, the curly-brace references, is under "Rules that are easy to get wrong".
 
 So three HED shapes coexist: per-row (`HedTags`), value template (`HedValueVector`, `#` substituted per row), and categorical (plain `VectorData` plus a `MeaningsTable` holding a `HED` column).
 

@@ -12,6 +12,7 @@ import pandas as pd
 from hdmf.common import MeaningsTable
 from hed.errors import ErrorContext, ErrorHandler, ErrorSeverity, get_printable_issue_string
 from pynwb.core import DynamicTable, VectorData
+from pynwb.event import TimestampVectorData
 
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils import hed_nwb_validator
@@ -468,6 +469,38 @@ class TestStructuralRules(unittest.TestCase):
         self.assertIn("bad_template", issues[0]["message"])
         self.assertIn("condition_meanings", issues[0]["message"])
 
+    @staticmethod
+    def _table_with_onset_clash(timestamp_cls, hed=True):
+        columns = [
+            timestamp_cls(name="timestamp", description="t", data=[0.0, 1.0]),
+            VectorData(name="onset", description="o", data=["a", "b"]),
+        ]
+        if hed:
+            columns.append(HedTags(data=["Sensory-event", "InvalidTag123"]))
+        return DynamicTable(name="events", description="d", columns=columns)
+
+    def test_onset_next_to_timestamp_is_tabular_invalid(self):
+        """Test that a column named onset next to the TimestampVectorData timestamp is TABULAR_INVALID and stops."""
+        table = self._table_with_onset_clash(TimestampVectorData)
+        for assemble in (True, False):
+            issues = self.validator.validate_table(table, assemble=assemble)
+            self.assertEqual([issue["code"] for issue in issues], ["TABULAR_INVALID"])
+            self.assertEqual(issues[0]["ec_table_name"], "events")
+            self.assertEqual(issues[0]["ec_column"], "onset")
+            self.assertEqual(issues[0]["severity"], ErrorSeverity.ERROR)
+            self.assertIn("'onset'", issues[0]["message"])
+        self.assertIn("TABULAR_INVALID", get_printable_issue_string(issues))
+
+    def test_onset_clash_in_table_without_hed_is_not_reported(self):
+        """Test that a table without HED is not reported for the onset clash, since it is never converted."""
+        table = self._table_with_onset_clash(TimestampVectorData, hed=False)
+        self.assertEqual(self.validator.validate_table(table), [])
+
+    def test_onset_next_to_plain_timestamp_column_is_valid(self):
+        """Test that a column named timestamp that is not a TimestampVectorData keeps its name, so onset is no repeat."""
+        issues = self.validator.validate_table(self._table_with_onset_clash(VectorData))
+        self.assertEqual([issue["code"] for issue in issues], ["TAG_INVALID"])
+
     def test_validate_file_continues_with_the_other_tables(self):
         """Test that a structural issue in one table does not stop validate_file from validating the others."""
         from datetime import datetime, timezone
@@ -682,7 +715,7 @@ class TestValueVectorCheck(unittest.TestCase):
 
     def test_numeric_dtype_under_text_class_is_not_read(self):
         """Test that a numeric column under a textClass placeholder, or one with no value class, is not read."""
-        for hed in ("Description/#", "Data-value/#"):  # Data-value declares no value class
+        for hed in ("Description/#", "Pathname/#"):  # Pathname declares no value class
             self._assert_not_read("float64", hed)
 
     def test_integer_dtype_under_name_class_is_not_read(self):
@@ -1580,7 +1613,7 @@ class TestValidateWithDefinitions(unittest.TestCase):
             name="stimulus_size",
             description="Stimulus sizes with definition template",
             data=[0.5, 0.6, 0.7, 0.8],
-            hed="Def/Go-stimulus, (Size/# cm^2)",
+            hed="Def/Go-stimulus, (Area/# cm^2)",
         )
 
         issues = self.validator_with_defs.validate_value_vector(value_vector_with_def)
@@ -1653,7 +1686,7 @@ class TestValidateWithDefinitions(unittest.TestCase):
             name="stimulus_sizes",
             description="Stimulus sizes",
             data=[0.5, 0.6, 0.7],
-            hed="Def/Go-stimulus, Size/# cm^2",
+            hed="Def/Go-stimulus, Area/# cm^2",
         )
 
         # Create table with both
@@ -1997,7 +2030,7 @@ class TestValidateFile(unittest.TestCase):
             name="intensity",
             description="Stimulus intensities",
             data=[0.5, 0.6, 0.7],
-            hed="Def/Go-stimulus, Red-color/# m-0",
+            hed="Def/Go-stimulus, Luminance-contrast/#",
         )
 
         table = DynamicTable(

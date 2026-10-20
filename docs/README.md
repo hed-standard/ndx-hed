@@ -12,7 +12,8 @@
   * Edit ``source/description.rst`` to describe your extension.
 
 * **release notes**
-  * Edit ``source/release_notes.rst`` to document improvements and fixes of your extension.
+  * Edit ``CHANGELOG.md`` at the repository root; ``source/release_notes.md`` includes it, so the
+    release notes page has no text of its own.
 
 * **documentation build settings**
   * Edit ``source/conf.py`` to customize your extension documentation configuration.

@@ -91,7 +91,7 @@ python run_all_examples.py
 
 ## Integration with NWB events
 
-The ndx-hed extension works seamlessly with the PyNWB core `EventsTable` (NWBEP001, PyNWB >= 4.0.0) to provide comprehensive event annotation capabilities. HED annotations can be incorporated in three ways:
+The ndx-hed extension works seamlessly with the PyNWB core `EventsTable` (NWBEP001, PyNWB >= 4.2.0) to provide comprehensive event annotation capabilities. HED annotations can be incorporated in three ways:
 
 1. **Direct HED column** - Event-specific annotations
 2. **HedValueVector columns** - Shared annotations with value placeholders

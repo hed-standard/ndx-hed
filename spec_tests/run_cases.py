@@ -137,7 +137,8 @@ class SchemaCacheSwitch:
 
     hedtools resolves a version string to a file in its cache directory, and HedLabMetaData has no folder
     argument (hed-python's harness passes ``xml_folder`` instead), so the cache directory itself is
-    switched for a case that names a test-only library or the vendored ``8.5.0``. hedtools also memoizes
+    switched for a case that names a test-only library (or a vendored unreleased standard version, none at
+    present; ``nwb_case_builder.TEST_SCHEMA_STANDARD_VERSIONS``). hedtools also memoizes
     each loaded version by its string alone, not by directory, so a version loaded from one directory
     would be served again after a switch; the memo is cleared whenever the directory actually changes
     (8 times over the suite in file order, at 0.05-0.1 s per cold load). The switch is global to the

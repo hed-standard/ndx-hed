@@ -2,7 +2,6 @@ import io
 import json
 import numbers
 
-import numpy as np
 import pandas as pd
 from hdmf.common import MeaningsTable
 from hed.models import Sidecar
@@ -127,11 +126,11 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
 
     columns = []
 
-    # Replace "n/a" with NaN in onset and duration columns directly in DataFrame
-    if "onset" in df.columns:
-        df["onset"] = df["onset"].replace(["n/a", "N/A", "na", "NA"], np.nan).infer_objects(copy=False)
-    if "duration" in df.columns:
-        df["duration"] = df["duration"].replace(["n/a", "N/A", "na", "NA"], np.nan).infer_objects(copy=False)
+    # Replace "n/a" with NaN in onset and duration columns directly in DataFrame and make them numeric;
+    # any other non-numeric value raises rather than becoming NaN
+    for time_col in ("onset", "duration"):
+        if time_col in df.columns:
+            df[time_col] = pd.to_numeric(df[time_col].mask(df[time_col].isin(["n/a", "N/A", "na", "NA"])))
 
     # Add columns from the DataFrame
     for col_name in df.columns:
@@ -341,6 +340,21 @@ def get_json_hed_dict(table: DynamicTable, hed_metadata: HedLabMetaData = None) 
     return json_data
 
 
+def _bids_column_name(table: DynamicTable, name: str) -> str:
+    """Return the BIDS name of a table column: a TimestampVectorData named ``timestamp`` is ``onset``."""
+    return "onset" if name == "timestamp" and isinstance(table[name], TimestampVectorData) else name
+
+
+def _repeated_bids_column_names(table: DynamicTable) -> list[str]:
+    """Return the BIDS column names that occur more than once in a table (rule R9), in column order.
+
+    hdmf keeps a table's column names unique, so the only repeat is an ``onset`` column next to the
+    TimestampVectorData ``timestamp`` that is exported as ``onset``.
+    """
+    names = [_bids_column_name(table, name) for name in table.colnames]
+    return list(dict.fromkeys(name for name in names if names.count(name) > 1))
+
+
 def get_bids_dataframe(table: DynamicTable) -> pd.DataFrame:
     """
     Converts the data of a DynamicTable to a BIDS-style dataframe, the TSV half of get_bids_tabular().
@@ -355,7 +369,17 @@ def get_bids_dataframe(table: DynamicTable) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: The table data with BIDS column names (onset, duration, etc.)
+
+    Raises:
+        ValueError: If a BIDS column name would occur twice, that is the table has a column named
+            ``onset`` as well as a TimestampVectorData named ``timestamp`` (rule R9).
     """
+    repeated = _repeated_bids_column_names(table)
+    if repeated:
+        raise ValueError(
+            f"Table '{table.name}' cannot be converted to a BIDS dataframe: the column name(s) {repeated} would "
+            "occur more than once (a TimestampVectorData named 'timestamp' is exported as 'onset')."
+        )
     df = table.to_dataframe()
 
     # Rename the timestamp column back to onset so the table reads as a BIDS timeline file. The
