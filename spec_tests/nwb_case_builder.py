@@ -18,6 +18,8 @@ import os
 from datetime import datetime, timezone
 
 import pandas as pd
+from hed.models import HedString
+from hed.schema import load_schema_version
 from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
 
@@ -29,12 +31,13 @@ LEVELS_KEY = "Levels"
 DEFINITION_MARKER = "Definition/"
 EMPTY_MEANINGS = {"categorical": {}, "value": {}}
 
-# Test-only libraries, and the vendored standard version, that hed-tests resolves against
-# json_test_data/test_schemas/hedxml (the loading convention in that folder's README; hed-python's
+# Test-only libraries, and any unreleased standard version hed-tests vendors, that hed-tests resolves
+# against json_test_data/test_schemas/hedxml (the loading convention in that folder's README; hed-python's
 # spec_tests/test_errors.py applies the same rule). The harness points hedtools' cache directory there
-# for a case that names one (run_cases.test_schema_cache). Drop "8.5.0" once HED 8.5.0 is released.
+# for a case that names one (run_cases.test_schema_cache). The standard-version tuple is empty while every
+# version the cases name is released (8.5.0 was dropped from it on its release); keep it for the next one.
 TEST_SCHEMA_LIBRARIES = ("testconflict", "testclash", "testminimal", "testaux")
-TEST_SCHEMA_STANDARD_VERSIONS = ("8.5.0",)
+TEST_SCHEMA_STANDARD_VERSIONS = ()
 TEST_SCHEMAS_DIR = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "hed-tests", "json_test_data", "test_schemas", "hedxml"
 )
@@ -62,11 +65,26 @@ def uses_test_schemas(schema) -> bool:
     return False
 
 
-def join_definitions(*definition_lists) -> str | None:
-    """Join one or more lists of definition strings into the single string HedLabMetaData takes (M1)."""
+def join_definitions(*definition_lists, hed_schema=None) -> str | None:
+    """Join one or more lists of definition strings into the single string HedLabMetaData takes (M1).
+
+    With a schema, a definition repeated with the same contents in any tag order is kept once, as it
+    first appears. Two sidecar entries holding one definition mean that definition, which hedtools
+    accepts, but one string holding the same group twice is TAG_EXPRESSION_REPEATED. Two texts count as
+    the same only when their sorted parse matches and they have the same characters apart from case and
+    whitespace, so a parse that drops a malformed part (an empty tag, an unclosed parenthesis) never
+    merges two different texts.
+    """
     definitions = [text for group in definition_lists if group for text in group]
     if not definitions:
         return None
+    if hed_schema is not None:
+        kept = {}
+        for text in definitions:
+            folded = "".join(text.split()).casefold()
+            key = (str(HedString(text, hed_schema).sorted()).casefold(), "".join(sorted(folded)))
+            kept.setdefault(key, text)
+        definitions = list(kept.values())
     return ", ".join(definitions)
 
 
@@ -136,9 +154,17 @@ def build_metadata(schema, definitions, extra_definitions=()) -> HedLabMetaData:
         ValueError: From HedLabMetaData when the schema cannot be loaded or a definition is invalid.
             The harness tells the two apart by the message prefix (see ``SCHEMA_LOAD_PREFIX``).
     """
+    version = schema_version_string(schema)
+    # The schema lets join_definitions drop a repeated identical definition. A schema that does not load
+    # is left for HedLabMetaData to report, with the prefix the harness looks for; it catches any
+    # exception from the load, so this does too.
+    try:
+        hed_schema = load_schema_version(version)
+    except Exception:
+        hed_schema = None
     return HedLabMetaData(
-        hed_schema_version=schema_version_string(schema),
-        definitions=join_definitions(definitions, list(extra_definitions)),
+        hed_schema_version=version,
+        definitions=join_definitions(definitions, list(extra_definitions), hed_schema=hed_schema),
     )
 
 

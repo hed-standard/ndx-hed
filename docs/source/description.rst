@@ -168,7 +168,7 @@ The `examples directory <https://github.com/hed-standard/ndx-hed/tree/main/examp
 Integration with NWB Events
 ---------------------------
 
-The ndx-hed extension works seamlessly with the PyNWB core ``EventsTable`` (NWBEP001, PyNWB >= 4.0.0)
+The ndx-hed extension works seamlessly with the PyNWB core ``EventsTable`` (NWBEP001, PyNWB >= 4.2.0)
 to provide comprehensive event annotation capabilities. HED annotations can be incorporated in three ways:
 
 1. **Direct HED column** - Event-specific annotations

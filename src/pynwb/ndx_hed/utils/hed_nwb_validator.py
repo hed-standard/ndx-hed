@@ -15,12 +15,17 @@ from hed.validator import HedValidator, SpreadsheetValidator
 from hed.validator.util import placeholder_tag
 from pynwb import NWBFile
 from pynwb.core import DynamicTable
-from pynwb.event import TimestampVectorData
 
 from ..hed_lab_metadata import HedLabMetaData
 from ..hed_tags import HedTags, HedValueVector
-from .bids2nwb import _is_missing, get_bids_dataframe, get_json_hed_dict
-from .hed_nwb_errors import HED_COLUMN_TYPE_INVALID, MEANINGS_VALUE_VECTOR_INVALID
+from .bids2nwb import (
+    _bids_column_name,
+    _is_missing,
+    _repeated_bids_column_names,
+    get_bids_dataframe,
+    get_json_hed_dict,
+)
+from .hed_nwb_errors import BIDS_COLUMN_NAME_REPEATED, HED_COLUMN_TYPE_INVALID, MEANINGS_VALUE_VECTOR_INVALID
 
 # ROW_COUNT_KEY ("row_count") is hedtools' key for the number of rows holding a distinct value that an
 # issue reports. It is imported above so that ``from ndx_hed.utils.hed_nwb_validator import ROW_COUNT_KEY``
@@ -81,7 +86,10 @@ class HedNWBValidator:
            in any of its MeaningsTables, must be a HedTags (``HED_COLUMN_TYPE_INVALID``); a MeaningsTable
            must not contain a HedValueVector (``MEANINGS_VALUE_VECTOR_INVALID``). An issue stops.
         2. A table with no HedTags column, no HedValueVector column, and no MeaningsTable with a ``HED``
-           column has nothing to validate and returns ``[]`` without being read.
+           column has nothing to validate and returns ``[]`` without being read. A table that has HED
+           must not repeat a column name as BIDS names its columns (rule R9: a column named ``onset``
+           next to the TimestampVectorData ``timestamp``, which is exported as ``onset``); that is the
+           HED specification's ``TABULAR_INVALID``, and it stops.
         3. The table's column metadata is converted to a BIDS sidecar dict with ``get_json_hed_dict``,
            which reads no table data. The definitions of the HedLabMetaData travel in the sidecar, as
            BIDS carries them.
@@ -151,6 +159,16 @@ class HedNWBValidator:
             return issues
         if not self._has_hed(table):
             return []
+        # One issue per repeated name with the COLUMN context, the shape of hedtools' own TABULAR_INVALID.
+        issues = []
+        for column_name in _repeated_bids_column_names(table):
+            error_handler.push_error_context(ErrorContext.COLUMN, column_name)
+            issues += error_handler.format_error_with_context(
+                BIDS_COLUMN_NAME_REPEATED, table_name=table.name, column_name=column_name
+            )
+            error_handler.pop_error_context()
+        if issues:
+            return issues
 
         # The sidecar half of the BIDS conversion reads only the column metadata and the MeaningsTables;
         # the table's data is read column by column where a hedtools stage needs it.
@@ -365,8 +383,7 @@ class _DynamicTableSource:
         self._distinct: dict[str, dict[str, list[int]]] = {}  # BIDS column name -> distinct values, once read
         self._table_names: dict[str, str] = {}  # BIDS column name -> table column name
         for name in table.colnames:
-            bids_name = "onset" if name == "timestamp" and isinstance(table[name], TimestampVectorData) else name
-            self._table_names[bids_name] = name
+            self._table_names[_bids_column_name(table, name)] = name
 
     def column_names(self) -> list[str]:
         return list(self._table_names)

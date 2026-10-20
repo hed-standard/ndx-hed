@@ -4,7 +4,7 @@ EventsTable Integration Example
 ===============================
 
 This example demonstrates the three ways to integrate HED annotations with
-the PyNWB core EventsTable (NWBEP001, PyNWB >= 4.0.0):
+the PyNWB core EventsTable (NWBEP001, PyNWB >= 4.2.0):
 1. Direct HED column for event-specific annotations
 2. HedValueVector columns for shared annotations with value placeholders
 3. Categorical columns with HED in a MeaningsTable

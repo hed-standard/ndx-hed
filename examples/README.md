@@ -86,7 +86,7 @@ python run_all_examples.py
 
 All examples require:
 
-- `pynwb >= 4.0.0` (provides the core `EventsTable`, `MeaningsTable`, etc.)
+- `pynwb >= 4.2.0` (provides the core `EventsTable`, `MeaningsTable`, etc.)
 - `ndx-hed`
 - `pandas` (for examples 4 and 7)
 - `numpy` (for example 6)
@@ -94,7 +94,7 @@ All examples require:
 Install with:
 
 ```bash
-pip install "pynwb>=4.0.0" ndx-hed pandas numpy
+pip install "pynwb>=4.2.0" ndx-hed pandas numpy
 ```
 
 ## Example output

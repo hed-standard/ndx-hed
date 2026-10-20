@@ -8,6 +8,7 @@ and no submodule.
 import unittest
 
 from hdmf.common import MeaningsTable
+from hed.schema import load_schema_version
 from pynwb.core import DynamicTable
 from pynwb.event import EventsTable
 
@@ -47,7 +48,7 @@ class TestRecordLevel(unittest.TestCase):
 
     def test_uses_test_schemas(self):
         self.assertTrue(uses_test_schemas(["8.4.0", "sc:testconflict_2.1.0"]))
-        self.assertTrue(uses_test_schemas("8.5.0"))
+        self.assertFalse(uses_test_schemas("8.5.0"))  # released, so resolved from the user's cache
         self.assertTrue(uses_test_schemas("8.4.0, testminimal_1.0.0"))
         self.assertFalse(uses_test_schemas("8.4.0"))
         self.assertFalse(uses_test_schemas(["8.4.0", "score_2.1.0"]))
@@ -58,6 +59,20 @@ class TestRecordLevel(unittest.TestCase):
             join_definitions(["(Definition/A, (Red))"], ["(Definition/B, (Blue))"]),
             "(Definition/A, (Red)), (Definition/B, (Blue))",
         )
+
+    def test_join_definitions_drops_a_repeated_identical_definition(self):
+        schema = load_schema_version("8.4.0")
+        repeated = ["(Definition/Apple, (Red, Blue))", "(definition/apple, (Blue,Red))"]
+        self.assertEqual(join_definitions(repeated, hed_schema=schema), "(Definition/Apple, (Red, Blue))")
+        self.assertEqual(join_definitions(repeated), ", ".join(repeated))  # no schema, no merging
+        differ = ["(Definition/Apple, (Red, Blue))", "(Definition/Apple, (Red, Green))"]
+        self.assertEqual(join_definitions(differ, hed_schema=schema), ", ".join(differ))
+        malformed = ["(Definition/Apple, (Red))", "(Definition/Apple, (Red)),,"]  # parses the same, texts differ
+        self.assertEqual(join_definitions(malformed, hed_schema=schema), ", ".join(malformed))
+
+    def test_build_metadata_with_a_repeated_identical_definition(self):
+        metadata = build_metadata("8.4.0", ["(Definition/Apple, (Red, Blue))", "(Definition/Apple, (Blue, Red))"])
+        self.assertEqual(sorted(metadata.get_definition_dict().defs), ["apple"])
 
     def test_build_metadata_with_definitions(self):
         metadata = build_metadata("8.4.0", DEFS)

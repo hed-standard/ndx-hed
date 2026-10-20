@@ -1212,6 +1212,21 @@ class TestGetBidsTabular(unittest.TestCase):
         pd.testing.assert_frame_equal(df_tabular, df)
         self.assertEqual(json_data["delay"]["HED"], "Delay/# s")
 
+    def test_get_bids_dataframe_refuses_a_repeated_onset(self):
+        """Test that a column named onset next to the TimestampVectorData timestamp raises instead of two onsets."""
+        table = DynamicTable(
+            name="events",
+            description="d",
+            columns=[
+                TimestampVectorData(name="timestamp", description="t", data=[0.0, 1.0]),
+                VectorData(name="onset", description="o", data=["a", "b"]),
+            ],
+        )
+        with self.assertRaisesRegex(ValueError, "'onset'"):
+            get_bids_dataframe(table)
+        with self.assertRaises(ValueError):
+            get_bids_tabular(table)
+
     def test_get_bids_tabular_basic(self):
         """Test basic conversion from EventsTable to BIDS format."""
         df, json_data = get_bids_tabular(self.events_table)
