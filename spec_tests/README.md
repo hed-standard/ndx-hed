@@ -61,7 +61,9 @@ Rejected at construction: `HedValueVector` refuses a template without exactly on
 
 ## Expected-result rule
 
-The same as hed-python's `report_result`: `SCHEMA_PRERELEASE_VERSION_USED` issues are dropped; a `fails` case passes when any remaining issue code is in `[error_code] + alt_codes`; a `passes` case passes when no issue remains. Row numbers are not compared.
+The same as hed-python's `report_result`: `SCHEMA_PRERELEASE_VERSION_USED` issues are dropped; a `fails` case passes when any remaining issue code is in `[error_code] + alt_codes`, plus the codes `NWB_ALT_CODES` in `skipped_cases.py` lists for the record; a `passes` case passes when no issue remains. Row numbers are not compared.
+
+`NWB_ALT_CODES` is for a mistake that NWB represents as a different input, so that it is reported under another code; the case still runs and must still fail. Every entry has a reason. Today there is one: a padded top-level sidecar key (`sidecar-invalid-key-whitespace`, SIDECAR_INVALID) is a padded column name in NWB, where the key is the name of the column it describes, so `TABULAR_INVALID` counts too.
 
 ## Skips
 
@@ -78,6 +80,6 @@ A `schema` that `HedLabMetaData` cannot load is a failure, not a skip. The schem
 - `check_setup.py` - reports whether the submodule is present.
 - `nwb_case_builder.py` - the M1-M7 conversion, as pure functions.
 - `test_case_builder.py` - unit tests for the conversion, one hand-written case per rule; they need no submodule.
-- `skipped_cases.py` - the named skip list.
+- `skipped_cases.py` - the named skip list, and `NWB_ALT_CODES`.
 - `run_cases.py` - the harness: runs the cases, applies the expected-result rule, prints the summary; also the command line above.
 - `test_errors.py` - the unittest wrapper around `run_cases.py`, with no options.

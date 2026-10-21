@@ -26,6 +26,17 @@ vendored hed-tests folder (run_cases.test_schema_cache).
 # when hedtools gained anyUnits and the harness started resolving 8.5.0 against the vendored snapshot).
 SKIP_RECORDS: dict[str, str] = {}
 
+# Records whose failing cases also count as failing with another code, because NWB represents the input
+# differently. Each entry names the record, the code ndx-hed may report instead, and why. Unlike a skip, the
+# case still runs and must still fail.
+NWB_ALT_CODES: dict[str, tuple[str, ...]] = {
+    # --- representation limits ------------------------------------------------------------------
+    # A padded top-level sidecar key (SIDECAR_INVALID d). NWB has no sidecar JSON: the key is the name of the
+    # column it describes, so the harness builds a column with the padded name and the same mistake is the
+    # padded column name, TABULAR_INVALID b, which hedtools reports through the column source.
+    "sidecar-invalid-key-whitespace": ("TABULAR_INVALID",),
+}
+
 SKIP_CASES: dict[tuple[str, str, str, int], str] = {
     # --- representation limits ------------------------------------------------------------------
     # SIDECAR_INVALID: the HED key at the wrong nesting level, or 'HED' used as a column name in the
