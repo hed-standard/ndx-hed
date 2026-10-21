@@ -17,7 +17,7 @@ import pandas as pd
 from pynwb import NWBFile
 
 from ndx_hed import HedLabMetaData
-from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table
+from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table, read_bids_tsv
 
 
 def create_sample_bids_data():
@@ -126,8 +126,8 @@ def demonstrate_file_conversion():
     events_filename, sidecar_filename = save_sample_bids_files()
 
     try:
-        # Load BIDS events data from files
-        events_df = pd.read_csv(events_filename, sep="\t")
+        # Load BIDS events data from files, reading the TSV as hedtools reads it (values exactly as written)
+        events_df = read_bids_tsv(events_filename)
         with open(sidecar_filename) as f:
             events_sidecar = json.load(f)
 

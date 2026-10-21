@@ -1,3 +1,4 @@
+import csv
 import io
 import json
 import numbers
@@ -14,6 +15,33 @@ from ndx_hed import HedLabMetaData, HedTags, HedValueVector
 # Sidecar key under which the HedLabMetaData definitions are exported. In BIDS, definitions live in
 # a sidecar entry that names no actual column; "definitions" is the conventional name for it.
 DEFINITIONS_KEY = "definitions"
+
+
+def read_bids_tsv(path) -> pd.DataFrame:
+    """
+    Reads a BIDS TSV file into a DataFrame the way hedtools reads it for validation.
+
+    Every cell is kept as text exactly as written: a double quote is an ordinary character, a line is
+    split on every tab, and only an empty cell and ``n/a`` are missing (NaN); ``NA``, ``null``, or ``nan``
+    are values. Column names are kept as written too, so a padded or repeated name reaches validation
+    (HED specification 3.2.10). ``pd.read_csv(path, sep="\\t")`` with its defaults removes quotes and
+    reads ``NA`` as missing, so a file converted with it is not the file hedtools validates.
+
+    Args:
+        path (str or path-like or file-like): The TSV file.
+
+    Returns:
+        pd.DataFrame: The file's columns, every value a string or NaN.
+    """
+    return pd.read_csv(
+        path,
+        sep="\t",
+        dtype=str,
+        keep_default_na=False,
+        na_values=["", "n/a"],
+        quoting=csv.QUOTE_NONE,
+        index_col=False,
+    )
 
 
 def extract_definitions(sidecar_data: dict, hed_schema: HedSchema | HedSchemaGroup) -> tuple:
@@ -87,20 +115,19 @@ def get_categorical_meanings(target_column: VectorData, column_info: dict) -> Me
     if not isinstance(hed_info, dict):
         hed_info = None
 
-    # Determine the set of categories: prefer the Levels keys; otherwise fall back to the HED dict
-    # keys so per-category HED is not dropped when Levels is absent.
-    if levels:
-        values = list(levels.keys())
-    elif hed_info is not None:
-        values = list(hed_info.keys())
-    else:
-        values = []
+    # The categories are the Levels keys followed by the HED keys that Levels does not list, so a value
+    # annotated only under HED keeps its annotation. Keys are matched exactly, as validation matches them.
+    values = list(levels.keys())
+    if hed_info is not None:
+        values += [value for value in hed_info if value not in levels]
 
     hed_data = []
     for value in values:
         meanings_tab.add_row(value=value, meaning=levels.get(value, f"Description for {value}"))
         if hed_info is not None:
-            hed_data.append(hed_info.get(value, "n/a"))
+            # A value with no HED entry gets an empty cell (no annotation), not "n/a": an explicit "n/a"
+            # entry is a key under HED in the sidecar, an absent one is not.
+            hed_data.append(hed_info.get(value, ""))
     if hed_info is not None:
         meanings_tab.add_column(
             name="HED", description=f"HED tags for {column_name} categories", col_cls=HedTags, data=hed_data
@@ -122,7 +149,18 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
     Returns:
         EventsTable: The constructed EventsTable object. Categorical columns are stored as plain
         VectorData columns, each annotated by a MeaningsTable attached to the table.
+
+    Raises:
+        ValueError: If the DataFrame repeats a column name.
     """
+
+    # A repeated column name (two blank names included) cannot become an NWB table, whose column names are
+    # unique, and the specification makes it TABULAR_INVALID; refuse it here rather than build a broken table.
+    repeated = list(dict.fromkeys(column for column in df.columns[df.columns.duplicated()]))
+    if repeated:
+        raise ValueError(
+            f"Table '{name}' cannot be converted to an EventsTable: the column name(s) {repeated} occur more than once."
+        )
 
     columns = []
 
@@ -219,7 +257,10 @@ def get_levels_and_hed(meanings_table: MeaningsTable) -> tuple:
         tuple: A tuple containing:
             - dict: Levels -- maps each value to its meaning (empty string if there is no meaning).
             - dict: HED -- maps each value to its HED string, omitting missing (None, NaN, or
-              empty) annotations. Empty if the MeaningsTable has no HED column.
+              empty) annotations. Empty if the MeaningsTable has no HED column. An explicit ``n/a``
+              is kept (the sidecar annotates the value as having no HED); a value with an empty cell,
+              which ``get_categorical_meanings`` writes for a value only ``Levels`` lists, is not a key
+              under HED, so the rule for keys under HED (specification 3.2.9.2) does not apply to it.
     """
     # Each column is sliced once rather than iterated, so a file-backed column costs one read.
     values = list(meanings_table["value"].data[:])
@@ -346,7 +387,10 @@ def _bids_column_name(table: DynamicTable, name: str) -> str:
 
 
 def _repeated_bids_column_names(table: DynamicTable) -> list[str]:
-    """Return the BIDS column names that occur more than once in a table (rule R9), in column order.
+    """Return the BIDS column names that occur more than once in a table, in column order.
+
+    A repeated name is TABULAR_INVALID (HED specification 3.2.10); validation reports it through hedtools,
+    and ``get_bids_dataframe`` refuses to build a dataframe with one.
 
     hdmf keeps a table's column names unique, so the only repeat is an ``onset`` column next to the
     TimestampVectorData ``timestamp`` that is exported as ``onset``.
@@ -372,7 +416,8 @@ def get_bids_dataframe(table: DynamicTable) -> pd.DataFrame:
 
     Raises:
         ValueError: If a BIDS column name would occur twice, that is the table has a column named
-            ``onset`` as well as a TimestampVectorData named ``timestamp`` (rule R9).
+            ``onset`` as well as a TimestampVectorData named ``timestamp`` (TABULAR_INVALID, HED
+            specification 3.2.10).
     """
     repeated = _repeated_bids_column_names(table)
     if repeated:

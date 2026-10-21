@@ -304,14 +304,14 @@ The ndx-hed extension provides utilities to convert between BIDS events files an
 
 .. code-block:: python
 
-   from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table, get_bids_tabular
-   import pandas as pd
+   from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table, get_bids_tabular, read_bids_tsv
    import json
 
-   # Convert BIDS to EventsTable
+   # Convert BIDS to EventsTable. read_bids_tsv reads the file as hedtools does: values exactly as
+   # written, quotes ordinary characters, and only an empty cell and n/a missing.
    bids_events_file_path = "Your_events_path_here.tsv"
    bids_sidecar_file_path = "Your_json_sidecar_path_here.json"
-   events_df = pd.read_csv(bids_events_file_path, sep="\t")
+   events_df = read_bids_tsv(bids_events_file_path)
    
    with open(bids_sidecar_file_path, 'r') as f:
        json_data = json.load(f)

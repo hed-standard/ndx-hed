@@ -28,6 +28,7 @@ from ndx_hed.utils.bids2nwb import (
     get_events_table,
     get_json_hed_dict,
     get_levels_and_hed,
+    read_bids_tsv,
 )
 
 
@@ -439,6 +440,40 @@ class TestGetCategoricalMeanings(unittest.TestCase):
         # The string HED must not be treated as categorical -> no HED column
         self.assertNotIn("HED", result.colnames)
 
+    def test_get_categorical_meanings_hed_keys_missing_from_levels(self):
+        """A value annotated under HED but not listed in Levels keeps its annotation (it used to be dropped)."""
+        column_info = {"Levels": {"go": "A go trial"}, "HED": {"go": "Experimental-trial", "stop": "Agent-action"}}
+        result = get_categorical_meanings(VectorData(name="trial", description="t", data=[]), column_info)
+        df = result.to_dataframe()
+        self.assertEqual(df["value"].tolist(), ["go", "stop"])
+        self.assertEqual(df["HED"].tolist(), ["Experimental-trial", "Agent-action"])
+        levels, hed_dict = get_levels_and_hed(result)
+        self.assertEqual(hed_dict, {"go": "Experimental-trial", "stop": "Agent-action"})
+        self.assertEqual(levels, {"go": "A go trial", "stop": "Description for stop"})
+
+    def test_get_categorical_meanings_levels_only_value_is_not_a_hed_key(self):
+        """A value only Levels lists gets an empty HED cell, so it is not a key under HED in the sidecar view;
+        a padded Levels key is therefore not the padded-key error, which applies only to keys under HED."""
+        column_info = {"Levels": {"go ": "A go trial", "stop": "A stop trial"}, "HED": {"stop": "Agent-action"}}
+        result = get_categorical_meanings(VectorData(name="trial", description="t", data=[]), column_info)
+        self.assertEqual(result.to_dataframe()["HED"].tolist(), ["", "Agent-action"])
+        _, hed_dict = get_levels_and_hed(result)
+        self.assertEqual(hed_dict, {"stop": "Agent-action"})
+
+
+class TestReadBidsTsv(unittest.TestCase):
+    """Test class for read_bids_tsv: a TSV file read the way hedtools reads it."""
+
+    def test_values_and_names_are_kept_as_written(self):
+        text = 'onset\ttrial \t"quoted"\tnote\n1.0\t"go"\tNA\tn/a\n2.0\t go\tnull\t\n'
+        df = read_bids_tsv(io.StringIO(text))
+        self.assertEqual(list(df.columns), ["onset", "trial ", '"quoted"', "note"])
+        self.assertEqual(df["trial "].tolist(), ['"go"', " go"])
+        # Only an empty cell and n/a are missing; NA and null are values.
+        self.assertEqual(df['"quoted"'].tolist(), ["NA", "null"])
+        self.assertTrue(df["note"].isna().all())
+        self.assertEqual(df["onset"].tolist(), ["1.0", "2.0"])
+
 
 class TestGetEventsTable(unittest.TestCase):
     """Test class for get_events_table function."""
@@ -547,6 +582,14 @@ class TestGetEventsTable(unittest.TestCase):
             df.loc[1, column] = "soon"
             with self.subTest(column=column), self.assertRaises(ValueError):
                 get_events_table(name="t", description="d", df=df, meanings={"categorical": {}, "value": {}})
+
+    def test_get_events_table_rejects_a_repeated_column_name(self):
+        """A repeated column name (two blank names included) is refused with ValueError, not a broken table."""
+        for columns in (["onset", "trial", "trial"], ["onset", "", ""]):
+            df = pd.DataFrame([[1.0, "a", "b"]], columns=columns)
+            with self.subTest(columns=columns), self.assertRaises(ValueError) as context:
+                get_events_table(name="t", description="d", df=df, meanings={"categorical": {}, "value": {}})
+            self.assertIn("more than once", str(context.exception))
 
     def test_get_events_table_minimal_columns(self):
         """Test get_events_table with minimal required columns."""
