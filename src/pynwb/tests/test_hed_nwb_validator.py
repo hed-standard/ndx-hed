@@ -480,7 +480,10 @@ class TestStructuralRules(unittest.TestCase):
         return DynamicTable(name="events", description="d", columns=columns)
 
     def test_onset_next_to_timestamp_is_tabular_invalid(self):
-        """Test that a column named onset next to the TimestampVectorData timestamp is TABULAR_INVALID and stops."""
+        """Test that a column named onset next to the TimestampVectorData timestamp is TABULAR_INVALID and stops.
+
+        hedtools reports the repeat through the column source, which gives the BIDS names (timestamp as onset).
+        """
         table = self._table_with_onset_clash(TimestampVectorData)
         for assemble in (True, False):
             issues = self.validator.validate_table(table, assemble=assemble)
@@ -527,6 +530,78 @@ class TestStructuralRules(unittest.TestCase):
             sorted((issue["code"], issue["ec_table_name"]) for issue in issues),
             [("HED_COLUMN_TYPE_INVALID", "bad_shape"), ("TAG_INVALID", "bad_tag")],
         )
+
+
+class TestColumnNameAndValueRules(unittest.TestCase):
+    """Test the specification 4.0.0 rules that hedtools applies to NWB tables through the column source:
+    padded and blank column names (TABULAR_INVALID), padded values in annotated columns (TABULAR_INVALID),
+    and padded keys under HED in a categorical annotation (SIDECAR_INVALID)."""
+
+    def setUp(self):
+        self.validator = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0"))
+
+    def _codes(self, table, assemble=True):
+        return [issue["code"] for issue in self.validator.validate_table(table, assemble=assemble)]
+
+    @staticmethod
+    def _table(*columns):
+        return DynamicTable(name="events", description="d", columns=list(columns))
+
+    @staticmethod
+    def _categorical_table(data, keys=("go", "stop")):
+        table = DynamicTable(
+            name="trials", description="d", columns=[VectorData(name="condition", description="c", data=list(data))]
+        )
+        meanings = MeaningsTable(target=table["condition"], description="m")
+        for key in keys:
+            meanings.add_row(value=key, meaning=f"The {key} trials")
+        meanings.add_column(
+            name="HED", description="h", col_cls=HedTags, data=["Experimental-trial", "Agent-action"][: len(keys)]
+        )
+        table.add_meanings_table(meanings)
+        return table
+
+    def test_padded_and_blank_column_names(self):
+        """Test that a padded or a blank column name is TABULAR_INVALID in both modes."""
+        for name in ("trial ", " trial", ""):
+            table = self._table(VectorData(name=name, description="c", data=["a"]), HedTags(data=["Red"]))
+            for assemble in (True, False):
+                with self.subTest(name=name, assemble=assemble):
+                    self.assertEqual(self._codes(table, assemble), ["TABULAR_INVALID"])
+
+    def test_padded_hed_column_name_is_reported(self):
+        """Test that a plain column named HED apart from padding makes the table checked, and its name reported."""
+        table = self._table(VectorData(name="HED ", description="meant as HED", data=["Red"]))
+        self.assertEqual(self._codes(table), ["TABULAR_INVALID"])
+
+    def test_no_break_space_is_not_padding(self):
+        """Test that a column name ending with a no-break space is not a padded name."""
+        no_break_space = chr(0xA0)
+        table = self._table(
+            VectorData(name="trial" + no_break_space, description="c", data=["a"]), HedTags(data=["Red"])
+        )
+        self.assertEqual(self._codes(table), [])
+
+    def test_padded_categorical_value(self):
+        """Test that a padded value in a categorical column is TABULAR_INVALID, once per distinct value."""
+        issues = self.validator.validate_table(self._categorical_table(["go ", "stop", "go "]))
+        self.assertEqual([issue["code"] for issue in issues], ["TABULAR_INVALID"])
+        self.assertEqual(issues[0]["ec_column"], "condition")
+        self.assertEqual(issues[0]["ec_row"], 0)
+        self.assertEqual(issues[0]["row_count"], 2)
+        self.assertIn("'go '", issues[0]["message"])
+
+    def test_padded_value_vector_value(self):
+        """Test that a padded string in a HedValueVector is TABULAR_INVALID, not a value-class error."""
+        table = self._table(HedValueVector(name="age", description="a", data=["30", " 30"], hed="Age/#"))
+        issues = self.validator.validate_table(table)
+        self.assertEqual([issue["code"] for issue in issues], ["TABULAR_INVALID"])
+        self.assertEqual(issues[0]["ec_row"], 1)
+
+    def test_padded_meanings_value_is_sidecar_invalid(self):
+        """Test that a padded value in a MeaningsTable (a key under HED in the sidecar view) is SIDECAR_INVALID."""
+        table = self._categorical_table(["go", "stop"], keys=("go ", "stop"))
+        self.assertEqual(self._codes(table), ["SIDECAR_INVALID"])
 
 
 class TestDynamicTableSource(unittest.TestCase):

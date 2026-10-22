@@ -60,7 +60,9 @@ The rules, documented in `docs/source/hed_validation.md`:
 5. R5 - a `HedValueVector` must not appear in a `MeaningsTable` (`validate_table` reports `MEANINGS_VALUE_VECTOR_INVALID`).
 6. R6 - a column named `HED` must be a `HedTags`, in a `DynamicTable` and in a `MeaningsTable` alike (`validate_table` reports `HED_COLUMN_TYPE_INVALID`).
 7. R7 - the values of a `HedValueVector` must satisfy the value class of its `#` tag; no value class means `textClass`.
-8. R9 - a table that carries HED must not repeat a column name as BIDS names its columns: a column named `onset` next to the `TimestampVectorData` `timestamp` (exported as `onset`) is the spec's `TABULAR_INVALID` (`validate_table`, both modes; `get_bids_dataframe` raises `ValueError`). R8, the curly-brace references, is under "Rules that are easy to get wrong".
+8. R8, the curly-brace references, is under "Rules that are easy to get wrong".
+
+The specification 4.0.0 rules for column names (repeated, padded, blank: `TABULAR_INVALID`), for padded values in annotated columns (`TABULAR_INVALID`), and for padded MeaningsTable values that carry HED (`SIDECAR_INVALID`) are hedtools', reported through the column source; ndx-hed has no code for them (the former R9 for the `timestamp`-as-`onset` repeat is one of them now). `_DynamicTableSource.column_names` must return the BIDS names in table order with repeats, and `_has_hed` counts a column named `HED` apart from padding so its name is reported. `get_bids_dataframe` and `get_events_table` raise `ValueError` on a repeated name. `get_categorical_meanings` writes an empty HED cell for a value only `Levels` lists, and an explicit `n/a` stays a key under `HED`.
 
 So three HED shapes coexist: per-row (`HedTags`), value template (`HedValueVector`, `#` substituted per row), and categorical (plain `VectorData` plus a `MeaningsTable` holding a `HED` column).
 

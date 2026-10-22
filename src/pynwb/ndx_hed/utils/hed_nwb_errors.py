@@ -20,13 +20,8 @@ HED_COLUMN_TYPE_INVALID = "HED_COLUMN_TYPE_INVALID"
 # per-value annotation a MeaningsTable holds.
 MEANINGS_VALUE_VECTOR_INVALID = "MEANINGS_VALUE_VECTOR_INVALID"
 
-# A column name repeated in the BIDS view of a table (rule R9): hdmf keeps table column names unique, but
-# a TimestampVectorData named "timestamp" is exported as "onset", so a table that also has a column named
-# "onset" has two. Reported as the HED specification's TABULAR_INVALID (a repeated column name in a
-# tabular file); the registry key is ndx-hed's own so that it cannot clash with hedtools' registration of
-# that code.
-BIDS_COLUMN_NAME_REPEATED = "NWB_BIDS_COLUMN_NAME_REPEATED"
-TABULAR_INVALID = "TABULAR_INVALID"
+# A repeated, padded, or blank column name (including a column named "onset" beside the TimestampVectorData
+# "timestamp", exported as "onset") is reported by hedtools as TABULAR_INVALID, through the column source.
 
 
 @hed_error(HED_COLUMN_TYPE_INVALID)
@@ -42,12 +37,4 @@ def meanings_value_vector_invalid(table_name, column_name):
     return (
         f"Column '{column_name}' of MeaningsTable '{table_name}' is a HedValueVector, which is not allowed in a "
         "MeaningsTable. Categorical HED must be complete HED strings in a HedTags column named 'HED'."
-    )
-
-
-@hed_error(BIDS_COLUMN_NAME_REPEATED, actual_code=TABULAR_INVALID)
-def bids_column_name_repeated(table_name, column_name):
-    return (
-        f"Column '{column_name}' appears more than once in table '{table_name}' as BIDS names its columns: a "
-        "TimestampVectorData named 'timestamp' is exported as 'onset'. Rename the other 'onset' column."
     )

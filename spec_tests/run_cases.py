@@ -44,7 +44,7 @@ from .nwb_case_builder import (
     split_definition_entries,
     uses_test_schemas,
 )
-from .skipped_cases import SKIP_CASES, SKIP_RECORDS
+from .skipped_cases import NWB_ALT_CODES, SKIP_CASES, SKIP_RECORDS
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 VALIDATION_TESTS = os.path.join(HERE, "hed-tests", "json_test_data", "validation_tests.json")
@@ -246,7 +246,9 @@ def _run_case(record, kind, expected, index, case):
 
 def compare(record, expected, issues):
     codes = [issue["code"] for issue in issues]
-    allowed = [record["error_code"]] + list(record.get("alt_codes") or [])
+    # NWB_ALT_CODES (skipped_cases.py): codes NWB reports for the same mistake because it represents the input
+    # differently, each entry with its reason.
+    allowed = [record["error_code"]] + list(record.get("alt_codes") or []) + list(NWB_ALT_CODES.get(record["name"], ()))
     if expected == "fails":
         if not issues:
             return FAILED, f"should fail with one of {allowed} but produced no issues"
