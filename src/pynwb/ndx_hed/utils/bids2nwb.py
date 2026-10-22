@@ -23,25 +23,37 @@ def read_bids_tsv(path) -> pd.DataFrame:
 
     Every cell is kept as text exactly as written: a double quote is an ordinary character, a line is
     split on every tab, and only an empty cell and ``n/a`` are missing (NaN); ``NA``, ``null``, or ``nan``
-    are values. Column names are kept as written too, so a padded or repeated name reaches validation
-    (HED specification 3.2.10). ``pd.read_csv(path, sep="\\t")`` with its defaults removes quotes and
-    reads ``NA`` as missing, so a file converted with it is not the file hedtools validates.
+    are values. Column names are the header cells exactly as written too: the header line is read as a
+    data row, so pandas does not rename a repeated name (``HED``, ``HED.1``) or a blank one (``Unnamed: 1``),
+    and a padded, repeated, or blank name reaches ``get_events_table`` and validation as it is in the file
+    (HED specification 3.2.10). ``pd.read_csv(path, sep="\\t")`` with its defaults removes quotes, reads
+    ``NA`` as missing, and renames repeated and blank names, so a file converted with it is not the file
+    hedtools validates.
 
     Args:
-        path (str or path-like or file-like): The TSV file.
+        path (str or path-like or file-like): The TSV file, UTF-8 (a byte order mark is removed).
 
     Returns:
-        pd.DataFrame: The file's columns, every value a string or NaN.
+        pd.DataFrame: The file's columns, labeled by the header cells, every value a string or NaN.
+
+    Raises:
+        pandas.errors.EmptyDataError: If the file has no header line.
     """
-    return pd.read_csv(
-        path,
-        sep="\t",
-        dtype=str,
-        keep_default_na=False,
-        na_values=["", "n/a"],
-        quoting=csv.QUOTE_NONE,
-        index_col=False,
-    )
+    if hasattr(path, "read"):
+        contents = path.read()
+        if isinstance(contents, bytes):
+            contents = contents.decode("utf-8")
+    else:
+        with open(path, encoding="utf-8", newline="") as file:
+            contents = file.read()
+    if contents.startswith(chr(0xFEFF)):  # a UTF-8 byte order mark
+        contents = contents[1:]
+    options = {"sep": "\t", "dtype": str, "keep_default_na": False, "quoting": csv.QUOTE_NONE}
+    header = pd.read_csv(io.StringIO(contents), header=None, nrows=1, **options)
+    frame = pd.read_csv(io.StringIO(contents), na_values=["", "n/a"], index_col=False, **options)
+    if len(header) and len(header.columns) == len(frame.columns):
+        frame.columns = list(header.iloc[0])
+    return frame
 
 
 def extract_definitions(sidecar_data: dict, hed_schema: HedSchema | HedSchemaGroup) -> tuple:

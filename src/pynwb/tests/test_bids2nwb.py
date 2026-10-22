@@ -474,6 +474,36 @@ class TestReadBidsTsv(unittest.TestCase):
         self.assertTrue(df["note"].isna().all())
         self.assertEqual(df["onset"].tolist(), ["1.0", "2.0"])
 
+    def test_repeated_and_blank_header_names_are_not_renamed(self):
+        """pandas' own header renames a repeated name (HED.1) and a blank one (Unnamed: 1); read_bids_tsv does not."""
+        repeated = read_bids_tsv(io.StringIO("onset\tHED\tHED\n1.0\tRed\tBlue\n"))
+        self.assertEqual(list(repeated.columns), ["onset", "HED", "HED"])
+        blank = read_bids_tsv(io.StringIO("onset\t\tHED\n1.0\tx\tRed\n"))
+        self.assertEqual(list(blank.columns), ["onset", "", "HED"])
+        self.assertEqual(blank.values.tolist(), [["1.0", "x", "Red"]])
+
+    def test_reader_to_converter_repeated_name_is_refused(self):
+        """A repeated header name reaches get_events_table, which refuses it, instead of becoming HED.1."""
+        df = read_bids_tsv(io.StringIO("onset\tHED\tHED\n1.0\tRed\tBlue\n"))
+        with self.assertRaises(ValueError):
+            get_events_table(name="t", description="d", df=df, meanings={"categorical": {}, "value": {}})
+
+    def test_reader_to_converter_blank_name_is_reported(self):
+        """A blank header name becomes a column named '' and validation reports it as TABULAR_INVALID."""
+        from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
+
+        df = read_bids_tsv(io.StringIO("onset\t\tHED\n1.0\tx\tRed\n"))
+        table = get_events_table(name="t", description="d", df=df, meanings={"categorical": {}, "value": {}})
+        self.assertIn("", table.colnames)
+        issues = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0")).validate_table(table)
+        self.assertEqual([issue["code"] for issue in issues], ["TABULAR_INVALID"])
+
+    def test_bytes_with_byte_order_mark(self):
+        """A binary file-like object is decoded as UTF-8 and a leading byte order mark is removed."""
+        text = chr(0xFEFF) + "onset\tHED\n1.0\tRed\n"
+        df = read_bids_tsv(io.BytesIO(text.encode("utf-8")))
+        self.assertEqual(list(df.columns), ["onset", "HED"])
+
 
 class TestGetEventsTable(unittest.TestCase):
     """Test class for get_events_table function."""
