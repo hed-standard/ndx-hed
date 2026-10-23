@@ -1,12 +1,12 @@
 # Changelog for ndx-hed
 
-## Release 0.3.0
+## Release 0.3.0 October 23, 2026
 
 The first ndx-hed release for PyNWB 4, which closes issue #194. Migration to PyNWB 4.0.0. NWBEP001 (`EventsTable`, `MeaningsTable`, `TimestampVectorData`, `DurationVectorData`, etc.) has been merged into PyNWB core, so ndx-hed no longer depends on the standalone `ndx-events` extension.
 
 ### Breaking changes
 
-- **Dependencies**: now requires `pynwb>=4.2.0` and `hdmf>=6.2.0`; the `ndx-events` dependency has been removed. `EventsTable`, `TimestampVectorData`, and `DurationVectorData` are now imported from `pynwb.event`; `MeaningsTable` from `hdmf.common`. Use the standard `pynwb.NWBFile` (the `NdxEventsNWBFile` type no longer exists).
+- **Dependencies**: now requires `pynwb>=4.2.0`, `hdmf>=6.2.0`, and `hedtools>=1.3.0`; the `ndx-events` dependency has been removed. `EventsTable`, `TimestampVectorData`, and `DurationVectorData` are now imported from `pynwb.event`; `MeaningsTable` from `hdmf.common`. Use the standard `pynwb.NWBFile` (the `NdxEventsNWBFile` type no longer exists).
 - **No `CategoricalVectorData`** (the categorical column type formerly provided by the `ndx-events` extension): PyNWB 4.0.0 did not introduce an equivalent. Any `DynamicTable` column (a plain `VectorData`) can now be annotated by a `MeaningsTable`.
 - **Reversed column-meanings relationship**: a `MeaningsTable` is now bound to the column it annotates via a required `target` argument (`MeaningsTable(target=column, ...)`), and its name is auto-derived as `"{column_name}_meanings"`. Meanings are attached to a table with `table.add_meanings_table(...)` and retrieved with `table.get_meanings_for_column(col_name)`. A `MeaningsTable` can no longer be constructed standalone.
 - **HED column rules clarified/enforced**: a `HedTags` column must be named `"HED"`, and therefore there is at most one `HedTags` column per `DynamicTable`. A `HedTags` column inside a `MeaningsTable` provides categorical (per-value) HED; in any other `DynamicTable` it provides per-row HED. A `HedValueVector` (a value template, which never had a fixed name) must not appear in a `MeaningsTable`. Two rules are new: a column named `HED` must be a `HedTags` (a `VectorData` or `HedValueVector` named `HED` is reported as `HED_COLUMN_TYPE_INVALID`), and the values of a `HedValueVector` must satisfy the value class of its `#` tag (a `#` with no value class is `textClass`; for `Def/Name/#` the class comes from the placeholder inside the definition). The `HedValueVector`-in-`MeaningsTable` rule is now reported as the issue `MEANINGS_VALUE_VECTOR_INVALID` instead of raising `ValueError`. All rules are in `docs/source/hed_validation.md`. The `HedValueVector` schema doc was corrected (it previously and incorrectly stated "Always has the name HED").
