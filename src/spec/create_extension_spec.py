@@ -7,7 +7,7 @@ def main():
     # these arguments were auto-generated from your cookiecutter inputs
     ns_builder = NWBNamespaceBuilder(
         name="""ndx-hed""",
-        version="""1.0.0""",
+        version="""0.3.0""",
         doc="""NWB extension for HED data""",
         author=[
             "Kay Robbins",

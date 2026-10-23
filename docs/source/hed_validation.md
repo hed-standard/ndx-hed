@@ -1,6 +1,6 @@
 # HED annotation and validation in ndx-hed
 
-This document describes how HED (Hierarchical Event Descriptors) annotations are represented in NWB tables, the rules ndx-hed follows, and how the validator works. It reflects the 1.0.0 design (PyNWB 4.0.0, where EventsTable, MeaningsTable, and related types are part of NWB core).
+This document describes how HED (Hierarchical Event Descriptors) annotations are represented in NWB tables, the rules ndx-hed follows, and how the validator works. It reflects the 0.3.0 design (PyNWB 4.0.0, where EventsTable, MeaningsTable, and related types are part of NWB core).
 
 ## Representing HED in a table
 
