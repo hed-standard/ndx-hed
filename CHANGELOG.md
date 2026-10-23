@@ -1,8 +1,8 @@
 # Changelog for ndx-hed
 
-## Release 1.0.0
+## Release 0.3.0
 
-Migration to PyNWB 4.0.0. NWBEP001 (`EventsTable`, `MeaningsTable`, `TimestampVectorData`, `DurationVectorData`, etc.) has been merged into PyNWB core, so ndx-hed no longer depends on the standalone `ndx-events` extension.
+The first ndx-hed release for PyNWB 4, which closes issue #194. Migration to PyNWB 4.0.0. NWBEP001 (`EventsTable`, `MeaningsTable`, `TimestampVectorData`, `DurationVectorData`, etc.) has been merged into PyNWB core, so ndx-hed no longer depends on the standalone `ndx-events` extension.
 
 ### Breaking changes
 
