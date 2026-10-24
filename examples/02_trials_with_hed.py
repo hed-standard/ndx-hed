@@ -25,7 +25,7 @@ def main():
 
     # Add HED schema metadata
     print("Setting up HED metadata...")
-    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
     nwbfile.add_lab_meta_data(hed_metadata)
 
     # Add HED column to trials table

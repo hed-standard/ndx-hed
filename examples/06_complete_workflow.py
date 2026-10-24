@@ -110,7 +110,7 @@ def create_comprehensive_nwb_file():
     )
 
     # Add HED schema metadata
-    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
     nwbfile.add_lab_meta_data(hed_metadata)
     print(f"   - Added HED schema version: {hed_metadata.hed_schema_version}")
 

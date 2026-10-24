@@ -57,7 +57,7 @@ The first ndx-hed release for PyNWB 4, which closes issue #194. NWBEP001 (`Event
 
 #### HedLabMetaData
 
-- `hed_schema_version` accepts one version string (`"8.4.0"`), a comma-joined string of versions in one namespace (`"8.4.0,score_2.1.0"`), or a list or tuple of versions (`["8.4.0", "sc:score_2.1.0"]`). A list is stored as the JSON array string hedtools reads and writes, so the NWB attribute stays one text value.
+- `hed_schema_version` accepts one version string (`"8.5.0"`), a comma-joined string of versions in one namespace (`"8.5.0,score_2.2.0"`), or a list or tuple of versions (`["8.5.0", "sc:score_2.2.0"]`). A list is stored as the JSON array string hedtools reads and writes, so the NWB attribute stays one text value.
 - The exported definitions string carries the schema namespace prefix on the `Definition` tag for a namespaced schema, and no longer writes `None` for a definition without contents.
 
 #### Format, packaging, and documentation

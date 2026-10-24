@@ -13,8 +13,10 @@ The [HED integration for NWB](https://www.hedtags.org/ndx-hed/) gives a quicksta
 **Python:**
 
 ```bash
-pip install -U ndx-hed
+pip install -U "ndx-hed @ git+https://github.com/hed-standard/ndx-hed.git"
 ```
+
+Until the 0.3.0 release candidate is on PyPI, install from GitHub: PyPI still has 0.2.0, which predates PyNWB 4.
 
 **Matlab:** The Matlab extension is under development.
 
@@ -33,8 +35,8 @@ nwbfile = NWBFile(
 )
 
 # Add HED schema metadata (required). A library schema merged with its partner is
-# "8.4.0,score_2.1.0"; schemas in separate namespaces are a list, ["8.4.0", "sc:score_2.1.0"].
-hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+# "8.5.0,score_2.2.0"; schemas in separate namespaces are a list, ["8.5.0", "sc:score_2.2.0"].
+hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
 nwbfile.add_lab_meta_data(hed_metadata)
 
 # Add HED column to trials table
@@ -133,7 +135,7 @@ from ndx_hed import HedLabMetaData
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 
 # Create validator and validate entire file
-hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
 validator = HedNWBValidator(hed_metadata)
 
 # Assume nwbfile has already been created

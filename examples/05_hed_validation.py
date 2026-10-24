@@ -31,7 +31,7 @@ def create_test_data():
     )
 
     # Add HED schema metadata
-    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
     nwbfile.add_lab_meta_data(hed_metadata)
 
     # Table 1: Valid HED annotations from DynamicTable

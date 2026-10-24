@@ -24,7 +24,7 @@ class TestHedNWBFileValidator(unittest.TestCase):
         """Set up test data for file validation."""
 
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
 
         # Create HedNWBValidator instance
         self.validator = HedNWBValidator(self.hed_metadata)
@@ -270,8 +270,8 @@ class TestHedNWBFileValidator(unittest.TestCase):
 
     def test_validate_file_schema_version_mismatch(self):
         """Test that validate_file handles schema version mismatch correctly."""
-        # Create file with different HED metadata (validator uses 8.4.0 from setUp)
-        different_hed_metadata = HedLabMetaData(hed_schema_version="8.3.0")  # Different from validator's 8.4.0
+        # Create file with different HED metadata (validator uses 8.5.0 from setUp)
+        different_hed_metadata = HedLabMetaData(hed_schema_version="8.3.0")  # Different from validator's 8.5.0
 
         nwbfile = NWBFile(
             session_description="Test with different HED version",
