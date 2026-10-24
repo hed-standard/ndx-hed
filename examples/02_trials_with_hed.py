@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pynwb import NWBFile
 
 from ndx_hed import HedLabMetaData, HedTags
+from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 
 
 def main():
@@ -24,7 +25,7 @@ def main():
 
     # Add HED schema metadata
     print("Setting up HED metadata...")
-    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
     nwbfile.add_lab_meta_data(hed_metadata)
 
     # Add HED column to trials table
@@ -39,7 +40,9 @@ def main():
 
     # Trial 2: Participant response
     nwbfile.add_trial(
-        start_time=2.0, stop_time=3.0, HED="Experimental-trial, (Agent-action, Participant-response, Button-press)"
+        start_time=2.0,
+        stop_time=3.0,
+        HED="Experimental-trial, (Agent-action, Participant-response, (Press, Push-button))",
     )
 
     # Trial 3: Auditory stimulus
@@ -59,6 +62,10 @@ def main():
     for i, trial in enumerate(nwbfile.trials.to_dataframe().iterrows()):
         idx, row = trial
         print(f"  Trial {i + 1}: {row['start_time']:.1f}-{row['stop_time']:.1f}s, HED: {row['HED']}")
+
+    # Validate the annotations (05_hed_validation.py shows validation in detail)
+    issues = HedNWBValidator(hed_metadata).validate_file(nwbfile)
+    print(f"\nHED validation issues: {len(issues)}")
 
     return nwbfile
 

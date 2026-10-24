@@ -1,7 +1,7 @@
 """
 Unit tests for the JSON-case to NWB conversion in ``nwb_case_builder``.
 
-One hand-written case per mapping rule; they need the HED 8.4.0 schema (bundled with hedtools)
+One hand-written case per mapping rule; they need the HED 8.5.0 schema (bundled with hedtools)
 and no submodule.
 """
 
@@ -35,23 +35,23 @@ DEFS = ["(Definition/Acc/#, (Acceleration/# m-per-s^2, Red))", "(Definition/MyCo
 
 class TestRecordLevel(unittest.TestCase):
     def test_schema_version_string(self):
-        self.assertEqual(schema_version_string("8.4.0"), "8.4.0")
-        self.assertEqual(schema_version_string([" 8.4.0", "score_2.1.0"]), '["8.4.0", "score_2.1.0"]')
+        self.assertEqual(schema_version_string("8.5.0"), "8.5.0")
+        self.assertEqual(schema_version_string([" 8.5.0", "score_2.2.0"]), '["8.5.0", "score_2.2.0"]')
         self.assertEqual(
             schema_version_string(["8.5.0", "sc:testconflict_2.1.0"]), '["8.5.0", "sc:testconflict_2.1.0"]'
         )
 
     def test_build_metadata_from_list(self):
-        metadata = build_metadata(["8.4.0", "sc:score_2.1.0"], None)
-        self.assertEqual(metadata.get_hed_schema_version(), '["8.4.0", "sc:score_2.1.0"]')
+        metadata = build_metadata(["8.5.0", "sc:score_2.2.0"], None)
+        self.assertEqual(metadata.get_hed_schema_version(), '["8.5.0", "sc:score_2.2.0"]')
         self.assertEqual(metadata.get_hed_schema().valid_prefixes, ["", "sc:"])
 
     def test_uses_test_schemas(self):
-        self.assertTrue(uses_test_schemas(["8.4.0", "sc:testconflict_2.1.0"]))
+        self.assertTrue(uses_test_schemas(["8.5.0", "sc:testconflict_2.1.0"]))
         self.assertFalse(uses_test_schemas("8.5.0"))  # released, so resolved from the user's cache
-        self.assertTrue(uses_test_schemas("8.4.0, testminimal_1.0.0"))
-        self.assertFalse(uses_test_schemas("8.4.0"))
-        self.assertFalse(uses_test_schemas(["8.4.0", "score_2.1.0"]))
+        self.assertTrue(uses_test_schemas("8.5.0, testminimal_1.0.0"))
+        self.assertFalse(uses_test_schemas("8.5.0"))
+        self.assertFalse(uses_test_schemas(["8.5.0", "score_2.2.0"]))
 
     def test_join_definitions(self):
         self.assertIsNone(join_definitions(None, []))
@@ -61,7 +61,7 @@ class TestRecordLevel(unittest.TestCase):
         )
 
     def test_join_definitions_drops_a_repeated_identical_definition(self):
-        schema = load_schema_version("8.4.0")
+        schema = load_schema_version("8.5.0")
         repeated = ["(Definition/Apple, (Red, Blue))", "(definition/apple, (Blue,Red))"]
         self.assertEqual(join_definitions(repeated, hed_schema=schema), "(Definition/Apple, (Red, Blue))")
         self.assertEqual(join_definitions(repeated), ", ".join(repeated))  # no schema, no merging
@@ -76,17 +76,17 @@ class TestRecordLevel(unittest.TestCase):
             self.assertEqual(join_definitions(texts, hed_schema=schema), ", ".join(texts))
 
     def test_build_metadata_with_a_repeated_identical_definition(self):
-        metadata = build_metadata("8.4.0", ["(Definition/Apple, (Red, Blue))", "(Definition/Apple, (Blue, Red))"])
+        metadata = build_metadata("8.5.0", ["(Definition/Apple, (Red, Blue))", "(Definition/Apple, (Blue, Red))"])
         self.assertEqual(sorted(metadata.get_definition_dict().defs), ["apple"])
 
     def test_build_metadata_with_definitions(self):
-        metadata = build_metadata("8.4.0", DEFS)
+        metadata = build_metadata("8.5.0", DEFS)
         self.assertIsInstance(metadata, HedLabMetaData)
         self.assertEqual(sorted(metadata.get_definition_dict().defs), ["acc", "mycolor"])
 
     def test_build_metadata_rejects_bad_definition(self):
         with self.assertRaises(ValueError):
-            build_metadata("8.4.0", DEFS, ["Definition/Blech, (Red)"])
+            build_metadata("8.5.0", DEFS, ["Definition/Blech, (Red)"])
 
 
 class TestDefinitionEntries(unittest.TestCase):
@@ -174,7 +174,7 @@ class TestEventsTable(unittest.TestCase):
         self.assertIsInstance(table.get_meanings_for_column("event_code"), MeaningsTable)
 
     def test_build_nwbfile(self):
-        metadata = build_metadata("8.4.0", None)
+        metadata = build_metadata("8.5.0", None)
         table = build_events_table([["onset", "HED"], [1.0, "Red"]])
         nwbfile = build_nwbfile(metadata, table)
         self.assertIs(nwbfile.lab_meta_data["hed_schema"], metadata)

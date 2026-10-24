@@ -27,6 +27,7 @@ python run_all_examples.py
 - Demonstrates the three main classes: `HedLabMetaData`, `HedTags`, and `HedValueVector`
 - Shows how to create HED metadata and add HED annotations to dynamic tables
 - Basic usage patterns for getting started with ndx-hed
+- Ends by validating the file (examples 01-04 all do, and report 0 issues)
 
 ### 02_trials_with_hed.py
 
@@ -51,16 +52,18 @@ python run_all_examples.py
 **BIDS to NWB conversion example**
 
 - Demonstrates converting BIDS events files with HED annotations to NWB format
-- Shows both memory-based and file-based conversion workflows
+- Shows both memory-based and file-based conversion workflows, reading the TSV with `read_bids_tsv`
 - Includes sample BIDS `events.tsv` and `events.json` structures
+- Exports an `EventsTable` back to a BIDS events file and sidecar with `get_bids_tabular`, reads it back, and checks that the round trip loses nothing
 
 ### 05_hed_validation.py
 
 **HED validation example**
 
 - Comprehensive demonstration of HED validation capabilities
-- Shows validation at different levels: individual columns, tables, events tables, entire files
-- Demonstrates custom error handlers and issue categorization
+- Shows validation at different levels: individual columns (`validate_vector`, `validate_value_vector`), tables (with and without row assembly), events tables, entire files
+- Demonstrates custom error handlers (warnings on and off) and issue formatting with hedtools `get_printable_issue_string`
+- Shows the two ndx-hed error codes for HED columns of the wrong type: `HED_COLUMN_TYPE_INVALID` and `MEANINGS_VALUE_VECTOR_INVALID`
 - Includes examples of both valid and invalid HED annotations
 
 ### 06_complete_workflow.py
@@ -68,10 +71,9 @@ python run_all_examples.py
 **Complete workflow example**
 
 - End-to-end demonstration of the full ndx-hed workflow
-- Creates comprehensive NWB file with all types of HED annotations
-- Validates annotations and handles issues
-- Tests file save/reload consistency
-- Real-world usage patterns and best practices
+- Creates an NWB file whose events table uses all three kinds of HED annotation: per-row (`HedTags`), value templates (`HedValueVector`), and categorical (a `MeaningsTable` with a HED column)
+- Validates the annotations and prints each event's assembled HED, the combination validation checks
+- Saves and reloads the file, checks that the `MeaningsTable` survives, and validates again
 
 ### 07_hed_definitions.py
 
@@ -87,15 +89,17 @@ python run_all_examples.py
 All examples require:
 
 - `pynwb >= 4.2.0` (provides the core `EventsTable`, `MeaningsTable`, etc.)
-- `ndx-hed`
+- `ndx-hed` from the GitHub `main` branch (PyPI still has 0.2.0, which predates PyNWB 4)
 - `pandas` (for examples 4 and 7)
 - `numpy` (for example 6)
 
 Install with:
 
 ```bash
-pip install "pynwb>=4.2.0" ndx-hed pandas numpy
+pip install "ndx-hed @ git+https://github.com/hed-standard/ndx-hed.git" pandas numpy
 ```
+
+ndx-hed from `main` brings in `pynwb>=4.2.0` and `hedtools>=1.3.0`. The first run downloads the HED 8.5.0 schema from the network; hedtools caches it in `~/.hedtools`.
 
 ## Example output
 

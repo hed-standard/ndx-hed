@@ -5,13 +5,10 @@
 # Regenerated for the PyNWB 4.0.0 migration (ndx-events removed; EventsTable/MeaningsTable
 # now come from PyNWB core / hdmf). pynwb and hdmf reflect the versions the test suite was
 # validated against. CI should confirm this snapshot on a clean solve.
-#
-# hedtools is deliberately absent: pyproject.toml installs it from the hed-python main
-# branch for now, and a version constraint here would conflict with that direct reference.
-# Restore a hedtools pin when pyproject.toml goes back to a PyPI version.
 typos==1.51.1
 coverage==7.16.2
 hdmf==6.2.0
+hedtools==1.3.0
 hdmf-docutils==0.4.10
 linkify-it-py==2.2.0
 myst-parser==5.1.0

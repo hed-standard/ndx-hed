@@ -16,6 +16,7 @@ from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
 
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
+from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 
 
 def main():
@@ -28,7 +29,7 @@ def main():
 
     # 1. HedLabMetaData - Required for HED schema specification
     print("1. Creating HED Lab Metadata...")
-    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")  # Object name will automatically be "hed_schema"
+    hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")  # Object name will automatically be "hed_schema"
     nwbfile.add_lab_meta_data(hed_metadata)
     print(f"   Added HED schema version: {hed_metadata.hed_schema_version}")
 
@@ -38,9 +39,9 @@ def main():
     # Create HedTags table column with three rows of HED annotations
     hed_tags = HedTags(
         data=[
-            "(Visual-presentation, Image, Building/House)",
+            "(Visual-presentation, Image, Building)",
             "(Auditory-presentation, Buzz)",
-            "(Visual-presentation, Blue Square)",
+            "(Visual-presentation, (Blue, Square))",
         ]
     )
 
@@ -57,7 +58,7 @@ def main():
     )
 
     # Add rows with HED annotations
-    stim_table1.add_row(stim_type="door-image", HED="(Visual-presentation, image, Building-part/Door)")
+    stim_table1.add_row(stim_type="door-image", HED="(Visual-presentation, Image, Building-part/Door)")
     print(f"   Created table with {len(stim_table1)} rows")
     print(f"   HED column name: {hed_tags.name}")
 
@@ -86,6 +87,10 @@ def main():
     print(f"  - Stimulus table 1: {len(stim_table1)} rows")
     print(f"  - Stimulus table 2: {len(stim_table2)} rows")
     print(f"  - HED schema version: {hed_metadata.hed_schema_version}")
+
+    # Validate the annotations (05_hed_validation.py shows validation in detail)
+    issues = HedNWBValidator(hed_metadata).validate_file(nwbfile)
+    print(f"  - HED validation issues: {len(issues)}")
 
     return nwbfile
 

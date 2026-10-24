@@ -10,7 +10,8 @@ the HedNWBValidator class.
 
 from datetime import datetime, timezone
 
-from hed.errors import ErrorHandler
+from hdmf.common import MeaningsTable
+from hed.errors import ErrorHandler, ErrorSeverity, get_printable_issue_string
 from pynwb import NWBFile
 from pynwb.core import DynamicTable, VectorData
 from pynwb.event import EventsTable
@@ -30,7 +31,7 @@ def create_test_data():
     )
 
     # Add HED schema metadata
-    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
     nwbfile.add_lab_meta_data(hed_metadata)
 
     # Table 1: Valid HED annotations from DynamicTable
@@ -55,7 +56,7 @@ def create_test_data():
                 data=[
                     "InvalidTag123",  # Not a valid HED tag
                     "NonExistentEvent",  # Not in HED schema
-                    "BadTag/WithSlash",  # Invalid syntax
+                    "BadTag/WithSlash",  # Unknown base tag (BadTag)
                 ]
             ),
         ],
@@ -71,7 +72,7 @@ def create_test_data():
                 data=[
                     "Sensory-event",  # Valid
                     "InvalidMixedTag",  # Invalid
-                    "Agent-action, Button-press",  # Valid
+                    "Agent-action, (Press, Push-button)",  # Valid
                     "AnotherBadTag",  # Invalid
                 ]
             ),
@@ -124,14 +125,21 @@ def validate_individual_components(validator, nwbfile):
     invalid_issues = validator.validate_vector(invalid_column)
     print(f"   - Invalid column: {len(invalid_issues)} issues found")
     if invalid_issues:
-        print("     Sample issues:")
-        for i, issue in enumerate(invalid_issues[:2]):  # Show first 2 issues
-            print(f"       {i + 1}. {issue.get('message', 'Unknown error')}")
+        # get_printable_issue_string (hedtools) formats issues with their column and row
+        print(get_printable_issue_string(invalid_issues[:2], title="     First two issues:"))
 
     # Mixed column
     mixed_column = mixed_table["HED"]
     mixed_issues = validator.validate_vector(mixed_column)
     print(f"   - Mixed column: {len(mixed_issues)} issues found")
+
+    # A HedValueVector column: the template is validated first, and the values only if it is valid
+    print("\n   Validating a HedValueVector column:")
+    value_column = nwbfile.acquisition["value_vector_events"]["reaction_time"]
+    value_issues = validator.validate_value_vector(value_column)
+    print(f"   - Template '{value_column.hed}': {len(value_issues)} issues found")
+    for issue in value_issues:
+        print(f"     {issue['code']}: {issue['message']}")
 
 
 def validate_tables(validator, nwbfile):
@@ -154,7 +162,7 @@ def validate_tables(validator, nwbfile):
 
         if issues:
             # Show error breakdown
-            error_count = sum(1 for issue in issues if issue.get("severity", 0) == 1)
+            error_count = sum(1 for issue in issues if issue["severity"] == ErrorSeverity.ERROR)
             warning_count = len(issues) - error_count
             print(f"     (Errors: {error_count}, Warnings: {warning_count})")
 
@@ -211,7 +219,7 @@ def validate_entire_file(validator, nwbfile):
 
     if all_issues:
         # Categorize issues
-        error_count = sum(1 for issue in all_issues if issue.get("severity", 0) == 1)
+        error_count = sum(1 for issue in all_issues if issue["severity"] == ErrorSeverity.ERROR)
         warning_count = len(all_issues) - error_count
 
         print(f"     Errors: {error_count}")
@@ -234,18 +242,57 @@ def demonstrate_custom_error_handler(validator, nwbfile):
     """Demonstrate using custom ErrorHandler"""
     print("\n5. Using custom ErrorHandler...")
 
+    # A table whose HED is valid but draws a warning: Building/House extends the schema tag Building
+    style_table = DynamicTable(
+        name="style_events",
+        description="Events whose HED draws a warning",
+        columns=[
+            VectorData(name="event_time", description="Event times", data=[1.0, 2.0]),
+            HedTags(data=["Sensory-event, Visual-presentation, (Image, Building/House)", "Sensory-event"]),
+        ],
+    )
+
     # Create custom error handler that includes warnings
     error_handler = ErrorHandler(check_for_warnings=True)
-
-    # Validate with custom handler
-    invalid_table = nwbfile.acquisition["invalid_events"]
-    issues = validator.validate_table(invalid_table, error_handler)
-
+    issues = validator.validate_table(style_table, error_handler)
     print(f"   - Issues with warnings enabled: {len(issues)}")
+    for issue in issues:
+        print(f"     {issue['code']}: {issue['message']}")
 
-    # Compare with default handler (warnings disabled)
-    issues_no_warnings = validator.validate_table(invalid_table)
+    # Compare with the default handler, which drops warnings
+    issues_no_warnings = validator.validate_table(style_table)
     print(f"   - Issues with warnings disabled: {len(issues_no_warnings)}")
+
+
+def demonstrate_structural_rules(validator):
+    """Demonstrate the two ndx-hed error codes for HED columns of the wrong type"""
+    print("\n6. Structural rules for HED columns...")
+
+    # A column named HED must be a HedTags: a plain VectorData named HED is HED_COLUMN_TYPE_INVALID,
+    # and the table's HED is not validated further
+    table = DynamicTable(
+        name="wrong_hed_column",
+        description="A plain VectorData named HED",
+        columns=[VectorData(name="HED", description="Not a HedTags", data=["Sensory-event", "Agent-action"])],
+    )
+    for issue in validator.validate_table(table):
+        print(f"   - {issue['code']}: {issue['message']}")
+
+    # A HedValueVector must not appear in a MeaningsTable: MEANINGS_VALUE_VECTOR_INVALID
+    table = DynamicTable(
+        name="condition_events",
+        description="A categorical column whose MeaningsTable holds a HedValueVector",
+        columns=[VectorData(name="condition", description="Condition", data=["easy", "hard"])],
+    )
+    meanings = MeaningsTable(target=table["condition"], description="Meanings of the condition values")
+    meanings.add_row(value="easy", meaning="Easy condition")
+    meanings.add_row(value="hard", meaning="Hard condition")
+    meanings.add_column(
+        name="difficulty", description="Not allowed here", col_cls=HedValueVector, data=[1, 2], hed="Parameter-value/#"
+    )
+    table.add_meanings_table(meanings)
+    for issue in validator.validate_table(table):
+        print(f"   - {issue['code']}: {issue['message']}")
 
 
 def main():
@@ -263,6 +310,7 @@ def main():
     validate_events_table(validator)
     validate_entire_file(validator, nwbfile)
     demonstrate_custom_error_handler(validator, nwbfile)
+    demonstrate_structural_rules(validator)
 
     print("\n[OK] HED validation demonstration complete!")
     print("Use the validation results to identify and fix HED annotation issues.")

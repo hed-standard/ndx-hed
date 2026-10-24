@@ -18,6 +18,7 @@ from pynwb import NWBFile
 from pynwb.event import DurationVectorData, EventsTable
 
 from ndx_hed import HedLabMetaData, HedTags, HedValueVector
+from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 
 
 def create_direct_hed_events():
@@ -168,7 +169,7 @@ def main():
     )
 
     # Add HED schema metadata
-    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
     nwbfile.add_lab_meta_data(hed_metadata)
 
     # Create the three types of EventsTable examples
@@ -185,6 +186,11 @@ def main():
     print(f"  - Direct HED events: {len(direct_events)} events")
     print(f"  - HedValueVector events: {len(value_vector_events)} events")
     print(f"  - Categorical events: {len(categorical_events)} events")
+
+    # Validate the annotations, including the categorical HED in the MeaningsTable
+    # (05_hed_validation.py shows validation in detail)
+    issues = HedNWBValidator(hed_metadata).validate_file(nwbfile)
+    print(f"  - HED validation issues: {len(issues)}")
 
     return nwbfile
 

@@ -26,7 +26,7 @@ class TestHedNWBValidatorInit(unittest.TestCase):
     def setUp(self):
         """Set up test data."""
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
 
     def test_hed_validator_init(self):
         """Test HedNWBValidator initialization."""
@@ -72,7 +72,7 @@ class TestValidateHedTagsVector(unittest.TestCase):
     def setUp(self):
         """Set up test data."""
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
 
         # Create HedNWBValidator instance
         self.validator = HedNWBValidator(self.hed_metadata)
@@ -165,7 +165,7 @@ class TestValidateTable(unittest.TestCase):
     def setUp(self):
         """Set up a validator with two definitions, one of them a value definition."""
         self.hed_metadata = HedLabMetaData(
-            hed_schema_version="8.4.0", definitions="(Definition/Blink, (Blink)), (Definition/Acc/#, (Age/# s, Red))"
+            hed_schema_version="8.5.0", definitions="(Definition/Blink, (Blink)), (Definition/Acc/#, (Age/# s, Red))"
         )
         self.validator = HedNWBValidator(self.hed_metadata)
 
@@ -265,7 +265,7 @@ class TestValidateTable(unittest.TestCase):
         table = self._table("defs", ["Def/Blink", "Def/Acc/1.5"])
         self.assertEqual(self.validator.validate_table(table), [])
 
-        no_defs = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0"))
+        no_defs = HedNWBValidator(HedLabMetaData(hed_schema_version="8.5.0"))
         codes = [issue["code"] for issue in no_defs.validate_table(table)]
         self.assertEqual(codes, ["DEF_INVALID", "DEF_INVALID"])
 
@@ -351,7 +351,7 @@ class TestValidateTableNoAssembly(unittest.TestCase):
     """Test class for validate_table(assemble=False): each distinct annotation once, no row assembly."""
 
     def setUp(self):
-        self.validator = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0"))
+        self.validator = HedNWBValidator(HedLabMetaData(hed_schema_version="8.5.0"))
 
     def test_hed_column_distinct_strings_reported_once_with_row_count(self):
         """Test that a repeated bad annotation is one issue at its first row carrying the number of rows."""
@@ -401,7 +401,7 @@ class TestStructuralRules(unittest.TestCase):
     """Test class for the structural rules validate_table reports before converting a table."""
 
     def setUp(self):
-        self.validator = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0"))
+        self.validator = HedNWBValidator(HedLabMetaData(hed_schema_version="8.5.0"))
 
     @staticmethod
     def _table_with_meanings(extra_meanings_column):
@@ -538,7 +538,7 @@ class TestColumnNameAndValueRules(unittest.TestCase):
     and padded keys under HED in a categorical annotation (SIDECAR_INVALID)."""
 
     def setUp(self):
-        self.validator = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0"))
+        self.validator = HedNWBValidator(HedLabMetaData(hed_schema_version="8.5.0"))
 
     def _codes(self, table, assemble=True):
         return [issue["code"] for issue in self.validator.validate_table(table, assemble=assemble)]
@@ -609,7 +609,7 @@ class TestDynamicTableSource(unittest.TestCase):
 
     def setUp(self):
         self.validator = HedNWBValidator(
-            HedLabMetaData(hed_schema_version="8.4.0", definitions="(Definition/Acc/#, (Age/# s, Red))")
+            HedLabMetaData(hed_schema_version="8.5.0", definitions="(Definition/Acc/#, (Age/# s, Red))")
         )
 
     def _source(self, table, assemble=False):
@@ -742,7 +742,7 @@ class TestValueVectorCheck(unittest.TestCase):
     """Test class for the HedValueVector value check: dtype shortcut, distinct substituted strings, definitions."""
 
     def setUp(self):
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0", definitions="(Definition/Acc/#, (Age/# s, Red))")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0", definitions="(Definition/Acc/#, (Age/# s, Red))")
         self.validator = HedNWBValidator(self.hed_metadata)
 
     @staticmethod
@@ -892,14 +892,24 @@ class TestValueVectorCheck(unittest.TestCase):
             self.assertEqual(issues[0]["ec_column"], "pv", hed)  # a template issue names the column too
 
     def test_value_that_breaks_hed_syntax_is_rejected_in_every_mode(self):
-        """Test that a value its class allows but that breaks the HED string it lands in is rejected without assembly."""
-        for value, code in (("a)", "PARENTHESES_MISMATCH"), ("a#b", "PLACEHOLDER_INVALID")):
-            column = HedValueVector(name="pv", description="p", data=["ok", value, value], hed="Parameter-value/#")
-            table = DynamicTable(name="trials", description="d", columns=[column])
-            for assemble in (True, False):
-                issues = self.validator.validate_table(table, assemble=assemble)
-                self.assertEqual(self._summary(issues), [(code, "pv", 1, 2)], f"{value!r} assemble={assemble}")
-            self.assertEqual(self._summary(self.validator.validate_value_vector(column)), [(code, "pv", 1, 2)], value)
+        """Test that a value its class allows but that breaks the HED string it lands in is rejected without assembly.
+
+        HED 8.4.0's textClass allows any text, so "a)" and "a#b" pass the value-class check and are caught by the
+        syntax checks on the substituted tag. HED 8.5.0's textClass (value-text) excludes parentheses and "#", so
+        there the same values stop at the value-class check as CHARACTER_INVALID.
+        """
+        validator_840 = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0"))
+        for validator, cases in (
+            (validator_840, (("a)", "PARENTHESES_MISMATCH"), ("a#b", "PLACEHOLDER_INVALID"))),
+            (self.validator, (("a)", "CHARACTER_INVALID"), ("a#b", "CHARACTER_INVALID"))),
+        ):
+            for value, code in cases:
+                column = HedValueVector(name="pv", description="p", data=["ok", value, value], hed="Parameter-value/#")
+                table = DynamicTable(name="trials", description="d", columns=[column])
+                for assemble in (True, False):
+                    issues = validator.validate_table(table, assemble=assemble)
+                    self.assertEqual(self._summary(issues), [(code, "pv", 1, 2)], f"{value!r} assemble={assemble}")
+                self.assertEqual(self._summary(validator.validate_value_vector(column)), [(code, "pv", 1, 2)], value)
 
     def test_missing_values_are_skipped(self):
         """Test that None, NaN, an empty string, and n/a in a value column are not substituted."""
@@ -921,7 +931,7 @@ class TestValidateEventsTable(unittest.TestCase):
 
     def setUp(self):
         """Set up test data."""
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
         self.validator = HedNWBValidator(self.hed_metadata)
 
         valid_df = pd.DataFrame({
@@ -984,7 +994,7 @@ class TestValidateHedValueVector(unittest.TestCase):
     def setUp(self):
         """Set up test data."""
         # Create HED lab metadata with a basic schema
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
 
         # Create HedNWBValidator instance
         self.validator = HedNWBValidator(self.hed_metadata)
@@ -1302,13 +1312,13 @@ class TestValidateWithDefinitions(unittest.TestCase):
         )
 
         # Create HED lab metadata with definitions
-        self.hed_metadata_with_defs = HedLabMetaData(hed_schema_version="8.4.0", definitions=self.test_definitions)
+        self.hed_metadata_with_defs = HedLabMetaData(hed_schema_version="8.5.0", definitions=self.test_definitions)
 
         # Create validator with definitions
         self.validator_with_defs = HedNWBValidator(self.hed_metadata_with_defs)
 
         # Create validator without definitions for comparison
-        self.hed_metadata_no_defs = HedLabMetaData(hed_schema_version="8.4.0")
+        self.hed_metadata_no_defs = HedLabMetaData(hed_schema_version="8.5.0")
         self.validator_no_defs = HedNWBValidator(self.hed_metadata_no_defs)
 
     def test_validator_has_definitions(self):
@@ -1797,7 +1807,7 @@ class TestValidateFile(unittest.TestCase):
             "(Definition/Go-stimulus, (Sensory-event, Visual-presentation)), "
             "(Definition/Stop-stimulus, (Sensory-event, Auditory-presentation))"
         )
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0", definitions=self.test_definitions)
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0", definitions=self.test_definitions)
 
         # Create validator
         self.validator = HedNWBValidator(self.hed_metadata)
@@ -2265,8 +2275,8 @@ class TestValidateFile(unittest.TestCase):
 
     def test_validate_file_schema_group(self):
         """A file whose metadata is a schema group validates; the comparison does not read .version."""
-        metadata = HedLabMetaData(hed_schema_version=["8.4.0", "sc:score_2.1.0"])
-        nwbfile = self._file_with_schema(["8.4.0", "sc:score_2.1.0"], "group_file")
+        metadata = HedLabMetaData(hed_schema_version=["8.5.0", "sc:score_2.2.0"])
+        nwbfile = self._file_with_schema(["8.5.0", "sc:score_2.2.0"], "group_file")
         issues = HedNWBValidator(metadata).validate_file(nwbfile)
         self.assertEqual([issue["code"] for issue in issues], ["TAG_INVALID"])
 
@@ -2274,19 +2284,19 @@ class TestValidateFile(unittest.TestCase):
         """Two spellings that load the same merged schema agree; a comma string is not a false mismatch."""
         from hed.errors import HedFileError
 
-        comma = HedLabMetaData(hed_schema_version="8.4.0,score_2.1.0")
-        # The merged schema's own version is "score_2.1.0", which is not the stored string
+        comma = HedLabMetaData(hed_schema_version="8.5.0,score_2.2.0")
+        # The merged schema's own version is "score_2.2.0", which is not the stored string
         self.assertNotEqual(comma.get_hed_schema().version, comma.get_hed_schema_version())
-        issues = HedNWBValidator(comma).validate_file(self._file_with_schema("8.4.0,score_2.1.0", "comma_file"))
+        issues = HedNWBValidator(comma).validate_file(self._file_with_schema("8.5.0,score_2.2.0", "comma_file"))
         self.assertEqual([issue["code"] for issue in issues], ["TAG_INVALID"])
-        json_list = HedLabMetaData(hed_schema_version='["8.4.0","score_2.1.0"]')
-        issues = HedNWBValidator(json_list).validate_file(self._file_with_schema("8.4.0,score_2.1.0", "mixed_file"))
+        json_list = HedLabMetaData(hed_schema_version='["8.5.0","score_2.2.0"]')
+        issues = HedNWBValidator(json_list).validate_file(self._file_with_schema("8.5.0,score_2.2.0", "mixed_file"))
         self.assertEqual([issue["code"] for issue in issues], ["TAG_INVALID"])
         # A different group is still a mismatch, and the message names both stored strings
         with self.assertRaises(HedFileError) as cm:
-            HedNWBValidator(json_list).validate_file(self._file_with_schema(["8.4.0", "sc:score_2.1.0"], "other"))
-        self.assertIn('["8.4.0", "sc:score_2.1.0"]', str(cm.exception))
-        self.assertIn('["8.4.0","score_2.1.0"]', str(cm.exception))
+            HedNWBValidator(json_list).validate_file(self._file_with_schema(["8.5.0", "sc:score_2.2.0"], "other"))
+        self.assertIn('["8.5.0", "sc:score_2.2.0"]', str(cm.exception))
+        self.assertIn('["8.5.0","score_2.2.0"]', str(cm.exception))
 
     def test_validate_file_none_input(self):
         """Test validate_file with None input."""
@@ -2361,7 +2371,7 @@ class TestValidateRepeatedAnnotations(unittest.TestCase):
 
     def setUp(self):
         """Set up test data."""
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
         self.validator = HedNWBValidator(self.hed_metadata)
 
     def test_validate_vector_reports_a_repeated_annotation_once_with_row_count(self):
@@ -2418,7 +2428,7 @@ class TestValidateFromDisk(unittest.TestCase):
 
         from pynwb import NWBHDF5IO, NWBFile
 
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
         self.validator = HedNWBValidator(self.hed_metadata)
 
         # 200 rows drawn from three valid annotations and one invalid one, plus the skippable values

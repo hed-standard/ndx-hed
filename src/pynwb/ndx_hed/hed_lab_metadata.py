@@ -23,9 +23,9 @@ class HedLabMetaData(LabMetaData):
         {
             "name": "hed_schema_version",
             "type": (str, list, tuple),
-            "doc": "The HED schema version(s) used by this data: one version string such as '8.4.0', a "
-            "comma-joined string of versions in one namespace such as '8.4.0,score_2.1.0', a JSON array string "
-            'such as \'["8.4.0", "sc:score_2.1.0"]\', or a list of version strings. Each version is '
+            "doc": "The HED schema version(s) used by this data: one version string such as '8.5.0', a "
+            "comma-joined string of versions in one namespace such as '8.5.0,score_2.2.0', a JSON array string "
+            'such as \'["8.5.0", "sc:score_2.2.0"]\', or a list of version strings. Each version is '
             "'[namespace:]X.Y.Z' for the standard schema or '[namespace:]library_X.Y.Z' for a library schema. A list "
             "is stored as the JSON array string.",
         },

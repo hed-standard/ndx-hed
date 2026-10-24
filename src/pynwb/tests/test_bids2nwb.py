@@ -244,7 +244,7 @@ class TestExtractDefinitions(unittest.TestCase):
         }
 
         # Load a HED schema for testing
-        self.hed_schema = load_schema_version("8.4.0")
+        self.hed_schema = load_schema_version("8.5.0")
 
     def test_extract_definitions_with_definitions(self):
         """Test extract_definitions with sidecar containing definitions."""
@@ -279,7 +279,7 @@ class TestExtractDefinitions(unittest.TestCase):
     def test_extract_definitions_with_hed_schema_group(self):
         """Test extract_definitions with HedSchemaGroup."""
         # Create a schema group with library schemas
-        library_schema_version = '["score_2.1.0","lang_1.1.0"]'
+        library_schema_version = '["score_2.2.0","lang_1.3.0"]'
         hed_schema_group = load_schema_version(library_schema_version)
 
         definitions, issues = extract_definitions(self.sample_sidecar_with_definitions, hed_schema_group)
@@ -495,7 +495,7 @@ class TestReadBidsTsv(unittest.TestCase):
         df = read_bids_tsv(io.StringIO("onset\t\tHED\n1.0\tx\tRed\n"))
         table = get_events_table(name="t", description="d", df=df, meanings={"categorical": {}, "value": {}})
         self.assertIn("", table.colnames)
-        issues = HedNWBValidator(HedLabMetaData(hed_schema_version="8.4.0")).validate_table(table)
+        issues = HedNWBValidator(HedLabMetaData(hed_schema_version="8.5.0")).validate_table(table)
         self.assertEqual([issue["code"] for issue in issues], ["TABULAR_INVALID"])
 
     def test_bytes_with_byte_order_mark(self):
@@ -1100,7 +1100,7 @@ class TestGetJsonHedDictDefinitions(unittest.TestCase):
     def setUp(self):
         """Set up a table whose HED column uses definitions, plus the metadata defining them."""
         self.definitions = "(Definition/Go, (Sensory-event)), (Definition/Stop, (Agent-action))"
-        self.hed_metadata = HedLabMetaData(hed_schema_version="8.4.0", definitions=self.definitions)
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0", definitions=self.definitions)
         self.hed_schema = self.hed_metadata.get_hed_schema()
         self.table = DynamicTable(
             name="trials",
@@ -1138,7 +1138,7 @@ class TestGetJsonHedDictDefinitions(unittest.TestCase):
 
     def test_definitions_metadata_without_definitions(self):
         """A HedLabMetaData holding no definitions adds no entry."""
-        bare_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        bare_metadata = HedLabMetaData(hed_schema_version="8.5.0")
 
         json_data = get_json_hed_dict(self.table, bare_metadata)
 
@@ -1147,7 +1147,7 @@ class TestGetJsonHedDictDefinitions(unittest.TestCase):
 
     def test_definitions_added_by_add_definitions(self):
         """Definitions added to the metadata after construction are exported too."""
-        metadata = HedLabMetaData(hed_schema_version="8.4.0")
+        metadata = HedLabMetaData(hed_schema_version="8.5.0")
         metadata.add_definitions("(Definition/Later, (Sensory-event))")
 
         json_data = get_json_hed_dict(self.table, metadata)

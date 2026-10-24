@@ -4,10 +4,12 @@ BIDS to NWB Conversion Example
 ==============================
 
 This example demonstrates how to convert BIDS events files with HED annotations
-to NWB EventsTable format using the ndx-hed utilities.
+to NWB EventsTable format using the ndx-hed utilities, and how to export an
+NWB table back to a BIDS events file and sidecar.
 
 """
 
+import csv
 import json
 import os
 import tempfile
@@ -17,7 +19,8 @@ import pandas as pd
 from pynwb import NWBFile
 
 from ndx_hed import HedLabMetaData
-from ndx_hed.utils.bids2nwb import extract_meanings, get_events_table, read_bids_tsv
+from ndx_hed.utils.bids2nwb import extract_meanings, get_bids_tabular, get_events_table, read_bids_tsv
+from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
 
 
 def create_sample_bids_data():
@@ -31,6 +34,7 @@ def create_sample_bids_data():
         "event_type": ["stimulus", "response", "stimulus", "response", "pause"],
         "trial_number": [1, 1, 2, 2, 2],
         "stimulus_intensity": [0.7, "n/a", 0.9, "n/a", "n/a"],
+        "notes": ["n/a", 'said "go" early', "n/a", "n/a", "n/a"],
     }
     events_df = pd.DataFrame(events_data)
 
@@ -45,7 +49,7 @@ def create_sample_bids_data():
             },
             "HED": {
                 "stimulus": "Sensory-event, Visual-presentation",
-                "response": "Agent-action, Participant-response, Button-press",
+                "response": "Agent-action, Participant-response, (Press, Push-button)",
                 "pause": "Pause",
             },
         },
@@ -77,11 +81,14 @@ def demonstrate_bids_conversion():
         if "Levels" in info:
             print(f"    Levels: {list(info['Levels'].keys())}")
 
-    # Extract meanings from sidecar JSON
+    # Extract the HED of the categorical and value columns from the sidecar JSON
     meanings = extract_meanings(events_sidecar)
-    print(f"\nExtracted {len(meanings)} meanings tables from sidecar")
+    print(
+        f"\nExtracted {len(meanings['categorical'])} categorical column(s) and "
+        f"{len(meanings['value'])} value column(s) from the sidecar"
+    )
 
-    # Convert to EventsTable
+    # Convert to EventsTable; each categorical column gets a MeaningsTable
     events_table = get_events_table(
         name="task_events",
         description="Task events converted from BIDS with HED annotations",
@@ -96,59 +103,72 @@ def demonstrate_bids_conversion():
     return events_table
 
 
-def save_sample_bids_files():
-    """Save sample BIDS files to demonstrate file-based workflow"""
-    print("\nSaving sample BIDS files for file-based conversion...")
+def save_bids_files(events_df, events_sidecar, directory, base_name):
+    """Write a BIDS events file and its JSON sidecar into a directory"""
+    events_filename = os.path.join(directory, f"{base_name}_events.tsv")
+    sidecar_filename = os.path.join(directory, f"{base_name}_events.json")
 
-    events_df, events_sidecar = create_sample_bids_data()
-
-    # Create temporary files. Write LF explicitly: on Windows, text mode and the
-    # pandas default line terminator would otherwise produce CRLF.
-    with tempfile.NamedTemporaryFile(mode="w", suffix="_events.tsv", delete=False, newline="\n") as events_file:
-        events_df.to_csv(events_file.name, sep="\t", index=False, lineterminator="\n")
-        events_filename = events_file.name
-
-    sidecar_filename = events_filename.replace("_events.tsv", "_events.json")
+    # Write LF explicitly: on Windows, text mode and the pandas default line terminator would otherwise produce CRLF.
+    # Write values exactly as they are (no CSV quoting): a BIDS TSV has no quoting, and read_bids_tsv reads a
+    # double quote as an ordinary character, so a quoted value would come back with the quotes in it.
+    events_df.to_csv(events_filename, sep="\t", index=False, lineterminator="\n", quoting=csv.QUOTE_NONE)
     with open(sidecar_filename, "w", newline="\n") as sidecar_file:
         json.dump(events_sidecar, sidecar_file, indent=2)
 
-    print(f"  - Events file: {events_filename}")
-    print(f"  - Sidecar file: {sidecar_filename}")
-
     return events_filename, sidecar_filename
+
+
+def load_bids_files(events_filename, sidecar_filename, name, description):
+    """Read a BIDS events file and its JSON sidecar into an EventsTable"""
+    # Read the TSV as hedtools reads it (values exactly as written)
+    events_df = read_bids_tsv(events_filename)
+    with open(sidecar_filename) as f:
+        events_sidecar = json.load(f)
+    return get_events_table(name=name, description=description, df=events_df, meanings=extract_meanings(events_sidecar))
 
 
 def demonstrate_file_conversion():
     """Demonstrate conversion from actual BIDS files"""
     print("\nDemonstrating file-based BIDS conversion...")
 
-    # Save sample files
-    events_filename, sidecar_filename = save_sample_bids_files()
+    events_df, events_sidecar = create_sample_bids_data()
 
-    try:
-        # Load BIDS events data from files, reading the TSV as hedtools reads it (values exactly as written)
-        events_df = read_bids_tsv(events_filename)
-        with open(sidecar_filename) as f:
-            events_sidecar = json.load(f)
+    # The temporary directory and the files in it are removed when the block ends
+    with tempfile.TemporaryDirectory() as directory:
+        events_filename, sidecar_filename = save_bids_files(events_df, events_sidecar, directory, "sub-01_task-demo")
+        print(f"  - Events file: {os.path.basename(events_filename)}")
+        print(f"  - Sidecar file: {os.path.basename(sidecar_filename)}")
 
-        print("Loaded BIDS data from files")
-
-        # Extract meanings and convert
-        meanings = extract_meanings(events_sidecar)
-        events_table = get_events_table(
-            name="file_based_events", description="Events loaded from BIDS files", df=events_df, meanings=meanings
+        events_table = load_bids_files(
+            events_filename, sidecar_filename, "file_based_events", "Events loaded from BIDS files"
         )
 
-        print(f"[OK] File-based conversion successful: {len(events_table)} events")
+    print(f"[OK] File-based conversion successful: {len(events_table)} events")
+    return events_table
 
-        return events_table
 
-    finally:
-        # Clean up temporary files
-        for filename in [events_filename, sidecar_filename]:
-            if os.path.exists(filename):
-                os.remove(filename)
-        print("Cleaned up temporary files")
+def demonstrate_nwb_to_bids(events_table, hed_metadata, validator):
+    """Export an NWB table to BIDS files, read them back, and check that nothing was lost"""
+    print("\nExporting the EventsTable back to BIDS (NWB -> BIDS -> NWB)...")
+
+    # get_bids_tabular returns the BIDS dataframe and the JSON sidecar; the sidecar holds the
+    # HED of the HedValueVector columns and of each MeaningsTable (and any definitions in hed_metadata)
+    bids_df, bids_sidecar = get_bids_tabular(events_table, hed_metadata)
+    print(f"  - BIDS columns: {list(bids_df.columns)}")
+    print(f"  - Sidecar entries with HED: {[name for name, info in bids_sidecar.items() if 'HED' in info]}")
+
+    with tempfile.TemporaryDirectory() as directory:
+        events_filename, sidecar_filename = save_bids_files(bids_df, bids_sidecar, directory, "sub-01_task-export")
+        reloaded = load_bids_files(events_filename, sidecar_filename, events_table.name, events_table.description)
+
+    # Export the reloaded table again: the round trip should give the same sidecar and data
+    reloaded_df, reloaded_sidecar = get_bids_tabular(reloaded, hed_metadata)
+    print(f"  - Sidecar unchanged by the round trip: {reloaded_sidecar == bids_sidecar}")
+    print(f"  - Data unchanged by the round trip: {reloaded_df.astype(str).equals(bids_df.astype(str))}")
+
+    original_issues = validator.validate_table(events_table)
+    reloaded_issues = validator.validate_table(reloaded)
+    print(f"  - Validation issues before / after: {len(original_issues)} / {len(reloaded_issues)}")
 
 
 def main():
@@ -160,20 +180,28 @@ def main():
     )
 
     # Add HED schema metadata
-    hed_metadata = HedLabMetaData(hed_schema_version="8.4.0")
+    hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
     nwbfile.add_lab_meta_data(hed_metadata)
+    validator = HedNWBValidator(hed_metadata)
 
     # Demonstrate different conversion approaches
     events_table1 = demonstrate_bids_conversion()
     events_table2 = demonstrate_file_conversion()
 
     # Add EventsTables to NWB file
-    nwbfile.add_acquisition(events_table1)
-    nwbfile.add_acquisition(events_table2)
+    nwbfile.add_events_table(events_table1)
+    nwbfile.add_events_table(events_table2)
+
+    # And back from NWB to BIDS
+    demonstrate_nwb_to_bids(events_table1, hed_metadata, validator)
 
     print("\n[OK] Successfully created NWB file with BIDS-converted events!")
     print(f"  - Memory-based conversion: {len(events_table1)} events")
     print(f"  - File-based conversion: {len(events_table2)} events")
+
+    # Validate the annotations (05_hed_validation.py shows validation in detail)
+    issues = validator.validate_file(nwbfile)
+    print(f"  - HED validation issues: {len(issues)}")
 
     return nwbfile
 
