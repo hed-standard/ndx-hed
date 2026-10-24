@@ -42,7 +42,10 @@ def create_sample_bids_data():
     events_sidecar = {
         # HED on the duration column: get_events_table makes it a HedDurationVector. Duration must be in a
         # top-level group with what it applies to in a nested group.
-        "duration": {"Description": "Duration of the event in seconds", "HED": "(Duration/# s, (Event))"},
+        "duration": {
+            "Description": "Duration of the event in seconds",
+            "HED": "(Duration/# s, ({event_type}, {trial_number}))",
+        },
         "event_type": {
             "Description": "Type of event in the experiment",
             "Levels": {
