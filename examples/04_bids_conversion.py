@@ -9,6 +9,7 @@ NWB table back to a BIDS events file and sidecar.
 
 """
 
+import csv
 import json
 import os
 import tempfile
@@ -33,6 +34,7 @@ def create_sample_bids_data():
         "event_type": ["stimulus", "response", "stimulus", "response", "pause"],
         "trial_number": [1, 1, 2, 2, 2],
         "stimulus_intensity": [0.7, "n/a", 0.9, "n/a", "n/a"],
+        "notes": ["n/a", 'said "go" early', "n/a", "n/a", "n/a"],
     }
     events_df = pd.DataFrame(events_data)
 
@@ -107,7 +109,9 @@ def save_bids_files(events_df, events_sidecar, directory, base_name):
     sidecar_filename = os.path.join(directory, f"{base_name}_events.json")
 
     # Write LF explicitly: on Windows, text mode and the pandas default line terminator would otherwise produce CRLF.
-    events_df.to_csv(events_filename, sep="\t", index=False, lineterminator="\n")
+    # Write values exactly as they are (no CSV quoting): a BIDS TSV has no quoting, and read_bids_tsv reads a
+    # double quote as an ordinary character, so a quoted value would come back with the quotes in it.
+    events_df.to_csv(events_filename, sep="\t", index=False, lineterminator="\n", quoting=csv.QUOTE_NONE)
     with open(sidecar_filename, "w", newline="\n") as sidecar_file:
         json.dump(events_sidecar, sidecar_file, indent=2)
 
