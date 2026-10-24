@@ -15,7 +15,7 @@ This section provides the technical specification of the ndx-hed extension data 
 Core Data Types
 ---------------
 
-The ndx-hed extension defines three main data types for integrating HED annotations into NWB files:
+The ndx-hed extension defines four data types for integrating HED annotations into NWB files:
 
 HedLabMetaData
 ~~~~~~~~~~~~~~
@@ -58,6 +58,21 @@ HedValueVector
 - ``description``: Description of the data and HED annotation
 
 **Usage**: Creates parametric HED annotations where the template applies to all values in the column.
+
+HedDurationVector
+~~~~~~~~~~~~~~~~~
+
+**Purpose**: The duration column of an ``EventsTable`` with a HED template.
+
+**Extends**: ``DurationVectorData`` (PyNWB core: durations in seconds, optional ``resolution``)
+
+**Key Properties**:
+- ``name``: ``duration`` in an ``EventsTable``
+- ``data``: Event durations in seconds; NaN for an event without a duration
+- ``hed`` (required): HED template string with one ``#`` placeholder, such as ``(Duration/# s, (Sensory-event))``
+- ``description``: Description of the durations and HED annotation
+
+**Usage**: The ``duration`` column of an ``EventsTable`` whose durations carry HED; validated as a ``HedValueVector`` is.
 
 YAML Schema Files
 -----------------
@@ -103,7 +118,7 @@ Example Usage Patterns
    # Create column with HED template
    duration_col = HedValueVector(
        name="duration", data=[1.0, 1.5, 2.0],
-       hed="(Sensory-event, Duration/# s)",
+       hed="(Duration/# s, (Sensory-event))",
        description="Trial durations with HED annotation"
    )
 
@@ -115,7 +130,7 @@ Extension Dependencies
 **Required**:
 - ``pynwb >= 4.2.0`` (provides the core ``EventsTable`` and ``MeaningsTable`` from NWBEP001)
 - ``hdmf >= 6.2.0``
-- ``hedtools >= 1.2.0``
+- ``hedtools >= 1.3.0``
 
 Development and Contribution
 -----------------------------

@@ -48,13 +48,14 @@ nwbfile.add_trial(start_time=0.0, stop_time=1.0, HED="Experimental-trial, (Senso
 
 ## Main classes
 
-The ndx-hed extension provides three main classes:
+The ndx-hed extension provides four classes:
 
-| Class              | Purpose                                               | Use Cases                                      |
-| ------------------ | ----------------------------------------------------- | ---------------------------------------------- |
-| **HedLabMetaData** | HED schema specification and lab-specific definitions | Required for all HED validation                |
-| **HedTags**        | Row-specific HED annotations                          | Row-specific tags in any DynamicTable          |
-| **HedValueVector** | Column-wide HED templates                             | Shared annotations with value placeholders (#) |
+| Class                 | Purpose                                               | Use Cases                                           |
+| --------------------- | ----------------------------------------------------- | --------------------------------------------------- |
+| **HedLabMetaData**    | HED schema specification and lab-specific definitions | Required for all HED validation                     |
+| **HedTags**           | Row-specific HED annotations                          | Row-specific tags in any DynamicTable               |
+| **HedValueVector**    | Column-wide HED templates                             | Shared annotations with value placeholders (#)      |
+| **HedDurationVector** | The EventsTable duration column with a HED template   | Durations whose value is part of the annotation (#) |
 
 ## HED annotation rules
 
@@ -64,6 +65,7 @@ HED annotations in NWB follow a small set of rules so that a table's HED can be 
 2. A `HedTags` column inside a `MeaningsTable` supplies categorical (per-value) HED for the annotated column. In any other `DynamicTable` it supplies per-row HED for that table.
 3. A `HedValueVector` column carries one HED template with a single `#` placeholder that applies to every value in the column. It may have any name and is identified by its type.
 4. A `HedValueVector` may not appear in a `MeaningsTable` (a value template has no meaning for categorical values); `HedNWBValidator.validate_table` reports one as `MEANINGS_VALUE_VECTOR_INVALID`.
+5. The `duration` column of an `EventsTable` carries HED as a `HedDurationVector`: the core `DurationVectorData` with a template, validated as a `HedValueVector` is (for example `(Duration/# s, (Sensory-event))`). An `onset` column carries no HED, and `duration` cannot be categorical.
 
 ## Examples
 

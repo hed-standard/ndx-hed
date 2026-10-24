@@ -87,14 +87,7 @@ class HedValueVector(VectorData):
     def __init__(self, **kwargs):
         hed_annotation = kwargs.pop("hed", None)
         super().__init__(**kwargs)
-        # Check that the template contains exactly one # placeholder
-        placeholder_count = hed_annotation.count("#")
-        if placeholder_count != 1:
-            raise ValueError(
-                f"HedValueVector '{self.name}' template must contain exactly one '#' placeholder, "
-                f"found {placeholder_count} in: {hed_annotation}"
-            )
-        self._hed = hed_annotation
+        self._hed = _checked_template(self, hed_annotation)
 
     @property
     def hed(self):
@@ -108,6 +101,9 @@ class HedDurationVector(DurationVectorData):
     The duration column of an EventsTable (durations in seconds) with a single HED annotation template that
     applies to all values in the column, as a HedValueVector does. It is a DurationVectorData, so code that
     reads event durations sees an ordinary duration column.
+
+    HED-aware code treats it as a HedValueVector: the same rules apply (it may not appear in a MeaningsTable,
+    and its values must satisfy the value class of the template's ``#`` tag). ``HED_TEMPLATE_TYPES`` holds both.
     """
 
     __nwbfields__ = ("_hed",)
@@ -119,15 +115,24 @@ class HedDurationVector(DurationVectorData):
     def __init__(self, **kwargs):
         hed_annotation = kwargs.pop("hed", None)
         super().__init__(**kwargs)
-        placeholder_count = hed_annotation.count("#")
-        if placeholder_count != 1:
-            raise ValueError(
-                f"HedDurationVector '{self.name}' template must contain exactly one '#' placeholder, "
-                f"found {placeholder_count} in: {hed_annotation}"
-            )
-        self._hed = hed_annotation
+        self._hed = _checked_template(self, hed_annotation)
 
     @property
     def hed(self):
         """Return the HED annotation template for this column."""
         return self._hed
+
+
+# The column types that carry one HED template with a single '#' for every value in the column.
+HED_TEMPLATE_TYPES = (HedValueVector, HedDurationVector)
+
+
+def _checked_template(column, hed_annotation: str) -> str:
+    """Return the template of a HED template column, raising ValueError unless it has exactly one '#'."""
+    placeholder_count = hed_annotation.count("#")
+    if placeholder_count != 1:
+        raise ValueError(
+            f"{type(column).__name__} '{column.name}' template must contain exactly one '#' placeholder, "
+            f"found {placeholder_count} in: {hed_annotation}"
+        )
+    return hed_annotation

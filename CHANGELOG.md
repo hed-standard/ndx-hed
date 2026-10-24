@@ -28,8 +28,14 @@ The first ndx-hed release for PyNWB 4, which closes issue #194. NWBEP001 (`Event
 - `get_categorical_meanings()` takes the target `VectorData` column instead of a column name.
 - `extract_meanings()` returns the raw sidecar column-info dict for each categorical column instead of a built table. The `MeaningsTable` is built by `get_events_table()` once the target column exists.
 - `get_events_table()` builds categorical columns as plain `VectorData`, each with a `MeaningsTable`. It turns the BIDS `n/a` spellings in `onset` and `duration` into NaN and raises on any other non-numeric value instead of passing it through.
+- `get_events_table()` raises `ValueError` for a sidecar that gives the `onset` column HED or `Levels`, or makes the `duration` column categorical. 0.2.0 dropped that HED without a word.
 
 ### Changes
+
+#### HedDurationVector
+
+- New data type `HedDurationVector`: the core `DurationVectorData` (durations in seconds) with a `hed` template containing one `#`, for the `duration` column of an `EventsTable`. Code that reads event durations, including PyNWB without ndx-hed, sees an ordinary duration column. It is validated as a `HedValueVector` is: its values against the `#` tag, and it may not appear in a `MeaningsTable`. A valid template puts what the duration applies to in a nested group, as in `(Duration/# s, (Sensory-event))`.
+- `get_events_table()` builds a `HedDurationVector` for a BIDS `duration` column that the sidecar annotates, and `get_json_hed_dict()` exports its template under `duration`, so the HED survives the BIDS round trip; 0.2.0 dropped it.
 
 #### HED rules
 
@@ -62,7 +68,7 @@ The first ndx-hed release for PyNWB 4, which closes issue #194. NWBEP001 (`Event
 
 #### Format, packaging, and documentation
 
-- The NWB namespace version is 0.3.0. The data types are unchanged from 0.2.0 apart from their doc strings (the `HedValueVector` doc used to say, wrongly, that it is always named `HED`). Files written from the development `main` branch before this release cache namespace version 1.0.0; they open and validate with 0.3.0, with an hdmf warning that the cached namespace is ignored.
+- The NWB namespace version is 0.3.0. It adds `HedDurationVector`; the other data types are unchanged from 0.2.0 apart from their doc strings (the `HedValueVector` doc used to say, wrongly, that it is always named `HED`). Files written from the development `main` branch before this release cache namespace version 1.0.0; they open and validate with 0.3.0, with an hdmf warning that the cached namespace is ignored.
 - `setup.py`, `requirements-dev.txt`, and `requirements-min.txt` are removed. Development installs use the `test`, `dev`, and `docs` extras in `pyproject.toml`, with `constraints/minimum.txt` and `constraints/pinned.txt`.
 - The examples are rewritten for PyNWB 4. Each validates what it builds; they show the three HED shapes together in one events table with its assembled row HED (`06_complete_workflow.py`), the NWB to BIDS round trip (`04_bids_conversion.py`), and the ndx-hed error codes (`05_hed_validation.py`). `run_all_examples.py` now runs each example's `main()`; before, it only imported them.
 - New documentation page `docs/source/hed_validation.md` gives the HED rules for NWB tables and the validation modes. The release notes page includes this file instead of keeping a copy.
