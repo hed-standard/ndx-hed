@@ -18,7 +18,7 @@ from pynwb import NWBFile
 from pynwb.core import DynamicTable
 
 from ..hed_lab_metadata import HedLabMetaData
-from ..hed_tags import HedTags, HedValueVector
+from ..hed_tags import HED_TEMPLATE_TYPES, HedDurationVector, HedTags, HedValueVector
 from .bids2nwb import (
     _bids_column_name,
     _is_missing,
@@ -84,8 +84,11 @@ class HedNWBValidator:
 
         1. Structural rules (``docs/source/hed_validation.md``): a column named ``HED``, in the table or
            in any of its MeaningsTables, must be a HedTags (``HED_COLUMN_TYPE_INVALID``); a MeaningsTable
-           must not contain a HedValueVector (``MEANINGS_VALUE_VECTOR_INVALID``). An issue stops.
-        2. A table with no HedTags column, no HedValueVector column, no MeaningsTable with a ``HED``
+           must not contain a HedValueVector or HedDurationVector (``MEANINGS_VALUE_VECTOR_INVALID``). An
+           issue stops.
+        2. A table with no HedTags column, no HedValueVector or HedDurationVector column (the template
+           columns, ``HED_TEMPLATE_TYPES``; everything below said of a HedValueVector holds for both), no
+           MeaningsTable with a ``HED``
            column, and no column named ``HED`` apart from leading or trailing whitespace has nothing to
            validate and returns ``[]`` without being read. (A padded ``HED`` name counts, so that hedtools
            reports it rather than the table being skipped.)
@@ -194,7 +197,7 @@ class HedNWBValidator:
                     issues += error_handler.format_error_with_context(
                         HED_COLUMN_TYPE_INVALID, table_name=owner.name, column_type=type(column).__name__
                     )
-                if isinstance(owner, MeaningsTable) and isinstance(column, HedValueVector):
+                if isinstance(owner, MeaningsTable) and isinstance(column, HED_TEMPLATE_TYPES):
                     issues += error_handler.format_error_with_context(
                         MEANINGS_VALUE_VECTOR_INVALID, table_name=owner.name, column_name=column.name
                     )
@@ -202,10 +205,11 @@ class HedNWBValidator:
 
     @staticmethod
     def _has_hed(table: DynamicTable) -> bool:
-        """Return True if the table carries any HED: a HedTags or HedValueVector column, categorical HED, or a
-        column named HED apart from leading or trailing whitespace (which cannot be a HedTags, so it is reported
-        as a padded name rather than letting the table pass as HED-free, as hedtools' BIDS discovery does)."""
-        if any(isinstance(column, (HedTags, HedValueVector)) for column in table.columns):
+        """Return True if the table carries any HED: a HedTags or template column (HedValueVector,
+        HedDurationVector), categorical HED, or a column named HED apart from leading or trailing whitespace
+        (which cannot be a HedTags, so it is reported as a padded name rather than letting the table pass as
+        HED-free, as hedtools' BIDS discovery does)."""
+        if any(isinstance(column, (HedTags, *HED_TEMPLATE_TYPES)) for column in table.columns):
             return True
         if any(name.strip(NAME_WHITESPACE) == "HED" for name in table.colnames):
             return True
@@ -306,10 +310,11 @@ class HedNWBValidator:
         )
 
     def validate_value_vector(
-        self, hed_values: HedValueVector, error_handler: ErrorHandler | None = None
+        self, hed_values: HedValueVector | HedDurationVector, error_handler: ErrorHandler | None = None
     ) -> list[dict[str, Any]]:
         """
-        Validates a HedValueVector column in isolation: the template on its own, then the values.
+        Validates a HedValueVector (or HedDurationVector) column in isolation: the template on its own, then
+        the values.
 
         The template is validated with placeholders allowed and with any ``{column}`` references
         removed first: a reference is resolved against the table's other columns by ``validate_table``
@@ -321,15 +326,15 @@ class HedNWBValidator:
         number of rows in ``row_count``. A column whose dtype settles the value class is not read.
 
         Parameters:
-            hed_values (HedValueVector): The HedValueVector column to validate
+            hed_values (HedValueVector | HedDurationVector): The template column to validate
             error_handler (ErrorHandler, optional): An ErrorHandler instance for collecting errors.
                                                    If None, a new instance will be created.
 
         Returns:
             list[dict[str, Any]]: A list of validation issues found in the HedValueVector column
         """
-        if hed_values is None or not isinstance(hed_values, HedValueVector) or hed_values.hed is None:
-            raise ValueError("The provided hed_values is not a valid HedValueVector instance.")
+        if hed_values is None or not isinstance(hed_values, HED_TEMPLATE_TYPES) or hed_values.hed is None:
+            raise ValueError("The provided hed_values is not a valid HedValueVector or HedDurationVector instance.")
         if error_handler is None:
             error_handler = ErrorHandler(check_for_warnings=False)
 
@@ -394,7 +399,7 @@ class _DynamicTableSource:
         # twice, for the basic checks and then for the group-level checks on the same strings.
         if column_name not in self._distinct:
             column = self._table[table_name]
-            if isinstance(column, HedValueVector):
+            if isinstance(column, HED_TEMPLATE_TYPES):
                 self._distinct[column_name] = _value_column_distinct(column, self._hed_schema, self._def_dict)
             else:
                 # Slice once: on a file-backed column, iterating the dataset directly is one HDF5 read per row.
@@ -416,9 +421,10 @@ class _DynamicTableSource:
 # Module helpers
 
 
-def _value_column_distinct(column: HedValueVector, hed_schema, def_dict) -> dict[str, list[int]]:
+def _value_column_distinct(column, hed_schema, def_dict) -> dict[str, list[int]]:
     """
-    Return the distinct values of a HedValueVector that need checking against its template's ``#`` tag.
+    Return the distinct values of a template column (HedValueVector, HedDurationVector) that need checking
+    against its template's ``#`` tag.
 
     The column is not read when its dtype settles the question: a numeric column satisfies textClass and
     an integer column numericClass and nameClass (``_dtype_settles``). A float column under numericClass

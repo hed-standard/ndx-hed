@@ -12,9 +12,9 @@ import pandas as pd
 from hdmf.common import MeaningsTable
 from hed.errors import ErrorContext, ErrorHandler, ErrorSeverity, get_printable_issue_string
 from pynwb.core import DynamicTable, VectorData
-from pynwb.event import TimestampVectorData
+from pynwb.event import EventsTable, TimestampVectorData
 
-from ndx_hed import HedLabMetaData, HedTags, HedValueVector
+from ndx_hed import HedDurationVector, HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils import hed_nwb_validator
 from ndx_hed.utils.bids2nwb import get_events_table
 from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
@@ -1118,14 +1118,14 @@ class TestValidateHedValueVector(unittest.TestCase):
         """Test validate_value_vector with None input."""
         with self.assertRaises(ValueError) as cm:
             self.validator.validate_value_vector(None)
-        self.assertIn("not a valid HedValueVector instance", str(cm.exception))
+        self.assertIn("not a valid HedValueVector or HedDurationVector instance", str(cm.exception))
 
     def test_validate_value_vector_invalid_type(self):
         """Test validate_value_vector with invalid type input."""
         invalid_input = VectorData(name="test", description="test", data=[1, 2, 3])
         with self.assertRaises(ValueError) as cm:
             self.validator.validate_value_vector(invalid_input)
-        self.assertIn("not a valid HedValueVector instance", str(cm.exception))
+        self.assertIn("not a valid HedValueVector or HedDurationVector instance", str(cm.exception))
 
     def test_validate_value_vector_none_hed_template(self):
         """Test validate_value_vector with None HED template."""
@@ -2520,6 +2520,105 @@ class TestValidateFromDisk(unittest.TestCase):
             self.read_table, self.validator.hed_schema, self.validator.def_dict, assemble=True, sidecar=None
         )
         self.assertIsInstance(assembling.as_base_input(), TabularInput)
+
+
+class TestHedDurationVectorValidation(unittest.TestCase):
+    """Test that a HedDurationVector is validated as a HedValueVector is (rules R5 and R7)."""
+
+    def setUp(self):
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
+        self.validator = HedNWBValidator(self.hed_metadata)
+        self.template = "(Duration/# s, (Sensory-event))"
+
+    def _events(self, durations, template=None, columns=()):
+        return EventsTable(
+            name="events",
+            description="e",
+            columns=[
+                TimestampVectorData(name="timestamp", description="t", data=[float(i) for i in range(len(durations))]),
+                HedDurationVector(name="duration", description="d", data=durations, hed=template or self.template),
+                *columns,
+            ],
+        )
+
+    @staticmethod
+    def _summary(issues):
+        return [(issue["code"], issue.get("ec_row"), issue.get("row_count")) for issue in issues]
+
+    def test_valid_durations(self):
+        """Test that valid durations, NaN included, give no issues in either mode."""
+        events = self._events([0.5, float("nan"), 1.0])
+        for assemble in (True, False):
+            with self.subTest(assemble=assemble):
+                self.assertEqual(self.validator.validate_table(events, assemble=assemble), [])
+
+    def test_infinite_duration_is_value_invalid(self):
+        """Test rule R7: an infinite duration fails the numeric value class, at its row, in both modes."""
+        events = self._events([0.5, float("inf"), float("inf")])
+        for assemble in (True, False):
+            with self.subTest(assemble=assemble):
+                issues = self.validator.validate_table(events, assemble=assemble)
+                self.assertEqual(self._summary(issues), [("VALUE_INVALID", 1, 2)])
+                self.assertEqual(issues[0]["ec_column"], "duration")
+
+    def test_only_hed_is_the_duration_template(self):
+        """Test that a table whose only HED is its duration template is validated, not skipped as HED-free."""
+        events = self._events([0.5, 1.0], template="(Duration/# s, (NotATag))")
+        self.assertEqual([issue["code"] for issue in self.validator.validate_table(events)], ["TAG_INVALID"])
+
+    def test_reference_to_duration_resolves(self):
+        """Test that a {duration} reference in categorical HED resolves to the duration template."""
+        code = VectorData(name="code", description="c", data=["face", "face"])
+        events = self._events([0.5, 1.0], template="Duration/# s", columns=[code])
+        meanings = MeaningsTable(target=events["code"], description="m")
+        meanings.add_row(value="face", meaning="A face")
+        meanings.add_column(name="HED", description="h", col_cls=HedTags, data=["({duration}, (Sensory-event))"])
+        events.add_meanings_table(meanings)
+        self.assertEqual(self.validator.validate_table(events), [])
+
+    def test_hed_duration_vector_in_meanings_table(self):
+        """Test rule R5: a HedDurationVector in a MeaningsTable is MEANINGS_VALUE_VECTOR_INVALID."""
+        table = DynamicTable(
+            name="trials", description="d", columns=[VectorData(name="condition", description="c", data=["a", "b"])]
+        )
+        meanings = MeaningsTable(target=table["condition"], description="m")
+        meanings.add_row(value="a", meaning="A")
+        meanings.add_row(value="b", meaning="B")
+        meanings.add_column(
+            name="duration", description="no", col_cls=HedDurationVector, data=[1.0, 2.0], hed=self.template
+        )
+        table.add_meanings_table(meanings)
+        issues = self.validator.validate_table(table)
+        self.assertEqual([issue["code"] for issue in issues], ["MEANINGS_VALUE_VECTOR_INVALID"])
+        self.assertIn("duration", issues[0]["message"])
+
+    def test_validate_value_vector(self):
+        """Test that the single-column helper takes a HedDurationVector."""
+        events = self._events([0.5, float("inf")])
+        self.assertEqual(
+            [(issue["code"], issue["ec_row"]) for issue in self.validator.validate_value_vector(events["duration"])],
+            [("VALUE_INVALID", 1)],
+        )
+
+    def test_validate_file_from_disk(self):
+        """Test that a HedDurationVector read back from a file is validated the same as in memory."""
+        from datetime import datetime, timezone
+
+        from pynwb import NWBHDF5IO, NWBFile
+
+        events = self._events([0.5, float("inf")])
+        nwbfile = NWBFile(session_description="s", identifier="duration", session_start_time=datetime.now(timezone.utc))
+        nwbfile.add_lab_meta_data(self.hed_metadata)
+        nwbfile.add_events_table(events)
+        in_memory = self._summary(self.validator.validate_file(nwbfile))
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "duration.nwb")
+            with NWBHDF5IO(path, "w") as io:
+                io.write(nwbfile)
+            with NWBHDF5IO(path, "r") as io:
+                from_disk = self._summary(self.validator.validate_file(io.read()))
+        self.assertEqual(in_memory, [("VALUE_INVALID", 1, 1)])
+        self.assertEqual(from_disk, in_memory)
 
 
 if __name__ == "__main__":

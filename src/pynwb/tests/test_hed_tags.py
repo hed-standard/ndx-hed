@@ -2,14 +2,16 @@
 
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 from dateutil.tz import tzlocal, tzutc
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.core import DynamicTable, VectorData
+from pynwb.event import DurationVectorData, EventsTable, TimestampVectorData
 from pynwb.testing import TestCase, remove_test_file
 from pynwb.testing.mock.file import mock_NWBFile
 
-from ndx_hed.hed_tags import HedTags, HedValueVector
+from ndx_hed.hed_tags import HED_TEMPLATE_TYPES, HedDurationVector, HedTags, HedValueVector
 
 
 class TestHedTagsConstructor(TestCase):
@@ -357,3 +359,71 @@ class TestHedValueVectorRoundtrip(TestCase):
             self.assertEqual(read_values.name, "test_data")
             self.assertEqual(list(read_values.data), ["red", "green", "blue"])
             self.assertEqual(read_values.hed, "Experimental-stimulus, Parameter-value/#")
+
+
+class TestHedDurationVector(TestCase):
+    """Test HedDurationVector, the EventsTable duration column with a HED template."""
+
+    def setUp(self):
+        self.path = "test_duration.nwb"
+        self.template = "(Duration/# s, (Sensory-event))"
+
+    def tearDown(self):
+        remove_test_file(self.path)
+
+    def _events(self):
+        return EventsTable(
+            name="task_events",
+            description="Events",
+            columns=[
+                TimestampVectorData(name="timestamp", description="Onsets", data=[1.0, 2.0]),
+                HedDurationVector(
+                    name="duration", description="Durations", data=[0.5, np.nan], hed=self.template, resolution=0.001
+                ),
+            ],
+        )
+
+    def test_constructor(self):
+        """Test that a HedDurationVector is a DurationVectorData that carries its template and resolution."""
+        durations = HedDurationVector(name="duration", description="Durations", data=[0.5, 1.0], hed=self.template)
+        self.assertIsInstance(durations, DurationVectorData)
+        self.assertEqual(durations.hed, self.template)
+        self.assertEqual(durations.unit, "seconds")
+        self.assertIsNone(durations.resolution)
+        self.assertIn(HedDurationVector, HED_TEMPLATE_TYPES)
+
+    def test_template_needs_one_placeholder(self):
+        """Test that a template without exactly one '#' is refused, naming the type."""
+        for template in ("(Duration/1 s, (Sensory-event))", "(Duration/# s, (Label/#))"):
+            with self.subTest(template=template):
+                with self.assertRaises(ValueError) as cm:
+                    HedDurationVector(name="duration", description="d", data=[1.0], hed=template)
+                self.assertIn("HedDurationVector 'duration' template must contain exactly one '#'", str(cm.exception))
+
+    def test_hed_is_read_only(self):
+        """Test that the template cannot be reassigned."""
+        durations = HedDurationVector(name="duration", description="d", data=[1.0], hed=self.template)
+        with self.assertRaises(AttributeError):
+            durations.hed = "(Duration/# ms, (Sensory-event))"
+
+    def test_events_table_add_row(self):
+        """Test that an EventsTable takes a HedDurationVector as its duration column and adds rows to it."""
+        events = self._events()
+        events.add_row(timestamp=3.0, duration=0.25)
+        self.assertIsInstance(events["duration"], HedDurationVector)
+        self.assertEqual(list(events["duration"].data)[::2], [0.5, 0.25])
+
+    def test_roundtrip(self):
+        """Test that the type, template, resolution, and data survive a write and read."""
+        nwbfile = mock_NWBFile()
+        nwbfile.add_events_table(self._events())
+        with NWBHDF5IO(self.path, mode="w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(self.path, mode="r", load_namespaces=True) as io:
+            durations = io.read().events["task_events"]["duration"]
+            self.assertIsInstance(durations, HedDurationVector)
+            self.assertIsInstance(durations, DurationVectorData)
+            self.assertEqual(durations.hed, self.template)
+            self.assertEqual(durations.resolution, 0.001)
+            self.assertEqual(durations.data[0], 0.5)
+            self.assertTrue(np.isnan(durations.data[1]))

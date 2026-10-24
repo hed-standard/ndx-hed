@@ -117,6 +117,9 @@ Main Classes
    * - **HedValueVector**
      - Column-wide HED templates
      - Shared annotations with value placeholders (#)
+   * - **HedDurationVector**
+     - The EventsTable duration column with a HED template
+     - Durations whose value is part of the annotation (#)
 
 Key Features
 ------------

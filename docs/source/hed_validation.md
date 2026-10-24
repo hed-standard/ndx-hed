@@ -8,13 +8,14 @@ There are three ways a column contributes HED to a table, mirroring the two BIDS
 
 - Per-row HED: a `HedTags` column stores one HED string per row.
 - Value HED: a `HedValueVector` column stores one HED template containing a single `#` placeholder; the placeholder is replaced by each row's value to produce that row's annotation.
+- Value HED on the duration of events: a `HedDurationVector` is the core `DurationVectorData` (durations in seconds) with a template, as a `HedValueVector` has, so code that reads event durations still sees an ordinary duration column. It is what `get_events_table` builds for a BIDS `duration` column that the sidecar annotates. `Duration` must be in a top-level group with the annotation it applies to in a nested group, so a valid template is `(Duration/# s, (Sensory-event))`; `Duration/# s` alone is `TEMPORAL_TAG_ERROR`.
 - Categorical HED: a plain column of category labels is annotated by a `MeaningsTable`, which maps each distinct value to a meaning and (optionally) a HED string held in a `HedTags` column named `HED` inside the MeaningsTable.
 
 `MeaningsTable` is a core hdmf type. ndx-hed does not define it; ndx-hed carries categorical HED by adding a `HedTags` column to it.
 
 ## HED column rules
 
-The following rules govern how HED may appear in an NWB table.
+The following rules govern how HED may appear in an NWB table. Everything they and the rest of this document say of a `HedValueVector` holds for a `HedDurationVector` too.
 
 - Rule R1: A `HedTags` column must be named `HED`.
 - Rule R2: A `DynamicTable` has at most one `HedTags` column.
@@ -40,7 +41,7 @@ The following rules govern how HED may appear in an NWB table.
 
 Notes:
 
-- `HedValueVector` may have any column name and is identified by its neurodata type, not by name.
+- `HedValueVector` may have any column name and is identified by its neurodata type, not by name. A `HedDurationVector` is identified by its type too; in an `EventsTable` it is the `duration` column.
 - `MEANINGS_VALUE_VECTOR_INVALID` and `HED_COLUMN_TYPE_INVALID` are ndx-hed codes, registered with hedtools so the issues have the same shape as hedtools' own (`code`, `message`, `severity`, and the `ec_*` context keys). The column-name and padded-value rules of the previous section are hedtools' own codes. `get_bids_dataframe` and `get_bids_tabular` raise `ValueError` for a table that repeats a BIDS column name, and `get_events_table` for a dataframe that repeats a column name. R7 errors are hedtools codes: `VALUE_INVALID`, `CHARACTER_INVALID`, or a units code from hedtools' `validate_units` on the one tag, or a syntax code such as `PARENTHESES_MISMATCH` or `PLACEHOLDER_INVALID` from the basic checks on the substituted tag.
 - The `HedValueVector` schema documentation previously stated "Always has the name HED"; that was incorrect and has been corrected.
 
@@ -61,7 +62,7 @@ HED is not validated only tag-by-tag. Its meaning depends on the other HED in th
 "Stops" means the issues found so far for that table are returned; the other tables of a file are still validated.
 
 1. Structural rules R5 and R6 on the table and its MeaningsTables. An issue stops.
-2. A table with no `HedTags` column, no `HedValueVector` column, no MeaningsTable with a `HED` column, and no column named `HED` apart from leading or trailing whitespace has nothing to validate and returns no issues without being read. A file's large HED-free tables (a Units table) cost nothing.
+2. A table with no `HedTags` column, no `HedValueVector` or `HedDurationVector` column, no MeaningsTable with a `HED` column, and no column named `HED` apart from leading or trailing whitespace has nothing to validate and returns no issues without being read. A file's large HED-free tables (a Units table) cost nothing.
 3. The table's column metadata becomes a BIDS sidecar dict with `get_json_hed_dict`: the `HedValueVector` templates, the categorical `Levels` and `HED` of each MeaningsTable, and the definitions of the `HedLabMetaData` under the `definitions` key. No table data is read.
 4. hedtools' staged tabular validation (`SpreadsheetValidator.validate`) runs once on the table, through a column source (hedtools' `ColumnSource` protocol) that answers with the column names and with the distinct values of one column at a time, so a column is read only when a stage needs it and never cell by cell. A `TimestampVectorData` column is named `onset`, as `get_bids_dataframe` names it. Each stage stops on an error; warnings do not stop.
    - The column names (a repeated, padded, or blank name, `TABULAR_INVALID`), from the names alone; no data is read.
@@ -104,7 +105,7 @@ Constructing a validator per table costs two attribute reads; the schema was loa
 | Function                                                    | Direction / purpose                                                                                                                  |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `extract_meanings(sidecar)`                                 | BIDS sidecar to a meanings dictionary.                                                                                               |
-| `get_events_table(name, description, df, meanings)`         | BIDS dataframe plus meanings to an `EventsTable`.                                                                                    |
+| `get_events_table(name, description, df, meanings)`         | BIDS dataframe plus meanings to an `EventsTable`; an annotated `duration` becomes a `HedDurationVector`.                             |
 | `get_bids_tabular(table, hed_metadata=None)`                | Any `DynamicTable` to a BIDS `(dataframe, sidecar)` pair: `get_bids_dataframe` plus `get_json_hed_dict`. Formerly `get_bids_events`. |
 | `get_bids_dataframe(table)`                                 | Any `DynamicTable` to its BIDS dataframe (`onset`, missing cells as `n/a`); reads every column.                                      |
 | `get_json_hed_dict(table, hed_metadata=None)`               | Any `DynamicTable` to just its BIDS JSON sidecar dict (no dataframe, no pandas, no table data read).                                 |
@@ -125,4 +126,4 @@ so the sidecar is self-contained and any `Def/` references in the table resolve 
 
 ## Relationship to BIDS
 
-ndx-hed can represent everything BIDS can, plus arrangements BIDS does not (for example a table with no `onset`). Construction from BIDS builds an `EventsTable` (`get_events_table`); serialization to a BIDS-style tabular form works on any table (`get_bids_tabular`).
+ndx-hed can represent everything BIDS can, plus arrangements BIDS does not (for example a table with no `onset`), with one restriction on events: the `onset` column carries no HED, and the `duration` column carries at most a value template, never categorical HED. `get_events_table` raises `ValueError` for a sidecar that gives `onset` any HED or `Levels`, or makes `duration` categorical, rather than drop the annotation. Construction from BIDS builds an `EventsTable` (`get_events_table`); serialization to a BIDS-style tabular form works on any table (`get_bids_tabular`).

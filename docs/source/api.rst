@@ -33,6 +33,15 @@ HedValueVector
    :show-inheritance:
    :special-members: __init__
 
+HedDurationVector
+~~~~~~~~~~~~~~~~~
+
+.. autoclass:: ndx_hed.HedDurationVector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __init__
+
 Validation Utilities
 --------------------
 

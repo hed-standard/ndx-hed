@@ -16,7 +16,7 @@ from hed.schema import load_schema_version
 from pynwb.core import DynamicTable, VectorData
 from pynwb.event import DurationVectorData, EventsTable, TimestampVectorData
 
-from ndx_hed import HedLabMetaData, HedTags, HedValueVector
+from ndx_hed import HedDurationVector, HedLabMetaData, HedTags, HedValueVector
 from ndx_hed.utils import bids2nwb
 from ndx_hed.utils.bids2nwb import (
     DEFINITIONS_KEY,
@@ -1569,6 +1569,56 @@ class TestGetBidsTabular(unittest.TestCase):
         self.assertIn("reaction_time", df.columns)
         # The value column's template is exported in the sidecar; the HED column is self-describing
         self.assertEqual(json_data["reaction_time"]["HED"], "(Duration, # s)")
+
+
+class TestDurationHed(unittest.TestCase):
+    """Test the BIDS conversion of HED on the onset and duration columns."""
+
+    def setUp(self):
+        self.template = "(Duration/# s, (Sensory-event))"
+        self.df = pd.DataFrame({"onset": [1.0, 2.0], "duration": [0.5, "n/a"], "HED": ["Red", "Blue"]})
+
+    def test_duration_template_becomes_hed_duration_vector(self):
+        """Test that a value template on duration gives a HedDurationVector, n/a read as NaN."""
+        meanings = extract_meanings({"duration": {"Description": "Durations", "HED": self.template}})
+        events = get_events_table("events", "e", self.df, meanings)
+        self.assertIsInstance(events["duration"], HedDurationVector)
+        self.assertEqual(events["duration"].hed, self.template)
+        self.assertEqual(events["duration"].data[0], 0.5)
+        self.assertTrue(np.isnan(events["duration"].data[1]))
+
+    def test_duration_without_hed_stays_plain(self):
+        """Test that a duration column without HED is a plain DurationVectorData, as before."""
+        events = get_events_table("events", "e", self.df, {"categorical": {}, "value": {}})
+        self.assertIs(type(events["duration"]), DurationVectorData)
+        self.assertEqual(get_json_hed_dict(events)["duration"], {"Description": "Duration of events"})
+
+    def test_duration_template_round_trip(self):
+        """Test that the duration template is exported under 'duration' and converts back to the same table."""
+        sidecar = {"duration": {"Description": "Durations", "HED": self.template}}
+        events = get_events_table("events", "e", self.df, extract_meanings(sidecar))
+        df, json_data = get_bids_tabular(events)
+        self.assertEqual(json_data["duration"]["HED"], self.template)
+        self.assertEqual(list(df.columns), ["onset", "duration", "HED"])
+        again = get_events_table("events", "e", df, extract_meanings(json_data))
+        self.assertIsInstance(again["duration"], HedDurationVector)
+        self.assertEqual(get_json_hed_dict(again), json_data)
+
+    def test_onset_hed_is_refused(self):
+        """Test that any HED or Levels on onset raises rather than being dropped."""
+        for entry in ({"HED": "Label/#"}, {"HED": {"1.0": "Red"}}, {"Levels": {"1.0": "first"}}):
+            with self.subTest(entry=entry):
+                with self.assertRaises(ValueError) as cm:
+                    get_events_table("events", "e", self.df, extract_meanings({"onset": entry}))
+                self.assertIn("onset column cannot carry HED", str(cm.exception))
+
+    def test_categorical_duration_is_refused(self):
+        """Test that a categorical duration (Levels or a HED dict) raises rather than being dropped."""
+        for entry in ({"HED": {"0.5": "Red"}}, {"Levels": {"0.5": "short"}}):
+            with self.subTest(entry=entry):
+                with self.assertRaises(ValueError) as cm:
+                    get_events_table("events", "e", self.df, extract_meanings({"duration": entry}))
+                self.assertIn("duration column categorical", str(cm.exception))
 
 
 if __name__ == "__main__":

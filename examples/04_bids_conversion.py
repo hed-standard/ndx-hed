@@ -40,6 +40,12 @@ def create_sample_bids_data():
 
     # Sample BIDS events.json sidecar
     events_sidecar = {
+        # HED on the duration column: get_events_table makes it a HedDurationVector. Duration must be in a
+        # top-level group with what it applies to in a nested group.
+        "duration": {
+            "Description": "Duration of the event in seconds",
+            "HED": "(Duration/# s, ({event_type}, {trial_number}))",
+        },
         "event_type": {
             "Description": "Type of event in the experiment",
             "Levels": {
@@ -99,6 +105,8 @@ def demonstrate_bids_conversion():
     print("\n[OK] Successfully converted to EventsTable:")
     print(f"  - Number of events: {len(events_table)}")
     print(f"  - Columns: {events_table.colnames}")
+    duration = events_table["duration"]
+    print(f"  - duration column: {type(duration).__name__} (a DurationVectorData) with HED '{duration.hed}'")
 
     return events_table
 

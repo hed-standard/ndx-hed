@@ -53,7 +53,7 @@ python run_all_examples.py
 
 - Demonstrates converting BIDS events files with HED annotations to NWB format
 - Shows both memory-based and file-based conversion workflows, reading the TSV with `read_bids_tsv`
-- Includes sample BIDS `events.tsv` and `events.json` structures
+- Includes sample BIDS `events.tsv` and `events.json` structures; the sidecar annotates `duration`, which becomes a `HedDurationVector`
 - Exports an `EventsTable` back to a BIDS events file and sidecar with `get_bids_tabular`, reads it back, and checks that the round trip loses nothing
 
 ### 05_hed_validation.py

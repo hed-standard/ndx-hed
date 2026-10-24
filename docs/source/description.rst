@@ -21,10 +21,11 @@ explains how to get started with HED.
    All examples referenced in this documentation can be found in the `examples directory <https://github.com/hed-standard/ndx-hed/tree/main/examples>`_ 
    and can be run directly from the ``examples/`` folder.
 
-Three Core Classes
-------------------
+Core Classes
+------------
 
-The ndx-hed extension provides three main classes for different annotation patterns:
+The ndx-hed extension provides three main classes for different annotation patterns, plus
+``HedDurationVector``, a ``HedValueVector`` for the duration column of an ``EventsTable``:
 
 HedLabMetaData
 ~~~~~~~~~~~~~~
@@ -122,10 +123,43 @@ HedValueVector
        name="duration",
        description="Trial duration with HED annotation for a sensory stimulus",
        data=[1.0, 1.5, 2.0],
-       hed="((Sensory-event, Experiment-stimulus), Duration/# s)"
+       hed="(Duration/# s, (Sensory-event, Experimental-stimulus))"
    )
-   
+
    trials_table.add_column(duration_vector)
+
+HedDurationVector
+~~~~~~~~~~~~~~~~~
+
+**Purpose**: The duration column of an ``EventsTable`` with a HED template.
+
+**Key Features**:
+
+* Extends the core ``DurationVectorData`` (durations in seconds), so code that reads event durations
+  sees an ordinary duration column
+* Carries one HED template with a single ``#``, as a ``HedValueVector`` does, and is validated the same way
+* Built by ``get_events_table`` for a BIDS ``duration`` column that the sidecar annotates
+* ``Duration`` must be in a top-level group with what it applies to in a nested group:
+  ``(Duration/# s, (Sensory-event))``. A BIDS ``onset`` column carries no HED, and ``duration`` cannot be categorical.
+
+.. code-block:: python
+
+   from pynwb.event import EventsTable, TimestampVectorData
+   from ndx_hed import HedDurationVector
+
+   events_table = EventsTable(
+       name="stimulus_events",
+       description="Stimulus events whose durations carry HED",
+       columns=[
+           TimestampVectorData(name="timestamp", description="Event onsets", data=[1.0, 2.5]),
+           HedDurationVector(
+               name="duration",
+               description="Stimulus durations",
+               data=[0.5, 0.75],
+               hed="(Duration/# s, (Sensory-event, Visual-presentation))",
+           ),
+       ],
+   )
 
 Comprehensive Examples
 ----------------------
@@ -172,7 +206,7 @@ The ndx-hed extension works seamlessly with the PyNWB core ``EventsTable`` (NWBE
 to provide comprehensive event annotation capabilities. HED annotations can be incorporated in three ways:
 
 1. **Direct HED column** - Event-specific annotations
-2. **HedValueVector columns** - Shared annotations with value placeholders  
+2. **HedValueVector columns** - Shared annotations with value placeholders (``HedDurationVector`` for the duration column)
 3. **Categorical columns with MeaningsTable** - Category-based annotations
 
 **Example 1: Direct HED Column**

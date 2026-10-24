@@ -14,6 +14,15 @@ datasets:
   - name: hed
     dtype: text
     doc: 'The HED annotation applicable to the column (expects #).'
+- neurodata_type_def: HedDurationVector
+  neurodata_type_inc: DurationVectorData
+  doc: An extension of DurationVectorData (event durations in seconds) with a 
+    single Hierarchical Event Descriptor (HED) annotation template that applies 
+    to all values in the column, as a HedValueVector does.
+  attributes:
+  - name: hed
+    dtype: text
+    doc: 'The HED annotation applicable to the column (expects #).'
 groups:
 - neurodata_type_def: HedLabMetaData
   neurodata_type_inc: LabMetaData

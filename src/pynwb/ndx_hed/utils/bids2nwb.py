@@ -10,7 +10,8 @@ from hed.schema import HedSchema, HedSchemaGroup
 from pynwb.core import DynamicTable, VectorData
 from pynwb.event import DurationVectorData, EventsTable, TimestampVectorData
 
-from ndx_hed import HedLabMetaData, HedTags, HedValueVector
+from ndx_hed import HedDurationVector, HedLabMetaData, HedTags, HedValueVector
+from ndx_hed.hed_tags import HED_TEMPLATE_TYPES
 
 # Sidecar key under which the HedLabMetaData definitions are exported. In BIDS, definitions live in
 # a sidecar entry that names no actual column; "definitions" is the conventional name for it.
@@ -160,10 +161,13 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
 
     Returns:
         EventsTable: The constructed EventsTable object. Categorical columns are stored as plain
-        VectorData columns, each annotated by a MeaningsTable attached to the table.
+        VectorData columns, each annotated by a MeaningsTable attached to the table. The onset
+        column becomes the TimestampVectorData "timestamp"; the duration column becomes a
+        HedDurationVector when meanings gives it a value template, a DurationVectorData otherwise.
 
     Raises:
-        ValueError: If the DataFrame repeats a column name.
+        ValueError: If the DataFrame repeats a column name, if meanings gives the onset column any
+            HED or Levels, or if meanings makes the duration column categorical.
     """
 
     # A repeated column name (two blank names included) cannot become an NWB table, whose column names are
@@ -172,6 +176,19 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
     if repeated:
         raise ValueError(
             f"Table '{name}' cannot be converted to an EventsTable: the column name(s) {repeated} occur more than once."
+        )
+
+    # The onset column carries no HED, and duration is a value column: it can carry one value template (it
+    # becomes a HedDurationVector) but cannot be categorical. Refuse the rest rather than drop it silently.
+    if "onset" in meanings["categorical"] or "onset" in meanings["value"]:
+        raise ValueError(
+            f"Table '{name}' cannot be converted to an EventsTable: the sidecar gives the onset column HED or "
+            "Levels, and an onset column cannot carry HED."
+        )
+    if "duration" in meanings["categorical"]:
+        raise ValueError(
+            f"Table '{name}' cannot be converted to an EventsTable: the sidecar makes the duration column "
+            "categorical (Levels or a HED dict); duration can only carry a value template such as 'Duration/# s'."
         )
 
     columns = []
@@ -187,6 +204,12 @@ def get_events_table(name: str, description: str, df: pd.DataFrame, meanings: di
         col_data = df[col_name].tolist()
         if col_name == "onset":
             columns.append(TimestampVectorData(name="timestamp", description="Onset times of events", data=col_data))
+        elif col_name == "duration" and col_name in meanings["value"]:
+            columns.append(
+                HedDurationVector(
+                    name="duration", description="Duration of events", data=col_data, hed=meanings["value"][col_name]
+                )
+            )
         elif col_name == "duration":
             columns.append(DurationVectorData(name="duration", description="Duration of events", data=col_data))
         elif col_name in meanings["categorical"]:
@@ -297,18 +320,17 @@ def get_json_hed_dict(table: DynamicTable, hed_metadata: HedLabMetaData = None) 
 
     Each entry maps a column name to a BIDS sidecar column-info dict, which may contain:
         - "Description": the column's description, if it has one.
-        - "HED": for a HedValueVector, its value template (a string containing a single "#");
+        - "HED": for a HedValueVector or HedDurationVector, its value template (a string containing a single "#");
           for a categorical column, a dict mapping each value to its HED string.
         - "Levels": for a categorical column, a dict mapping each value to its meaning.
 
     Columns contribute as follows:
         - HedTags (the "HED" column): omitted entirely. Its cells are HED strings, so the column
           is self-describing, and "HED" is a reserved sidecar key that must not name an entry.
-        - TimestampVectorData/DurationVectorData: description only, since the BIDS onset and
-          duration columns carry no HED metadata. The entry keeps the column's own name, so an
-          EventsTable "timestamp" column is keyed "timestamp" even though get_bids_tabular()
-          renames it to "onset" in the dataframe.
-        - HedValueVector: its HED template, unless the template is empty or "n/a".
+        - HedValueVector and HedDurationVector: the HED template, unless the template is empty or "n/a".
+        - A plain TimestampVectorData/DurationVectorData: description only. The entry keeps the
+          column's own name, so an EventsTable "timestamp" column is keyed "timestamp" even though
+          get_bids_tabular() renames it to "onset" in the dataframe.
         - Any other column: the Levels and HED of the MeaningsTable annotating it, if any.
 
     Columns with no metadata are omitted, so the result is empty for a table with no descriptions,
@@ -351,20 +373,19 @@ def get_json_hed_dict(table: DynamicTable, hed_metadata: HedLabMetaData = None) 
         if hasattr(column, "description") and column.description:
             column_info["Description"] = column.description
 
-        # Handle different column types
-        if isinstance(column, (TimestampVectorData, DurationVectorData)):
-            # The BIDS onset and duration columns don't carry HED metadata.
-            # TODO: Might need to extend the duration column to include a HED field if needed.
+        # Handle different column types. A HedDurationVector is a DurationVectorData, so it is tested first.
+        if isinstance(column, HED_TEMPLATE_TYPES):
+            if column.hed != "" and column.hed != "n/a":
+                column_info["HED"] = column.hed
+
+        elif isinstance(column, (TimestampVectorData, DurationVectorData)):
+            # A plain BIDS onset or duration column carries no HED metadata.
             pass
 
         elif isinstance(column, HedTags):
             # The HED column is self-describing (its cells are HED strings). "HED" is a reserved
             # sidecar key and must NOT appear as a sidecar metadata entry, so emit nothing for it.
             continue
-
-        elif isinstance(column, HedValueVector):
-            if column.hed != "" and column.hed != "n/a":
-                column_info["HED"] = column.hed
 
         else:
             # A categorical column is a plain VectorData annotated by a MeaningsTable.
