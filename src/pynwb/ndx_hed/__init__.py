@@ -17,4 +17,5 @@ del load_namespaces, get_class
 
 from .hed_tags import HedTags as HedTags
 from .hed_tags import HedValueVector as HedValueVector
+from .hed_tags import HedDurationVector as HedDurationVector
 from .hed_lab_metadata import HedLabMetaData as HedLabMetaData

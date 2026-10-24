@@ -26,6 +26,7 @@ def main():
     ns_builder.include_namespace("core")
     ns_builder.include_type("VectorData", namespace="core")
     ns_builder.include_type("LabMetaData", namespace="core")
+    ns_builder.include_type("DurationVectorData", namespace="core")
 
     hed_tags = NWBDatasetSpec(
         neurodata_type_def="HedTags",
@@ -41,6 +42,18 @@ def main():
         doc="An extension of VectorData for a column with a single Hierarchical Event Descriptor (HED) "
         "annotation template that applies to all values in the column. May have any name; identified "
         "by its neurodata type, not by name.",
+        attributes=[
+            NWBAttributeSpec(
+                name="hed", dtype="text", doc="The HED annotation applicable to the column (expects #).", required=True
+            )
+        ],
+    )
+
+    hed_duration_vector = NWBDatasetSpec(
+        neurodata_type_def="HedDurationVector",
+        neurodata_type_inc="DurationVectorData",
+        doc="An extension of DurationVectorData (event durations in seconds) with a single Hierarchical Event "
+        "Descriptor (HED) annotation template that applies to all values in the column, as a HedValueVector does.",
         attributes=[
             NWBAttributeSpec(
                 name="hed", dtype="text", doc="The HED annotation applicable to the column (expects #).", required=True
@@ -75,7 +88,7 @@ def main():
     )
 
     # Add all of new data types to this list
-    new_data_types = [hed_lab_metadata, hed_tags, hed_value_vector]
+    new_data_types = [hed_lab_metadata, hed_tags, hed_value_vector, hed_duration_vector]
 
     # export the spec to yaml files in the spec folder
     output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "spec"))

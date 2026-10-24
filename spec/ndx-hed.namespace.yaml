@@ -16,5 +16,6 @@ namespaces:
     neurodata_types:
     - VectorData
     - LabMetaData
+    - DurationVectorData
   - source: ndx-hed.extensions.yaml
   version: 0.3.0

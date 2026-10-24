@@ -1,6 +1,7 @@
 from hdmf.common import VectorData
 from hdmf.utils import docval, get_docval, getargs
 from pynwb import register_class
+from pynwb.event import DurationVectorData
 
 
 @register_class("HedTags", "ndx-hed")
@@ -91,6 +92,37 @@ class HedValueVector(VectorData):
         if placeholder_count != 1:
             raise ValueError(
                 f"HedValueVector '{self.name}' template must contain exactly one '#' placeholder, "
+                f"found {placeholder_count} in: {hed_annotation}"
+            )
+        self._hed = hed_annotation
+
+    @property
+    def hed(self):
+        """Return the HED annotation template for this column."""
+        return self._hed
+
+
+@register_class("HedDurationVector", "ndx-hed")
+class HedDurationVector(DurationVectorData):
+    """
+    The duration column of an EventsTable (durations in seconds) with a single HED annotation template that
+    applies to all values in the column, as a HedValueVector does. It is a DurationVectorData, so code that
+    reads event durations sees an ordinary duration column.
+    """
+
+    __nwbfields__ = ("_hed",)
+
+    @docval(
+        *get_docval(DurationVectorData.__init__, "name", "description", "data", "resolution"),
+        {"name": "hed", "type": str, "doc": "HED annotation template for all values in the column"},
+    )
+    def __init__(self, **kwargs):
+        hed_annotation = kwargs.pop("hed", None)
+        super().__init__(**kwargs)
+        placeholder_count = hed_annotation.count("#")
+        if placeholder_count != 1:
+            raise ValueError(
+                f"HedDurationVector '{self.name}' template must contain exactly one '#' placeholder, "
                 f"found {placeholder_count} in: {hed_annotation}"
             )
         self._hed = hed_annotation
