@@ -8,7 +8,7 @@ Use this to test the examples or as a demonstration of all ndx-hed features.
 
 """
 
-import importlib.util
+import runpy
 import sys
 import traceback
 
@@ -21,13 +21,18 @@ def run_example(example_name, description):
     print(f"{'=' * 60}")
 
     try:
-        # Import and run the example
-        spec = importlib.util.spec_from_file_location("example", f"{example_name}")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        # Run the example as a script, so its `if __name__ == "__main__"` block runs too
+        runpy.run_path(example_name, run_name="__main__")
 
         print(f"\n[OK] {example_name} completed successfully!")
         return True
+
+    except SystemExit as e:
+        if e.code in (None, 0):
+            print(f"\n[OK] {example_name} completed successfully!")
+            return True
+        print(f"\n[FAIL] {example_name} exited with code {e.code}")
+        return False
 
     except Exception as e:
         print(f"\n[FAIL] {example_name} failed with error:")
