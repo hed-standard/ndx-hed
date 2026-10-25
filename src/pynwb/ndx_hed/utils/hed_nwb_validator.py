@@ -22,6 +22,7 @@ from ..hed_tags import HED_TEMPLATE_TYPES, HedDurationVector, HedTags, HedValueV
 from .bids2nwb import (
     _bids_column_name,
     _is_missing,
+    _value_text,
     get_bids_dataframe,
     get_json_hed_dict,
 )
@@ -486,9 +487,7 @@ def _distinct_values(values) -> dict[str, list[int]]:
     for row, value in enumerate(values):
         if _is_missing(value):
             continue
-        if isinstance(value, bytes):
-            value = value.decode("utf-8")
-        text = str(value)
+        text = _value_text(value)  # as get_levels_and_hed makes the categorical keys, so values find them
         if text == "n/a":
             continue
         distinct.setdefault(text, []).append(row)

@@ -2522,6 +2522,95 @@ class TestValidateFromDisk(unittest.TestCase):
         self.assertIsInstance(assembling.as_base_input(), TabularInput)
 
 
+class TestValidateNonStringCategorical(unittest.TestCase):
+    """Test categorical HED on boolean and integer columns, in memory and read back from an HDF5 file.
+
+    A column read from a file holds numpy scalars (numpy.bool, numpy.int64), which json.dumps refuses as
+    sidecar keys, and json.dumps writes the Python key True as "true" where the column value is "True".
+    """
+
+    def setUp(self):
+        self.hed_metadata = HedLabMetaData(hed_schema_version="8.5.0")
+        self.validator = HedNWBValidator(self.hed_metadata)
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _nwbfile(self, values, level_hed):
+        """A file whose table has a categorical column, its MeaningsTable HED, and "Sensory-event" in every row."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from pynwb import NWBFile
+
+        table = DynamicTable(
+            name="trials_hed",
+            description="Trials",
+            columns=[
+                VectorData(name="condition", description="Condition", data=values),
+                HedTags(data=["Sensory-event"] * len(values)),
+            ],
+        )
+        meanings = MeaningsTable(target=table["condition"], description="Condition meanings")
+        meanings.add_column(name="HED", description="HED of each condition", col_cls=HedTags)
+        for value, hed in level_hed.items():
+            meanings.add_row(value=value, meaning=f"Condition {value}", HED=hed)
+        table.add_meanings_table(meanings)
+        nwbfile = NWBFile(
+            session_description="Test session for non-string categorical HED",
+            identifier="test_non_string_categorical",
+            session_start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+        )
+        nwbfile.add_lab_meta_data(self.hed_metadata)
+        nwbfile.add_acquisition(table)
+        return nwbfile
+
+    def _summaries_in_memory_and_from_disk(self, values, level_hed):
+        """Validate the table in memory and read back from a file, with warnings, and summarize both."""
+        from pynwb import NWBHDF5IO
+
+        def summary(table):
+            issues = self.validator.validate_table(table, ErrorHandler(check_for_warnings=True))
+            return [(issue["code"], issue.get("ec_row")) for issue in issues]
+
+        nwbfile = self._nwbfile(values, level_hed)
+        in_memory = summary(nwbfile.acquisition["trials_hed"])
+        path = os.path.join(self.temp_dir.name, "categorical.nwb")
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(path, "r") as io:
+            from_disk = summary(io.read().acquisition["trials_hed"])
+        return in_memory, from_disk
+
+    def test_boolean_categorical(self):
+        """Test that the HED of a boolean value applies to its rows: the repeated tag is found only there."""
+        in_memory, from_disk = self._summaries_in_memory_and_from_disk(
+            [True, False, True], {True: "Sensory-event", False: "Agent-action"}
+        )
+
+        self.assertEqual(in_memory, [("TAG_EXPRESSION_REPEATED", 0), ("TAG_EXPRESSION_REPEATED", 2)])
+        self.assertEqual(from_disk, in_memory)
+
+    def test_integer_categorical(self):
+        """Test that the HED of an integer value applies to its rows: the repeated tag is found only there."""
+        in_memory, from_disk = self._summaries_in_memory_and_from_disk(
+            [1, 2, 2], {1: "Agent-action", 2: "Sensory-event"}
+        )
+
+        self.assertEqual(in_memory, [("TAG_EXPRESSION_REPEATED", 1), ("TAG_EXPRESSION_REPEATED", 2)])
+        self.assertEqual(from_disk, in_memory)
+
+    def test_valid_boolean_categorical(self):
+        """Test that a valid boolean categorical annotation reports nothing, not even SIDECAR_KEY_MISSING."""
+        in_memory, from_disk = self._summaries_in_memory_and_from_disk(
+            [True, False], {True: "Agent-action", False: "Red"}
+        )
+
+        self.assertEqual(in_memory, [])
+        self.assertEqual(from_disk, [])
+
+
 class TestHedDurationVectorValidation(unittest.TestCase):
     """Test that a HedDurationVector is validated as a HedValueVector is (rules R5 and R7)."""
 

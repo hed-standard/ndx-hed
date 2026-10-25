@@ -852,17 +852,34 @@ class TestGetLevelsAndHed(unittest.TestCase):
         self.assertEqual(sorted(hed_dict.keys()), ["a", "b", "c"])
 
     def test_get_levels_and_hed_numeric_values(self):
-        """Numeric values are kept as-is and remain JSON-serializable."""
+        """Numeric values are keyed by their text, as a BIDS sidecar holds them and the column values are matched."""
         _, meanings_table = _categorical_table(
             [1, 2, 1], [1, 2], ["One", "Two"], hed_data=["Sensory-event", "Agent-action"]
         )
 
         levels, hed_dict = get_levels_and_hed(meanings_table)
 
-        self.assertEqual(levels, {1: "One", 2: "Two"})
-        self.assertEqual(hed_dict, {1: "Sensory-event", 2: "Agent-action"})
-        # int keys survive json serialization (they become strings, as BIDS sidecars require)
-        self.assertEqual(json.loads(json.dumps(levels)), {"1": "One", "2": "Two"})
+        self.assertEqual(levels, {"1": "One", "2": "Two"})
+        self.assertEqual(hed_dict, {"1": "Sensory-event", "2": "Agent-action"})
+
+    def test_get_levels_and_hed_numpy_and_boolean_values(self):
+        """Numpy scalars, which a column read from a file holds, and booleans are keyed as str() writes them.
+
+        json.dumps refuses numpy.bool and numpy.int64 keys, and writes the Python key True as "true", which
+        would not match the column value "True".
+        """
+        _, meanings_table = _categorical_table(
+            [True, False],
+            [np.bool_(True), False, np.int64(3)],
+            ["Yes", "No", "Three"],
+            hed_data=["Reward", "Agent-action", "Red"],
+        )
+
+        levels, hed_dict = get_levels_and_hed(meanings_table)
+
+        self.assertEqual(levels, {"True": "Yes", "False": "No", "3": "Three"})
+        self.assertEqual(hed_dict, {"True": "Reward", "False": "Agent-action", "3": "Red"})
+        self.assertEqual(json.loads(json.dumps(levels)), levels)
 
 
 class TestGetJsonHedDict(unittest.TestCase):
