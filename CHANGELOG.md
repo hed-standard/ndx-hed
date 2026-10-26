@@ -1,8 +1,13 @@
 # Changelog for ndx-hed
 
-## Release 0.3.0 October 24, 2026
+## Release 0.3.0 October 26, 2026
 
-The first ndx-hed release for PyNWB 4, which closes issue #194. NWBEP001 (`EventsTable`, `MeaningsTable`, `TimestampVectorData`, `DurationVectorData`) is now part of PyNWB and HDMF core, so ndx-hed no longer depends on the standalone `ndx-events` extension. Validation now runs through hedtools' staged tabular validator, so an NWB table is validated the way hedtools validates a BIDS events file. The HED rules for NWB tables are documented in `docs/source/hed_validation.md`.
+The first ndx-hed release for PyNWB 4, which closes issue #194. NWBEP001 (`EventsTable`, `MeaningsTable`, `TimestampVectorData`, `DurationVectorData`) is now part of PyNWB and HDMF core, so ndx-hed no longer depends on the standalone `ndx-events` extension. Validation now runs through hedtools' staged tabular validator, so an NWB table is validated the way hedtools validates a BIDS events file. The HED rules for NWB tables are documented on the [HED validation](https://www.hedtags.org/ndx-hed/hed_validation.html) page.
+
+### Fixed since 0.3.0rc1
+
+- A boolean or integer categorical column read from an NWB file no longer makes `validate_table` and `validate_file` raise `TypeError` (#206, thanks to Ben Dichter).
+- The categorical HED of a boolean column is now applied. In 0.3.0rc1 the sidecar wrote the key `True` as `"true"` while the column value is matched as `"True"`, so the HED was skipped with only a `SIDECAR_KEY_MISSING` warning, which the default error handler drops.
 
 ### Breaking changes
 
@@ -16,7 +21,9 @@ The first ndx-hed release for PyNWB 4, which closes issue #194. NWBEP001 (`Event
 #### Validation (`HedNWBValidator`)
 
 - `validate_events()` is removed; call `validate_table(events)`.
-- `validate_table(table, error_handler=None, assemble=True)` now validates the whole table. In 0.2.0 it checked each `HedTags` and `HedValueVector` column on its own. It now applies the structural rules, validates the table's HED as a BIDS sidecar (value templates, categorical HED from each `MeaningsTable`, and the `HedLabMetaData` definitions), checks the column values, and with `assemble=True` (the default) validates each row's combined per-row, categorical, and value HED, temporally when the table has an `onset` column. Each stage stops on an error; warnings alone do not stop it. Sidecar-stage issues name the column and categorical value (`ec_sidecarColumnName`, `ec_sidecarKeyName`) and have no row. With `assemble=False` (for tools such as nwbinspector) no dataframe is built, and each distinct `HED` string is checked on its own; the checks that need the whole row or other rows (required tags, temporal) do not run. Passing a `MeaningsTable` raises `ValueError`; its HED is validated with the table it annotates.
+- `validate_table(table, error_handler=None, assemble=True)` now validates the whole table; in 0.2.0 it checked each `HedTags` and `HedValueVector` column on its own. It applies the structural rules, validates the table's HED as a BIDS sidecar (value templates, categorical HED from each `MeaningsTable`, and the `HedLabMetaData` definitions), and checks the column values. Each stage stops on an error; warnings alone do not stop it. Sidecar-stage issues name the column and categorical value (`ec_sidecarColumnName`, `ec_sidecarKeyName`) and have no row. Passing a `MeaningsTable` raises `ValueError`; its HED is validated with the table it annotates.
+- With `assemble=True` (the default), `validate_table` then validates each row's combined per-row, categorical, and value HED, temporally when the table has an `onset` column.
+- With `assemble=False` (for tools such as nwbinspector), no dataframe is built and each distinct `HED` string is checked on its own; the checks that need the whole row or other rows (required tags, temporal) do not run.
 - `validate_file(nwbfile, error_handler=None, assemble=True)` checks the `HedLabMetaData` and then calls `validate_table` for every `DynamicTable` except a `MeaningsTable`. It compares schemas by `get_formatted_version()`, which also works for a schema group or a merged library schema.
 - Issues are reported per distinct value. A `HED` string, `HedValueVector` value, or categorical value with a problem is reported once, at the first row holding it, with the number of such rows in `row_count` (`ROW_COUNT_KEY`). That includes `validate_vector()`, which in 0.2.0 reported every row.
 - `ec_row` is the table row index (first data row 0) in every path; it used to be hedtools' BIDS line number in the assembled path. Every issue names its table in `ec_table_name`. Through `validate_file`, `ec_filename` holds the NWB file identifier; it no longer holds the table name.
@@ -30,7 +37,7 @@ The first ndx-hed release for PyNWB 4, which closes issue #194. NWBEP001 (`Event
 - `get_events_table()` builds categorical columns as plain `VectorData`, each with a `MeaningsTable`. It turns the BIDS `n/a` spellings in `onset` and `duration` into NaN and raises on any other non-numeric value instead of passing it through.
 - `get_events_table()` raises `ValueError` for a sidecar that gives the `onset` column HED or `Levels`, or makes the `duration` column categorical. 0.2.0 dropped that HED without a word.
 
-### Changes
+### New features and changes
 
 #### HedDurationVector
 
@@ -54,7 +61,7 @@ The first ndx-hed release for PyNWB 4, which closes issue #194. NWBEP001 (`Event
 
 #### BIDS conversion
 
-- `get_bids_tabular()` is now two public halves: `get_bids_dataframe(table)` and `get_json_hed_dict(table, hed_metadata=None)`. `get_json_hed_dict` builds the sidecar from the table's columns without reading the data or using pandas. `get_levels_and_hed(meanings_table)` returns a `MeaningsTable`'s `Levels` and `HED` dictionaries.
+- `get_bids_tabular()` is now two public halves: `get_bids_dataframe(table)` and `get_json_hed_dict(table, hed_metadata=None)`. `get_json_hed_dict` builds the sidecar from the table's columns without reading the data or using pandas. `get_levels_and_hed(meanings_table)` returns a `MeaningsTable`'s `Levels` and `HED` dictionaries, keyed by each value as text (`{"1": "One"}`, `{"True": "Yes"}`), so a boolean or integer categorical column, including one read from a file, matches its sidecar keys.
 - Given a `HedLabMetaData`, `get_json_hed_dict()` and `get_bids_tabular()` export its definitions under the sidecar's `"definitions"` key (`DEFINITIONS_KEY`), so the sidecar resolves its `Def/` references. Anything else raises `ValueError`.
 - `get_bids_dataframe()` writes missing cells (NaN, None, `""`) as `n/a`, as a BIDS TSV does, so a missing `HedValueVector` value is no longer a `VALUE_INVALID` (`Delay/nan s`).
 - `get_bids_dataframe()`, `get_bids_tabular()`, and `get_events_table()` raise `ValueError` for a repeated column name.
@@ -72,7 +79,7 @@ The first ndx-hed release for PyNWB 4, which closes issue #194. NWBEP001 (`Event
 - `setup.py`, `requirements-dev.txt`, and `requirements-min.txt` are removed. Development installs use the `test`, `dev`, and `docs` extras in `pyproject.toml`, with `constraints/minimum.txt` and `constraints/pinned.txt`.
 - The examples are rewritten for PyNWB 4. Each validates what it builds; they show the three HED shapes together in one events table with its assembled row HED (`06_complete_workflow.py`), the NWB to BIDS round trip (`04_bids_conversion.py`), and the ndx-hed error codes (`05_hed_validation.py`). `run_all_examples.py` now runs each example's `main()`; before, it only imported them.
 - The examples and documentation use HED 8.5.0 (`score_2.2.0` and `lang_1.3.0` for library schemas). `04_bids_conversion.py` also annotates the `duration` column, building its HED from `{event_type}` and `{trial_number}`.
-- New documentation page `docs/source/hed_validation.md` gives the HED rules for NWB tables and the validation modes. The release notes page includes this file instead of keeping a copy.
+- New documentation page [HED validation](https://www.hedtags.org/ndx-hed/hed_validation.html) gives the HED rules for NWB tables and the validation modes. The release notes page includes this file instead of keeping a copy.
 - New `spec_tests/` directory runs the hed-tests validation suite through `validate_file` (`python -m pytest spec_tests`; see `spec_tests/README.md`).
 
 ## Release 0.2.0 October 18, 2025

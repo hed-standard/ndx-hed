@@ -89,17 +89,17 @@ python run_all_examples.py
 All examples require:
 
 - `pynwb >= 4.2.0` (provides the core `EventsTable`, `MeaningsTable`, etc.)
-- `ndx-hed` from the GitHub `main` branch (PyPI still has 0.2.0, which predates PyNWB 4)
+- `ndx-hed` 0.3.0 or later (0.2.0 predates PyNWB 4)
 - `pandas` (for examples 4 and 7)
 - `numpy` (for example 6)
 
 Install with:
 
 ```bash
-pip install "ndx-hed @ git+https://github.com/hed-standard/ndx-hed.git" pandas numpy
+pip install -U ndx-hed pandas numpy
 ```
 
-ndx-hed from `main` brings in `pynwb>=4.2.0` and `hedtools>=1.3.0`. The first run downloads the HED 8.5.0 schema from the network; hedtools caches it in `~/.hedtools`.
+ndx-hed 0.3.0 brings in `pynwb>=4.2.0` and `hedtools>=1.3.0`. The first run downloads the HED 8.5.0 schema from the network; hedtools caches it in `~/.hedtools`.
 
 ## Example output
 
