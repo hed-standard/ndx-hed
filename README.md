@@ -13,10 +13,8 @@ The [HED integration for NWB](https://www.hedtags.org/ndx-hed/) gives a quicksta
 **Python:**
 
 ```bash
-pip install -U "ndx-hed @ git+https://github.com/hed-standard/ndx-hed.git"
+pip install -U ndx-hed
 ```
-
-Until the 0.3.0 release candidate is on PyPI, install from GitHub: PyPI still has 0.2.0, which predates PyNWB 4.
 
 **Matlab:** The Matlab extension is under development.
 
