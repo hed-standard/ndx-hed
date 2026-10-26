@@ -279,6 +279,20 @@ def _is_missing(value) -> bool:
     return False
 
 
+def _value_text(value) -> str:
+    """
+    Returns a column value as the text hedtools matches it by: a sidecar key, and a value of the column.
+
+    Bytes are decoded and anything else goes through ``str``. The categorical keys of the sidecar and the
+    values of the column must be made text the same way, or a value does not find its key: ``json.dumps``
+    would write the key ``True`` as ``"true"``, and it refuses numpy scalars such as the ``numpy.bool`` and
+    ``numpy.int64`` values that a column read from a file holds.
+    """
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return str(value)
+
+
 def get_levels_and_hed(meanings_table: MeaningsTable) -> tuple:
     """
     Extracts the BIDS "Levels" and "HED" dictionaries from a MeaningsTable without using pandas.
@@ -291,7 +305,8 @@ def get_levels_and_hed(meanings_table: MeaningsTable) -> tuple:
     Returns:
         tuple: A tuple containing:
             - dict: Levels -- maps each value to its meaning (empty string if there is no meaning).
-            - dict: HED -- maps each value to its HED string, omitting missing (None, NaN, or
+              The keys are the values as text (``_value_text``), as a BIDS sidecar holds them.
+            - dict: HED -- maps each value, as text, to its HED string, omitting missing (None, NaN, or
               empty) annotations. Empty if the MeaningsTable has no HED column. An explicit ``n/a``
               is kept (the sidecar annotates the value as having no HED); a value with an empty cell,
               which ``get_categorical_meanings`` writes for a value only ``Levels`` lists, is not a key
@@ -305,9 +320,10 @@ def get_levels_and_hed(meanings_table: MeaningsTable) -> tuple:
     levels = {}
     hed_dict = {}
     for index, value in enumerate(values):
-        levels[value] = meanings[index] if index < len(meanings) else ""
+        key = _value_text(value)
+        levels[key] = meanings[index] if index < len(meanings) else ""
         if index < len(hed_strings) and not _is_missing(hed_strings[index]):
-            hed_dict[value] = hed_strings[index]
+            hed_dict[key] = hed_strings[index]
     return levels, hed_dict
 
 
