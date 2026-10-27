@@ -4,7 +4,7 @@ ndx-hed: HED Integration for NWB
 .. raw:: html
 
    <div class="badge-container">
-      <a href="https://doi.org/10.5281/zenodo.13142816"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.13142816.svg" alt="DOI"></a>
+      <a href="https://doi.org/10.5281/zenodo.13142815"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.13142815.svg" alt="DOI"></a>
       <a href="https://badge.fury.io/py/ndx-hed"><img src="https://badge.fury.io/py/ndx-hed.svg" alt="PyPI version"></a>
       <a href="https://codecov.io/gh/hed-standard/ndx-hed"><img src="https://codecov.io/gh/hed-standard/ndx-hed/branch/main/graph/badge.svg" alt="codecov"></a>
    </div>
