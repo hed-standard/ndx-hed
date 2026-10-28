@@ -5,12 +5,14 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from dateutil.tz import tzlocal, tzutc
+from hdmf.common import MeaningsTable
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.core import DynamicTable, VectorData
 from pynwb.event import DurationVectorData, EventsTable, TimestampVectorData
 from pynwb.testing import TestCase, remove_test_file
 from pynwb.testing.mock.file import mock_NWBFile
 
+from ndx_hed.hed_lab_metadata import HedLabMetaData
 from ndx_hed.hed_tags import HED_TEMPLATE_TYPES, HedDurationVector, HedTags, HedValueVector
 
 
@@ -123,6 +125,7 @@ class TestHedTagsSimpleRoundtrip(TestCase):
     def setUp(self):
         self.path = "test.nwb"
         nwb_mock = mock_NWBFile()
+        nwb_mock.add_lab_meta_data(HedLabMetaData(hed_schema_version="8.5.0"))
         nwb_mock.add_trial_column(name="HED", description="HED annotations for each trial", col_cls=HedTags, data=[])
         nwb_mock.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
         nwb_mock.add_trial(start_time=2.0, stop_time=3.0, HED="Incorrect-action")
@@ -176,6 +179,7 @@ class TestHedTagsNWBFileRoundtrip(TestCase):
             virus="novirus",
             source_script_file_name="nofilename",
         )
+        self.nwbfile.add_lab_meta_data(HedLabMetaData(hed_schema_version="8.5.0"))
 
         self.nwbfile.add_trial_column(
             name="HED", description="HED annotations for each trial", col_cls=HedTags, data=[]
@@ -323,6 +327,7 @@ class TestHedValueVectorRoundtrip(TestCase):
             identifier="test_hedvaluevector",
             session_start_time=datetime.now(tzlocal()),
         )
+        self.nwbfile.add_lab_meta_data(HedLabMetaData(hed_schema_version="8.5.0"))
 
     def tearDown(self):
         """Clean up test file."""
@@ -416,6 +421,7 @@ class TestHedDurationVector(TestCase):
     def test_roundtrip(self):
         """Test that the type, template, resolution, and data survive a write and read."""
         nwbfile = mock_NWBFile()
+        nwbfile.add_lab_meta_data(HedLabMetaData(hed_schema_version="8.5.0"))
         nwbfile.add_events_table(self._events())
         with NWBHDF5IO(self.path, mode="w") as io:
             io.write(nwbfile)
@@ -427,3 +433,69 @@ class TestHedDurationVector(TestCase):
             self.assertEqual(durations.resolution, 0.001)
             self.assertEqual(durations.data[0], 0.5)
             self.assertTrue(np.isnan(durations.data[1]))
+
+
+class TestHedColumnsNeedHedLabMetaData(TestCase):
+    """Test that a HED column is not written to an NWBFile without a HedLabMetaData."""
+
+    def setUp(self):
+        self.path = "test_no_hed_lab_metadata.nwb"
+
+    def tearDown(self):
+        remove_test_file(self.path)
+
+    def _nwbfiles_with_one_hed_column(self):
+        """Return an NWBFile without a HedLabMetaData for each place a HED column can be, keyed by that place."""
+        with_hed_tags = mock_NWBFile()
+        with_hed_tags.add_trial_column(name="HED", description="HED of each trial", col_cls=HedTags, data=[])
+        with_hed_tags.add_trial(start_time=0.0, stop_time=1.0, HED="Correct-action")
+
+        with_value_vector = mock_NWBFile()
+        values = HedValueVector(name="color", description="Colors", data=["red"], hed="Parameter-value/#")
+        with_value_vector.add_analysis(DynamicTable(name="value_table", description="Values", columns=[values]))
+
+        with_duration_vector = mock_NWBFile()
+        events = EventsTable(
+            name="task_events",
+            description="Events",
+            columns=[
+                TimestampVectorData(name="timestamp", description="Onsets", data=[1.0]),
+                HedDurationVector(name="duration", description="Durations", data=[0.5], hed="(Duration/# s)"),
+            ],
+        )
+        with_duration_vector.add_events_table(events)
+
+        with_meanings_table = mock_NWBFile()
+        table = DynamicTable(
+            name="trials_hed",
+            description="Trials",
+            columns=[VectorData(name="condition", description="Conditions", data=["go"])],
+        )
+        meanings_table = MeaningsTable(target=table["condition"], description="Meanings of the conditions")
+        meanings_table.add_column(name="HED", description="HED of each condition", col_cls=HedTags)
+        meanings_table.add_row(value="go", meaning="Respond.", HED="Agent-action")
+        table.add_meanings_table(meanings_table)
+        with_meanings_table.add_analysis(table)
+
+        return {
+            "HedTags": with_hed_tags,
+            "HedValueVector": with_value_vector,
+            "HedDurationVector": with_duration_vector,
+            "MeaningsTable": with_meanings_table,
+        }
+
+    def test_write_without_hed_lab_metadata_raises(self):
+        """Test that writing a HED column without a HedLabMetaData raises, wherever the column is."""
+        for place, nwbfile in self._nwbfiles_with_one_hed_column().items():
+            with self.subTest(place=place):
+                with self.assertRaisesRegex(ValueError, "the NWBFile has no HedLabMetaData"):
+                    with NWBHDF5IO(self.path, mode="w") as io:
+                        io.write(nwbfile)
+
+    def test_write_with_hed_lab_metadata(self):
+        """Test that the same files are written once they have a HedLabMetaData."""
+        for place, nwbfile in self._nwbfiles_with_one_hed_column().items():
+            with self.subTest(place=place):
+                nwbfile.add_lab_meta_data(HedLabMetaData(hed_schema_version="8.5.0"))
+                with NWBHDF5IO(self.path, mode="w") as io:
+                    io.write(nwbfile)
