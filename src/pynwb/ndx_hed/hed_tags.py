@@ -1,7 +1,8 @@
 from hdmf.common import VectorData
 from hdmf.utils import docval, get_docval, getargs
-from pynwb import register_class
+from pynwb import register_class, register_map
 from pynwb.event import DurationVectorData
+from pynwb.io.core import VectorDataMap
 
 
 @register_class("HedTags", "ndx-hed")
@@ -136,3 +137,28 @@ def _checked_template(column, hed_annotation: str) -> str:
             f"found {placeholder_count} in: {hed_annotation}"
         )
     return hed_annotation
+
+
+class _HedColumnMap(VectorDataMap):
+    """
+    Object mapper of the HED column types that refuses to build a column in an NWBFile without a HedLabMetaData.
+
+    The annotations cannot be validated without the HED schema version that the HedLabMetaData declares, so the
+    file fails when it is written. Reading a file does not build, so existing files can still be read.
+    """
+
+    @docval(*get_docval(VectorDataMap.build))
+    def build(self, **kwargs):
+        column = getargs("container", kwargs)
+        nwbfile = column.get_ancestor("NWBFile")
+        if nwbfile is not None and "hed_schema" not in nwbfile.lab_meta_data:
+            raise ValueError(
+                f"{type(column).__name__} '{column.name}' of table '{column.parent.name}' holds HED annotations, "
+                "but the NWBFile has no HedLabMetaData declaring the HED schema version. Add one with "
+                "nwbfile.add_lab_meta_data(HedLabMetaData(hed_schema_version=...)) before writing."
+            )
+        return super().build(**kwargs)
+
+
+for _hed_column_type in (HedTags, *HED_TEMPLATE_TYPES):
+    register_map(_hed_column_type, _HedColumnMap)
